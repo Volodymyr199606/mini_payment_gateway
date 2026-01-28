@@ -1,0 +1,74 @@
+<div class="page-header">
+  <h1 class="page-title">Ledger</h1>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-label">Net Volume</div>
+    <div class="summary-value <%= @net_volume >= 0 ? 'text-success' : 'text-error' %>">
+      <%= number_to_currency(@net_volume / 100.0) %>
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Total Charges</div>
+    <div class="summary-value"><%= number_to_currency(@total_charges / 100.0) %></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Total Refunds</div>
+    <div class="summary-value text-error"><%= number_to_currency(@total_refunds / 100.0) %></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Total Fees</div>
+    <div class="summary-value"><%= number_to_currency(@total_fees / 100.0) %></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Ledger Entries</h2>
+  </div>
+  <div class="card-body">
+    <% if @ledger_entries.any? %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Currency</th>
+            <th>Transaction</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @ledger_entries.each do |entry| %>
+            <tr>
+              <td><%= entry.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+              <td><span class="badge badge-<%= entry.entry_type %>"><%= entry.entry_type %></span></td>
+              <td class="<%= entry.amount_cents >= 0 ? 'text-success' : 'text-error' %>">
+                <%= number_to_currency(entry.amount_cents / 100.0) %>
+              </td>
+              <td><%= entry.currency %></td>
+              <td>
+                <% if entry.transaction %>
+                  <%= link_to entry.transaction.processor_ref, 
+                      dashboard_payment_intent_path(entry.transaction.payment_intent_id),
+                      class: "link" %>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <%= paginate @ledger_entries %>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <p class="empty-state-text">No ledger entries</p>
+      </div>
+    <% end %>
+  </div>
+</div>

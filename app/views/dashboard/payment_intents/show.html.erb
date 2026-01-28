@@ -1,0 +1,92 @@
+<div class="page-header">
+  <h1 class="page-title">Payment Intent #<%= @payment_intent.id %></h1>
+  <%= link_to "← Back to Transactions", dashboard_transactions_path, class: "link" %>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Details</h2>
+  </div>
+  <div class="card-body">
+    <dl class="detail-list">
+      <div class="detail-item">
+        <dt>Status</dt>
+        <dd><span class="badge badge-<%= @payment_intent.status %>"><%= @payment_intent.status %></span></dd>
+      </div>
+      <div class="detail-item">
+        <dt>Amount</dt>
+        <dd><%= number_to_currency(@payment_intent.amount) %> <%= @payment_intent.currency %></dd>
+      </div>
+      <div class="detail-item">
+        <dt>Customer</dt>
+        <dd><%= @payment_intent.customer.email %> (<%= @payment_intent.customer.name %>)</dd>
+      </div>
+      <div class="detail-item">
+        <dt>Payment Method</dt>
+        <dd>
+          <% if @payment_intent.payment_method %>
+            <%= @payment_intent.payment_method.brand %> •••• <%= @payment_intent.payment_method.last4 %>
+          <% else %>
+            <span class="text-muted">None</span>
+          <% end %>
+        </dd>
+      </div>
+      <div class="detail-item">
+        <dt>Refundable</dt>
+        <dd><%= number_to_currency(@payment_intent.refundable_cents / 100.0) %></dd>
+      </div>
+      <div class="detail-item">
+        <dt>Total Refunded</dt>
+        <dd><%= number_to_currency(@payment_intent.total_refunded_cents / 100.0) %></dd>
+      </div>
+      <div class="detail-item">
+        <dt>Created</dt>
+        <dd><%= @payment_intent.created_at.strftime("%Y-%m-%d %H:%M:%S UTC") %></dd>
+      </div>
+    </dl>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Transactions</h2>
+  </div>
+  <div class="card-body">
+    <% if @transactions.any? %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Kind</th>
+            <th>Status</th>
+            <th>Amount</th>
+            <th>Processor Ref</th>
+            <th>Failure</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @transactions.each do |transaction| %>
+            <tr>
+              <td><%= transaction.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+              <td><span class="badge badge-<%= transaction.kind %>"><%= transaction.kind %></span></td>
+              <td><span class="badge badge-<%= transaction.status %>"><%= transaction.status %></span></td>
+              <td><%= number_to_currency(transaction.amount_cents / 100.0) %></td>
+              <td class="text-muted"><%= transaction.processor_ref %></td>
+              <td>
+                <% if transaction.failure_code %>
+                  <span class="text-error"><%= transaction.failure_code %>: <%= transaction.failure_message %></span>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="empty-state">
+        <p class="empty-state-text">No transactions</p>
+      </div>
+    <% end %>
+  </div>
+</div>

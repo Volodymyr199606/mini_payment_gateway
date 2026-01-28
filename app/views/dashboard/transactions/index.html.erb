@@ -1,0 +1,103 @@
+<div class="page-header">
+  <h1 class="page-title">Transactions</h1>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Filters</h2>
+  </div>
+  <div class="card-body">
+    <%= form_with url: dashboard_transactions_path, method: :get, local: true, class: "filter-form" do |f| %>
+      <div class="filter-row">
+        <div class="filter-group">
+          <%= f.label :status, "Status", class: "filter-label" %>
+          <%= f.select :status, 
+              options_for_select([
+                ["All", ""],
+                ["Succeeded", "succeeded"],
+                ["Failed", "failed"]
+              ], params[:status]),
+              {},
+              { class: "filter-select" } %>
+        </div>
+
+        <div class="filter-group">
+          <%= f.label :kind, "Kind", class: "filter-label" %>
+          <%= f.select :kind,
+              options_for_select([
+                ["All", ""],
+                ["Authorize", "authorize"],
+                ["Capture", "capture"],
+                ["Void", "void"],
+                ["Refund", "refund"]
+              ], params[:kind]),
+              {},
+              { class: "filter-select" } %>
+        </div>
+
+        <div class="filter-group">
+          <%= f.label :date_from, "From", class: "filter-label" %>
+          <%= f.date_field :date_from, value: params[:date_from], class: "filter-input" %>
+        </div>
+
+        <div class="filter-group">
+          <%= f.label :date_to, "To", class: "filter-label" %>
+          <%= f.date_field :date_to, value: params[:date_to], class: "filter-input" %>
+        </div>
+
+        <div class="filter-actions">
+          <%= f.submit "Filter", class: "btn btn-secondary" %>
+          <%= link_to "Clear", dashboard_transactions_path, class: "btn btn-link" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Transaction List</h2>
+  </div>
+  <div class="card-body">
+    <% if @transactions.any? %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Payment Intent ID</th>
+            <th>Kind</th>
+            <th>Status</th>
+            <th>Amount</th>
+            <th>Currency</th>
+            <th>Processor Ref</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @transactions.each do |transaction| %>
+            <tr>
+              <td><%= transaction.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+              <td>
+                <%= link_to "##{transaction.payment_intent_id}", 
+                    dashboard_payment_intent_path(transaction.payment_intent_id),
+                    class: "link" %>
+              </td>
+              <td><span class="badge badge-<%= transaction.kind %>"><%= transaction.kind %></span></td>
+              <td><span class="badge badge-<%= transaction.status %>"><%= transaction.status %></span></td>
+              <td><%= number_to_currency(transaction.amount_cents / 100.0) %></td>
+              <td><%= transaction.payment_intent.currency %></td>
+              <td class="text-muted"><%= transaction.processor_ref %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <%= paginate @transactions %>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <p class="empty-state-text">No transactions found</p>
+      </div>
+    <% end %>
+  </div>
+</div>

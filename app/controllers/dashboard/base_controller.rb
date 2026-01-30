@@ -2,6 +2,7 @@ class Dashboard::BaseController < ActionController::Base
   protect_from_forgery with: :exception
   layout "dashboard"
   before_action :authenticate_merchant!
+  helper_method :current_merchant
 
   private
 

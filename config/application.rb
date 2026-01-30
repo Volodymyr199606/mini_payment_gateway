@@ -3,6 +3,9 @@ require "rails/all"
 
 Bundler.require(*Rails.groups)
 
+# Load custom middleware (not autoloaded during config)
+require_relative "../app/middleware/request_id_middleware"
+
 module MiniPaymentGateway
   class Application < Rails::Application
     config.load_defaults 7.1

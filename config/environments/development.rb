@@ -22,7 +22,8 @@ Rails.application.configure do
   config.active_support.disallowed_deprecation_warnings = []
   config.active_record.migration_error = :page_load
   config.active_record.verbose_query_logs = true
-  config.assets.quiet = true
+  # Only set asset options when asset pipeline is loaded (e.g. not in api_only mode)
+  config.assets.quiet = true if config.respond_to?(:assets)
   config.file_watcher = ActiveSupport::EventedFileUpdateChecker
   config.active_job.queue_adapter = :async
 end

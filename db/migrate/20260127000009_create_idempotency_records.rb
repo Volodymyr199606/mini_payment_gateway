@@ -1,6 +1,6 @@
 class CreateIdempotencyRecords < ActiveRecord::Migration[7.1]
   def change
-    create_table :idempotency_records do |t|
+    create_table :idempotency_records, if_not_exists: true do |t|
       t.references :merchant, null: false, foreign_key: true
       t.string :idempotency_key, null: false
       t.string :endpoint, null: false
@@ -11,8 +11,9 @@ class CreateIdempotencyRecords < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    add_index :idempotency_records, [:merchant_id, :idempotency_key, :endpoint], 
-              unique: true, 
-              name: "index_idempotency_on_merchant_key_endpoint"
+    add_index :idempotency_records, [:merchant_id, :idempotency_key, :endpoint],
+              unique: true,
+              name: "index_idempotency_on_merchant_key_endpoint",
+              if_not_exists: true
   end
 end

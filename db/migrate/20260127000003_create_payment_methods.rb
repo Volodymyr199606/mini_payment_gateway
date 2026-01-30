@@ -1,6 +1,6 @@
 class CreatePaymentMethods < ActiveRecord::Migration[7.1]
   def change
-    create_table :payment_methods do |t|
+    create_table :payment_methods, if_not_exists: true do |t|
       t.references :customer, null: false, foreign_key: true
       t.string :method_type, null: false
       t.string :last4
@@ -11,7 +11,5 @@ class CreatePaymentMethods < ActiveRecord::Migration[7.1]
 
       t.timestamps
     end
-
-    add_index :payment_methods, :customer_id
   end
 end

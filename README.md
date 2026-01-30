@@ -12,6 +12,12 @@ A Rails 7+ API learning project that models real payment-platform concepts (Brai
 
 ## Setup
 
+**Windows:** If `bundle` is not recognized, add Ruby to PATH first (new terminals need this each time, or add it in System Environment Variables):
+   ```powershell
+   $env:Path = "C:\Ruby40-x64\bin;" + $env:Path
+   ```
+   Use your actual Ruby install path if different (e.g. `C:\Ruby31-x64\bin`).
+
 1. Install dependencies:
    ```bash
    bundle install
@@ -26,12 +32,12 @@ A Rails 7+ API learning project that models real payment-platform concepts (Brai
    
    Note: The seed script will output API keys for test merchants. Save them!
 
-3. Start the server:
+4. Start the server:
    ```bash
    rails server
    ```
 
-4. (Optional) Configure webhook secret:
+5. (Optional) Configure webhook secret:
    ```bash
    export WEBHOOK_SECRET="your_secret_key_here"
    ```

@@ -1,6 +1,6 @@
 class CreateWebhookEvents < ActiveRecord::Migration[7.1]
   def change
-    create_table :webhook_events do |t|
+    create_table :webhook_events, if_not_exists: true do |t|
       t.references :merchant, null: true, foreign_key: true
       t.string :event_type, null: false
       t.jsonb :payload, null: false
@@ -12,8 +12,7 @@ class CreateWebhookEvents < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    add_index :webhook_events, :merchant_id
-    add_index :webhook_events, :event_type
-    add_index :webhook_events, :delivery_status
+    add_index :webhook_events, :event_type, if_not_exists: true
+    add_index :webhook_events, :delivery_status, if_not_exists: true
   end
 end

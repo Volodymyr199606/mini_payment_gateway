@@ -1,6 +1,6 @@
 class CreateTransactions < ActiveRecord::Migration[7.1]
   def change
-    create_table :transactions do |t|
+    create_table :transactions, if_not_exists: true do |t|
       t.references :payment_intent, null: false, foreign_key: true
       t.string :kind, null: false
       t.string :status, null: false
@@ -12,9 +12,8 @@ class CreateTransactions < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    add_index :transactions, :payment_intent_id
-    add_index :transactions, :kind
-    add_index :transactions, :status
-    add_index :transactions, :processor_ref
+    add_index :transactions, :kind, if_not_exists: true
+    add_index :transactions, :status, if_not_exists: true
+    add_index :transactions, :processor_ref, if_not_exists: true
   end
 end

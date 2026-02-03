@@ -19,8 +19,9 @@
         <div class="nav-menu">
           <%= link_to "Transactions", dashboard_transactions_path, class: "nav-link" %>
           <%= link_to "Ledger", dashboard_ledger_index_path, class: "nav-link" %>
+          <%= link_to "Account", dashboard_account_path, class: "nav-link" %>
           <span class="nav-merchant"><%= current_merchant.name %></span>
-          <%= link_to "Sign Out", dashboard_sign_out_path, method: :delete, class: "nav-link" %>
+          <%= button_to "Sign Out", dashboard_sign_out_path, method: :delete, class: "nav-link nav-link-button", data: { turbo: false } %>
         </div>
       </div>
     </nav>

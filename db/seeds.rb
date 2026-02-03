@@ -15,9 +15,14 @@ merchant2, api_key2 = Merchant.create_with_api_key(
   status: "active"
 )
 
+# Set email and password so you can sign in to the dashboard without the API key
+merchant1.update!(email: "acme@example.com", password: "password123")
+merchant2.update!(email: "tech@example.com", password: "password123")
+
 puts "Merchant 1 API Key: #{api_key1}"
 puts "Merchant 2 API Key: #{api_key2}"
-puts "\n⚠️  IMPORTANT: Save these API keys - they won't be shown again!"
+puts "Dashboard sign-in (email/password): acme@example.com / password123  or  tech@example.com / password123"
+puts "\n⚠️  IMPORTANT: Save API keys - they won't be shown again. Or sign in with email to regenerate."
 
 puts "\nCreating customers..."
 

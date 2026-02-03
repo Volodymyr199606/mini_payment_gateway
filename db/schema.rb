@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_01_27_000009) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_03_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -72,7 +72,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_27_000009) do
     t.string "status", default: "active", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "email"
+    t.string "password_digest"
     t.index ["api_key_digest"], name: "index_merchants_on_api_key_digest", unique: true
+    t.index ["email"], name: "index_merchants_on_email", unique: true, where: "((email IS NOT NULL) AND ((email)::text <> ''::text))"
     t.index ["status"], name: "index_merchants_on_status"
   end
 

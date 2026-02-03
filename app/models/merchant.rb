@@ -41,4 +41,11 @@ class Merchant < ApplicationRecord
   rescue BCrypt::Errors::InvalidHash
     false
   end
+
+  # Regenerate API key (e.g. when user forgot it). Returns new key; old key stops working.
+  def regenerate_api_key
+    new_key = self.class.generate_api_key
+    update!(api_key_digest: BCrypt::Password.create(new_key))
+    new_key
+  end
 end

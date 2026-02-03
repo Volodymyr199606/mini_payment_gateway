@@ -4,6 +4,12 @@ Rails.application.routes.draw do
     get "sign_in", to: "sessions#new"
     post "sign_in", to: "sessions#create"
     delete "sign_out", to: "sessions#destroy"
+    get "sign_up", to: "registrations#new"
+    post "sign_up", to: "registrations#create"
+    
+    get "account", to: "account#show", as: :account
+    post "account/regenerate_api_key", to: "account#regenerate_api_key", as: :regenerate_api_key
+    patch "account/credentials", to: "account#update_credentials", as: :update_credentials
     
     resources :transactions, only: [:index]
     resources :payment_intents, only: [:show]

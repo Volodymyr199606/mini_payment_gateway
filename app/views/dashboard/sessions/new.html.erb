@@ -1,19 +1,43 @@
 <div class="sign-in-container">
   <div class="sign-in-card">
     <h1 class="sign-in-title">Sign In</h1>
-    <p class="sign-in-subtitle">Enter your API key to access the dashboard</p>
+    <p class="sign-in-subtitle">Use your API key or email and password</p>
 
-    <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "sign-in-form" do |f| %>
-      <div class="form-group">
-        <%= f.label :api_key, "API Key", class: "form-label" %>
-        <%= f.text_field :api_key, class: "form-input", placeholder: "Enter your API key", required: true %>
-      </div>
+    <div class="sign-in-options">
+      <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "sign-in-form" do |f| %>
+        <fieldset class="sign-in-fieldset">
+          <legend class="sign-in-legend">Sign in with API key</legend>
+          <div class="form-group">
+            <%= f.label :api_key, "API Key", class: "form-label" %>
+            <%= f.text_field :api_key, class: "form-input", placeholder: "Enter your API key", value: params[:api_key] %>
+          </div>
+          <%= f.submit "Sign in with API key", class: "btn btn-primary" %>
+        </fieldset>
+      <% end %>
 
-      <%= f.submit "Sign In", class: "btn btn-primary" %>
-    <% end %>
+      <div class="sign-in-divider">or</div>
+
+      <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "sign-in-form" do |f| %>
+        <fieldset class="sign-in-fieldset">
+          <legend class="sign-in-legend">Sign in with email &amp; password</legend>
+          <div class="form-group">
+            <%= f.label :email, "Email", class: "form-label" %>
+            <%= f.email_field :email, class: "form-input", placeholder: "you@example.com", value: params[:email], autocomplete: "email" %>
+          </div>
+          <div class="form-group">
+            <%= f.label :password, "Password", class: "form-label" %>
+            <%= f.password_field :password, class: "form-input", placeholder: "Password", autocomplete: "current-password" %>
+          </div>
+          <%= f.submit "Sign in with email", class: "btn btn-primary" %>
+        </fieldset>
+      <% end %>
+    </div>
 
     <p class="sign-in-help">
-      Don't have an API key? Create a merchant via the API to get one.
+      <strong>Don't have an account?</strong> <%= link_to "Sign up", dashboard_sign_up_path, class: "sign-in-link" %> to create a merchant and use the dashboard.
+    </p>
+    <p class="sign-in-help">
+      <strong>Forgot your API key?</strong> Sign in with email and password, then go to Account to regenerate a new key.
     </p>
   </div>
 </div>

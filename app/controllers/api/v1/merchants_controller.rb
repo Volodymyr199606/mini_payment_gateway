@@ -5,11 +5,17 @@ module Api
 
       # POST /api/v1/merchants
       # Bootstrap/dev endpoint - returns plaintext API key ONCE
+      # Optional: email, password — set these to sign in to the dashboard without the API key
       def create
-        merchant, api_key = Merchant.create_with_api_key(
+        attrs = {
           name: params[:name] || "Merchant #{SecureRandom.hex(4)}",
           status: "active"
-        )
+        }
+        attrs[:email] = params[:email].to_s.strip.presence
+        merchant, api_key = Merchant.create_with_api_key(attrs)
+        if params[:password].present?
+          merchant.update!(password: params[:password])
+        end
 
         render json: {
           data: {

@@ -6,27 +6,35 @@ class Dashboard::SessionsController < ActionController::Base
   end
 
   def create
-    api_key = params[:api_key]
-    
-    if api_key.blank?
-      flash.now[:alert] = "API key is required"
+    merchant = nil
+
+    if params[:api_key].present?
+      merchant = Merchant.find_by_api_key(params[:api_key])
+      if merchant.nil?
+        flash.now[:alert] = "Invalid API key"
+        render :new, status: :unprocessable_entity
+        return
+      end
+    elsif params[:email].present? && params[:password].present?
+      merchant = Merchant.where("LOWER(email) = ?", params[:email].to_s.strip.downcase).first
+      merchant = nil unless merchant&.authenticate(params[:password])
+      if merchant.nil?
+        flash.now[:alert] = "Invalid email or password"
+        render :new, status: :unprocessable_entity
+        return
+      end
+    else
+      flash.now[:alert] = "Enter your API key or email and password"
       render :new, status: :unprocessable_entity
       return
     end
 
-    merchant = Merchant.find_by_api_key(api_key)
-    
-    if merchant
-      session[:merchant_id] = merchant.id
-      redirect_to dashboard_transactions_path, notice: "Signed in successfully"
-    else
-      flash.now[:alert] = "Invalid API key"
-      render :new, status: :unprocessable_entity
-    end
+    session[:merchant_id] = merchant.id
+    redirect_to dashboard_transactions_path, notice: "Signed in successfully"
   end
 
   def destroy
-    session[:merchant_id] = nil
+    reset_session
     redirect_to dashboard_sign_in_path, notice: "Signed out successfully"
   end
 end

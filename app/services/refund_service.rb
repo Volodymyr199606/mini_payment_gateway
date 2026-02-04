@@ -1,5 +1,6 @@
 class RefundService < BaseService
   include WebhookTriggerable
+  include Auditable
 
   def initialize(payment_intent:, amount_cents: nil, idempotency_key: nil)
     super()

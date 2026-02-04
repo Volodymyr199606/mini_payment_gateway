@@ -1,4 +1,4 @@
-/* Minimal, monochrome design */
+/* Minimal, monochrome design — system font, no serif */
 :root {
   --color-primary: #2563eb;
   --color-text: #1f2937;
@@ -25,11 +25,21 @@
   padding: 0;
 }
 
-body {
+/* System font everywhere; no default serif on headings */
+html {
   font-family: var(--font-family);
+}
+
+body {
+  font-family: inherit;
   color: var(--color-text);
   line-height: 1.6;
   background: var(--color-bg-secondary);
+}
+
+h1, h2, h3, h4, h5, h6,
+.page-title, .card-title {
+  font-family: inherit;
 }
 
 body.dashboard {
@@ -38,11 +48,12 @@ body.dashboard {
   min-height: 100vh;
 }
 
-/* Navigation */
+/* A) Layout: Top navigation bar */
 .nav {
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   padding: var(--spacing-md) 0;
+  flex-shrink: 0;
 }
 
 .nav-container {
@@ -104,13 +115,20 @@ body.dashboard {
   font-size: 0.875rem;
 }
 
-/* Main content */
+/* A) Layout: Content container */
 .main {
   flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-container {
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
   padding: var(--spacing-xl) var(--spacing-lg);
+  flex: 1;
 }
 
 /* Alerts */
@@ -132,7 +150,7 @@ body.dashboard {
   border: 1px solid #ef4444;
 }
 
-/* Page header */
+/* B) Typography: H1 / H2 / table hierarchy */
 .page-header {
   margin-bottom: var(--spacing-xl);
 }
@@ -142,6 +160,7 @@ body.dashboard {
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: var(--spacing-sm);
+  letter-spacing: -0.02em;
 }
 
 /* Cards */
@@ -162,6 +181,7 @@ body.dashboard {
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-text);
+  font-family: inherit;
 }
 
 .card-body {
@@ -386,16 +406,20 @@ body.dashboard {
 .table th {
   padding: var(--spacing-md);
   text-align: left;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-text-muted);
   border-bottom: 1px solid var(--color-border);
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .table td {
   padding: var(--spacing-md);
   border-bottom: 1px solid var(--color-border);
   font-size: 0.875rem;
+  font-family: inherit;
 }
 
 .table tbody tr:hover {
@@ -525,7 +549,7 @@ body.dashboard {
   color: var(--color-text);
 }
 
-/* Empty state */
+/* D) Empty & loading: reassuring empty states */
 .empty-state {
   padding: var(--spacing-2xl);
   text-align: center;
@@ -533,7 +557,11 @@ body.dashboard {
 
 .empty-state-text {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  max-width: 28rem;
+  margin: 0 auto;
+  line-height: 1.5;
 }
 
 /* Pagination */

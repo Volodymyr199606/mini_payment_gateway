@@ -1,7 +1,7 @@
 class Dashboard::LedgerController < Dashboard::BaseController
   def index
     @ledger_entries = current_merchant.ledger_entries
-      .includes(:transaction)
+      .includes(:payment_transaction)
       .order(created_at: :desc)
       .page(params[:page]).per(25)
     

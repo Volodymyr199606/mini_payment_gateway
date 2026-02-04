@@ -11,7 +11,7 @@ class LedgerService < BaseService
   def call
     ledger_entry = LedgerEntry.create!(
       merchant: @merchant,
-      transaction: @transaction,
+      payment_transaction: @transaction,
       entry_type: @entry_type,
       amount_cents: @amount_cents,
       currency: @currency

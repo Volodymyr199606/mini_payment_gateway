@@ -135,7 +135,7 @@ puts "\nCreating ledger entries..."
 
 LedgerEntry.create!(
   merchant: merchant1,
-  transaction: transaction1,
+  payment_transaction: transaction1,
   entry_type: "charge",
   amount_cents: 10000,
   currency: "USD"
@@ -143,7 +143,7 @@ LedgerEntry.create!(
 
 LedgerEntry.create!(
   merchant: merchant2,
-  transaction: transaction2,
+  payment_transaction: transaction2,
   entry_type: "charge",
   amount_cents: 2500,
   currency: "USD"
@@ -151,7 +151,7 @@ LedgerEntry.create!(
 
 LedgerEntry.create!(
   merchant: merchant2,
-  transaction: transaction3,
+  payment_transaction: transaction3,
   entry_type: "charge",
   amount_cents: 2500,
   currency: "USD"

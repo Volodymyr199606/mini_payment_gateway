@@ -37,6 +37,7 @@ class IdempotencyService < BaseService
       response_body: {}, # Placeholder
       status_code: 200 # Placeholder
     )
+    @idempotency_record.save!
 
     set_result({ cached: false, idempotency_record: @idempotency_record })
     self

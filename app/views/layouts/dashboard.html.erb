@@ -7,11 +7,13 @@
     <%= csp_meta_tag %>
     
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "dashboard", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
   <body class="dashboard">
-    <nav class="nav">
+    <%# Step 1: Layout backbone — top bar, content container, no JS %>
+    <nav class="nav" aria-label="Main">
       <div class="nav-container">
         <div class="nav-logo">
           <%= link_to "Mini Payment Gateway", dashboard_root_path, class: "nav-logo-link" %>
@@ -26,7 +28,7 @@
       </div>
     </nav>
 
-    <main class="main">
+    <main class="main" role="main">
       <% if notice %>
         <div class="alert alert-success"><%= notice %></div>
       <% end %>
@@ -34,7 +36,9 @@
         <div class="alert alert-error"><%= alert %></div>
       <% end %>
 
-      <%= yield %>
+      <div class="content-container">
+        <%= yield %>
+      </div>
     </main>
   </body>
 </html>

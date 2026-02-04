@@ -1,4 +1,6 @@
 class Merchant < ApplicationRecord
+  has_secure_password validations: false
+
   has_many :customers, dependent: :destroy
   has_many :payment_intents, dependent: :destroy
   has_many :ledger_entries, dependent: :destroy
@@ -9,6 +11,9 @@ class Merchant < ApplicationRecord
   validates :name, presence: true
   validates :status, inclusion: { in: %w[active inactive] }
   validates :api_key_digest, presence: true, uniqueness: true
+  validates :email, uniqueness: { case_sensitive: false, allow_blank: true }
+  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true }
+  validates :password, length: { minimum: 6 }, allow_nil: true
 
   scope :active, -> { where(status: "active") }
 

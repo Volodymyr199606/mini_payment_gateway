@@ -49,9 +49,9 @@
               </td>
               <td><%= entry.currency %></td>
               <td>
-                <% if entry.transaction %>
-                  <%= link_to entry.transaction.processor_ref, 
-                      dashboard_payment_intent_path(entry.transaction.payment_intent_id),
+                <% if entry.payment_transaction %>
+                  <%= link_to entry.payment_transaction.processor_ref, 
+                      dashboard_payment_intent_path(entry.payment_transaction.payment_intent_id),
                       class: "link" %>
                 <% else %>
                   <span class="text-muted">—</span>
@@ -67,7 +67,7 @@
       </div>
     <% else %>
       <div class="empty-state">
-        <p class="empty-state-text">No ledger entries</p>
+        <p class="empty-state-text">No ledger entries yet. Charges and refunds will appear here after payment activity.</p>
       </div>
     <% end %>
   </div>

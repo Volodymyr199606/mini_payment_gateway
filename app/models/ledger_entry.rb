@@ -1,6 +1,6 @@
 class LedgerEntry < ApplicationRecord
   belongs_to :merchant
-  belongs_to :transaction, optional: true
+  belongs_to :payment_transaction, class_name: "Transaction", optional: true, foreign_key: "transaction_id"
 
   validates :entry_type, inclusion: { in: %w[charge refund fee] }
   validates :amount_cents, presence: true

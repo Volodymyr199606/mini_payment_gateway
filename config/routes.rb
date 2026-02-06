@@ -11,11 +11,13 @@ Rails.application.routes.draw do
     post "account/regenerate_api_key", to: "account#regenerate_api_key", as: :regenerate_api_key
     patch "account/credentials", to: "account#update_credentials", as: :update_credentials
     
+    get "overview", to: "overview#index", as: :overview
     resources :transactions, only: [:index]
-    resources :payment_intents, only: [:show]
+    resources :payment_intents, only: [:index, :show]
     resources :ledger, only: [:index], controller: "ledger"
+    resources :webhooks, only: [:index], controller: "webhooks"
     
-    root to: "transactions#index"
+    root to: "overview#index"
   end
   
   root to: "dashboard/sessions#new"

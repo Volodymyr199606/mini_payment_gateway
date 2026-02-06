@@ -1,5 +1,8 @@
 <div class="sign-in-container">
   <div class="sign-in-card">
+    <% if flash[:alert] %>
+      <div class="sign-in-alert" role="alert"><%= flash[:alert] %></div>
+    <% end %>
     <h1 class="sign-in-title">Sign In</h1>
     <p class="sign-in-subtitle">Use your API key or email and password</p>
 

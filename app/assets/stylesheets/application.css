@@ -115,6 +115,42 @@ body.dashboard {
   font-size: 0.875rem;
 }
 
+/* Subnav tabs */
+.subnav {
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.subnav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+  display: flex;
+  gap: 0;
+  align-items: center;
+}
+
+.subnav-link {
+  display: block;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.subnav-link:hover {
+  color: var(--color-text);
+}
+
+.subnav-link-active {
+  color: var(--color-primary);
+  font-weight: 500;
+  border-bottom-color: var(--color-primary);
+}
+
 /* A) Layout: Content container */
 .main {
   flex: 1;
@@ -284,6 +320,16 @@ body.dashboard {
   padding: var(--spacing-2xl);
   width: 100%;
   max-width: 420px;
+}
+
+.sign-in-alert {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  color: #b91c1c;
+  font-size: 0.875rem;
 }
 
 .sign-in-title {
@@ -474,6 +520,12 @@ body.dashboard {
 .badge-fee {
   background: #e5e7eb;
   color: #374151;
+}
+
+.badge-pending,
+.badge-created {
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 /* Links */

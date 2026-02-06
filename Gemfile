@@ -14,6 +14,7 @@ gem "kaminari", "~> 1.2"
 gem "importmap-rails", "~> 2.0"
 gem "turbo-rails", "~> 1.5"
 gem "stimulus-rails", "~> 1.3"
+gem "sprockets-rails", ">= 3.4"
 # Timezone data for Windows (no system zoneinfo)
 gem "tzinfo-data", platforms: [:windows]
 

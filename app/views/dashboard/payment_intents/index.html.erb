@@ -1,0 +1,46 @@
+<div class="page-header">
+  <h1 class="page-title">Payment Intents</h1>
+  <p class="page-description">View and manage payment intents created through the API.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Payment Intent List</h2>
+  </div>
+  <div class="card-body">
+    <% if @payment_intents.any? %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Amount</th>
+            <th>Currency</th>
+            <th>Customer</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @payment_intents.each do |pi| %>
+            <tr>
+              <td><%= link_to "##{pi.id}", dashboard_payment_intent_path(pi), class: "link" %></td>
+              <td><span class="badge badge-<%= pi.status %>"><%= pi.status %></span></td>
+              <td><%= number_to_currency(pi.amount_cents / 100.0) %></td>
+              <td><%= pi.currency %></td>
+              <td><%= pi.customer&.email || "—" %></td>
+              <td class="text-muted"><%= pi.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <%= paginate @payment_intents %>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <p class="empty-state-text">No payment intents yet. Create a payment intent via the API to see it here.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

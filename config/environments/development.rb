@@ -25,5 +25,6 @@ Rails.application.configure do
   # Only set asset options when asset pipeline is loaded (e.g. not in api_only mode)
   config.assets.quiet = true if config.respond_to?(:assets)
   config.file_watcher = ActiveSupport::EventedFileUpdateChecker
-  config.active_job.queue_adapter = :async
+  # Use :inline to avoid concurrent-ruby thread pool issues on Windows/Ruby 4
+  config.active_job.queue_adapter = :inline
 end

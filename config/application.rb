@@ -11,7 +11,10 @@ module MiniPaymentGateway
     config.load_defaults 7.1
     config.time_zone = "UTC"
     config.active_record.default_timezone = :utc
-    
+
+    # Asset pipeline: include app/javascript for importmap
+    config.assets.paths << Rails.root.join("app/javascript")
+
     # Add request ID middleware
     config.middleware.use RequestIdMiddleware
   end

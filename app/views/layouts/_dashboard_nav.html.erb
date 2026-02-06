@@ -1,0 +1,9 @@
+<nav class="dashboard-subnav" aria-label="Dashboard sections">
+  <div class="dashboard-subnav-inner">
+    <%= link_to "Overview", dashboard_overview_path, class: "dashboard-subnav-tab #{tab_class(:overview)}" %>
+    <%= link_to "Transactions", dashboard_transactions_path, class: "dashboard-subnav-tab #{tab_class(:transactions)}" %>
+    <%= link_to "Payment Intents", dashboard_payment_intents_path, class: "dashboard-subnav-tab #{tab_class(:payment_intents)}" %>
+    <%= link_to "Ledger", dashboard_ledger_index_path, class: "dashboard-subnav-tab #{tab_class(:ledger)}" %>
+    <%= link_to "Webhooks", dashboard_webhooks_path, class: "dashboard-subnav-tab #{tab_class(:webhooks)}" %>
+  </div>
+</nav>

@@ -1,0 +1,12 @@
+<header class="dashboard-topbar" role="banner">
+  <div class="dashboard-topbar-inner">
+    <div class="dashboard-topbar-left">
+      <%= link_to "Mini Payment Gateway", dashboard_root_path, class: "dashboard-topbar-app-name" %>
+    </div>
+    <div class="dashboard-topbar-right">
+      <span class="dashboard-topbar-merchant"><%= current_merchant.name %></span>
+      <%= link_to "Account", dashboard_account_path, class: "dashboard-topbar-link" %>
+      <%= button_to "Sign out", dashboard_sign_out_path, method: :delete, class: "dashboard-topbar-btn", data: { turbo: false } %>
+    </div>
+  </div>
+</header>

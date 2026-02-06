@@ -1,0 +1,35 @@
+<div class="page-header">
+  <h1 class="page-title">Overview</h1>
+  <p class="page-description">Key metrics and payment activity at a glance.</p>
+</div>
+
+<div class="summary-grid summary-grid-kpi">
+  <div class="summary-card">
+    <div class="summary-label">Captured Volume</div>
+    <div class="summary-value"><%= number_to_currency(@captured_volume_cents / 100.0) %></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Refunded</div>
+    <div class="summary-value text-error"><%= number_to_currency(@refunded_cents / 100.0) %></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Net</div>
+    <div class="summary-value <%= @net_cents >= 0 ? 'text-success' : 'text-error' %>">
+      <%= number_to_currency(@net_cents / 100.0) %>
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Failed Webhooks</div>
+    <div class="summary-value <%= @failed_webhooks_count > 0 ? 'text-error' : '' %>">
+      <%= @failed_webhooks_count %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <p class="text-muted" style="margin: 0;">
+      Use the tabs above to view transactions, payment intents, ledger entries, and webhook delivery status.
+    </p>
+  </div>
+</div>

@@ -1,0 +1,46 @@
+<div class="page-header">
+  <h1 class="page-title">Webhooks</h1>
+  <p class="page-description">Webhook event delivery status and attempt history.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Webhook Events</h2>
+  </div>
+  <div class="card-body">
+    <% if @webhook_events.any? %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Event Type</th>
+            <th>Delivery Status</th>
+            <th>Attempts</th>
+            <th>Delivered At</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @webhook_events.each do |event| %>
+            <tr>
+              <td><%= event.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+              <td><%= event.event_type %></td>
+              <td><span class="badge badge-<%= event.delivery_status %>"><%= event.delivery_status %></span></td>
+              <td><%= event.attempts %></td>
+              <td class="text-muted">
+                <%= event.delivered_at ? event.delivered_at.strftime("%Y-%m-%d %H:%M") : "—" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <%= paginate @webhook_events %>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <p class="empty-state-text">No webhook events yet. Events are created when payment actions complete.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

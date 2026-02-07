@@ -1,46 +1,44 @@
-<div class="sign-in-container">
-  <div class="sign-in-card">
-    <% if flash[:alert] %>
-      <div class="sign-in-alert" role="alert"><%= flash[:alert] %></div>
-    <% end %>
-    <h1 class="sign-in-title">Sign In</h1>
-    <p class="sign-in-subtitle">Use your API key or email and password</p>
-
-    <div class="sign-in-options">
-      <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "sign-in-form" do |f| %>
-        <fieldset class="sign-in-fieldset">
-          <legend class="sign-in-legend">Sign in with API key</legend>
-          <div class="form-group">
-            <%= f.label :api_key, "API Key", class: "form-label" %>
-            <%= f.text_field :api_key, class: "form-input", placeholder: "Enter your API key", value: params[:api_key] %>
-          </div>
-          <%= f.submit "Sign in with API key", class: "btn btn-primary" %>
-        </fieldset>
-      <% end %>
-
-      <div class="sign-in-divider">or</div>
-
-      <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "sign-in-form" do |f| %>
-        <fieldset class="sign-in-fieldset">
-          <legend class="sign-in-legend">Sign in with email &amp; password</legend>
-          <div class="form-group">
-            <%= f.label :email, "Email", class: "form-label" %>
-            <%= f.email_field :email, class: "form-input", placeholder: "you@example.com", value: params[:email], autocomplete: "email" %>
-          </div>
-          <div class="form-group">
-            <%= f.label :password, "Password", class: "form-label" %>
-            <%= f.password_field :password, class: "form-input", placeholder: "Password", autocomplete: "current-password" %>
-          </div>
-          <%= f.submit "Sign in with email", class: "btn btn-primary" %>
-        </fieldset>
-      <% end %>
+<div class="auth-wrap">
+  <div class="auth-card card">
+    <div class="auth-card-header">
+      <h1 class="auth-brand">Mini Payment Gateway</h1>
+      <p class="auth-subtitle">Sign in to Dashboard</p>
     </div>
+    <div class="card-body">
+      <% if flash[:alert] %>
+        <div class="auth-alert" role="alert"><%= flash[:alert] %></div>
+      <% end %>
 
-    <p class="sign-in-help">
-      <strong>Don't have an account?</strong> <%= link_to "Sign up", dashboard_sign_up_path, class: "sign-in-link" %> to create a merchant and use the dashboard.
-    </p>
-    <p class="sign-in-help">
-      <strong>Forgot your API key?</strong> Sign in with email and password, then go to Account to regenerate a new key.
-    </p>
+      <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "auth-form" do |f| %>
+        <div class="field">
+          <%= f.label :api_key, "API Key", class: "field-label" %>
+          <%= f.text_field :api_key, class: "input", placeholder: "Enter your API key", value: params[:api_key] %>
+        </div>
+        <%= f.submit "Sign in with API key", class: "btn btn-primary" %>
+      <% end %>
+
+      <div class="divider">
+        <span class="divider-line"></span>
+        <span class="divider-text">or</span>
+        <span class="divider-line"></span>
+      </div>
+
+      <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "auth-form" do |f| %>
+        <div class="field">
+          <%= f.label :email, "Email", class: "field-label" %>
+          <%= f.email_field :email, class: "input", placeholder: "you@example.com", value: params[:email], autocomplete: "email" %>
+        </div>
+        <div class="field">
+          <%= f.label :password, "Password", class: "field-label" %>
+          <%= f.password_field :password, class: "input", placeholder: "Password", autocomplete: "current-password" %>
+        </div>
+        <%= f.submit "Sign in with email", class: "btn btn-secondary" %>
+      <% end %>
+
+      <div class="auth-footer muted">
+        <%= link_to "Sign up", dashboard_sign_up_path, class: "muted" %> to create an account.
+        <span class="auth-footer-help">Forgot your API key? Sign in with email, then go to Account to regenerate.</span>
+      </div>
+    </div>
   </div>
 </div>

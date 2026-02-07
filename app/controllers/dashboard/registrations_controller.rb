@@ -1,4 +1,5 @@
 class Dashboard::RegistrationsController < ActionController::Base
+  layout "dashboard_auth"
   protect_from_forgery with: :exception
 
   def new

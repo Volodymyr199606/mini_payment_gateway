@@ -10,13 +10,337 @@ body.dashboard {
 }
 
 /* Override default link styles so no blue links */
-body.dashboard a {
+body.dashboard a,
+body.sign-in-page a,
+body.auth-body a {
   color: #374151;
   text-decoration: none;
 }
 
-body.dashboard a:hover {
+body.dashboard a:hover,
+body.sign-in-page a:hover,
+body.auth-body a:hover {
   color: #111827;
+}
+
+/* Auth layout body - centered, dashboard style */
+body.auth-body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f8f9fa;
+  color: #1f2937;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+body.auth-body input[type="text"],
+body.auth-body input[type="email"],
+body.auth-body input[type="password"] {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+body.auth-body input:focus {
+  outline: none;
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 2px rgba(209, 213, 219, 0.5);
+}
+
+body.auth-body input[type="submit"],
+body.auth-body button[type="submit"] {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid;
+}
+
+@media (min-width: 480px) {
+  body.auth-body {
+    padding: 1.5rem;
+  }
+}
+
+/* Sign-in page: centered card, matches dashboard */
+body.sign-in-page {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f8f9fa;
+  color: #1f2937;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+@media (min-width: 480px) {
+  body.sign-in-page {
+    padding: 1.5rem;
+  }
+}
+
+/* White cards + spacing */
+body.sign-in-page .card,
+body.dashboard .card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+/* Auth / Sign-in page - matches dashboard UI */
+.auth-page {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f8f9fa;
+  color: #1f2937;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.auth-page a {
+  color: #374151;
+  text-decoration: none;
+}
+
+.auth-page a:hover {
+  color: #111827;
+}
+
+@media (min-width: 480px) {
+  .auth-page {
+    padding: 1.5rem;
+  }
+}
+
+body.auth-body .auth-wrap {
+  width: 100%;
+  max-width: 440px;
+  margin: 0;
+}
+
+.auth-wrap {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+body.auth-body .auth-card.card {
+  margin-bottom: 0;
+}
+
+body.auth-body .card-body {
+  padding: 1.25rem 1.5rem;
+}
+
+.auth-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.auth-card-header {
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.auth-brand {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.auth-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0 0;
+}
+
+.auth-card-body {
+  padding: 1.5rem;
+}
+
+.auth-alert {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+body.auth-body .auth-form .field {
+  margin-bottom: 1rem;
+}
+
+body.auth-body .auth-form .field:last-of-type {
+  margin-bottom: 0;
+}
+
+body.auth-body .field-label,
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.375rem;
+}
+
+body.auth-body .input,
+body.auth-body input.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+body.auth-body .input:focus,
+body.auth-body input.input:focus {
+  outline: none;
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 2px rgba(209, 213, 219, 0.5);
+}
+
+/* Fallback: .input without body scope (e.g. inside dashboard) */
+.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 2px rgba(209, 213, 219, 0.5);
+}
+
+body.auth-body .auth-form .btn,
+body.auth-body .auth-form input[type="submit"],
+body.auth-body .auth-form button[type="submit"] {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid;
+}
+
+body.auth-body .auth-form .btn-primary,
+body.auth-body .auth-form input.btn-primary[type="submit"] {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #1a1a1a;
+}
+
+body.auth-body .auth-form .btn-primary:hover,
+body.auth-body .auth-form input.btn-primary[type="submit"]:hover {
+  background: #374151;
+  border-color: #374151;
+}
+
+body.auth-body .auth-form .btn-secondary,
+body.auth-body .auth-form input.btn-secondary[type="submit"] {
+  background: #fff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+body.auth-body .auth-form .btn-secondary:hover,
+body.auth-body .auth-form input.btn-secondary[type="submit"]:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.divider-text {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+.muted a,
+a.muted {
+  color: #6b7280;
+}
+
+.muted a:hover,
+a.muted:hover {
+  color: #111827;
+}
+
+.link {
+  color: #374151;
+  text-decoration: none;
+}
+
+.link:hover {
+  color: #111827;
+}
+
+.auth-footer {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.auth-footer-help {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: #9ca3af;
 }
 
 /* Top bar: brand left, merchant + Account + Sign out right */

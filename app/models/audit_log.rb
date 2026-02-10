@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AuditLog < ApplicationRecord
   belongs_to :merchant, optional: true
 
@@ -5,7 +7,7 @@ class AuditLog < ApplicationRecord
   validates :action, presence: true
 
   scope :for_merchant, ->(merchant) { where(merchant: merchant) }
-  scope :for_auditable, ->(auditable) { 
-    where(auditable_type: auditable.class.name, auditable_id: auditable.id) 
+  scope :for_auditable, lambda { |auditable|
+    where(auditable_type: auditable.class.name, auditable_id: auditable.id)
   }
 end

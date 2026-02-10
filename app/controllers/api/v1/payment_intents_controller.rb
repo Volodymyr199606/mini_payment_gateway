@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class PaymentIntentsController < BaseController
@@ -13,7 +15,7 @@ module Api
           idempotency = IdempotencyService.call(
             merchant: current_merchant,
             idempotency_key: idempotency_key,
-            endpoint: "create_payment_intent",
+            endpoint: 'create_payment_intent',
             request_params: payment_intent_params_hash
           )
 
@@ -28,8 +30,8 @@ module Api
         # Validate customer belongs to merchant
         if payment_intent.customer && payment_intent.customer.merchant != current_merchant
           render_error(
-            code: "validation_error",
-            message: "Customer does not belong to this merchant"
+            code: 'validation_error',
+            message: 'Customer does not belong to this merchant'
           )
           return
         end
@@ -37,8 +39,8 @@ module Api
         # Validate payment method belongs to customer if provided
         if payment_intent.payment_method && payment_intent.payment_method.customer != payment_intent.customer
           render_error(
-            code: "validation_error",
-            message: "Payment method does not belong to this customer"
+            code: 'validation_error',
+            message: 'Payment method does not belong to this customer'
           )
           return
         end
@@ -59,8 +61,8 @@ module Api
           render json: response_data, status: :created
         else
           render_error(
-            code: "validation_error",
-            message: "Failed to create payment intent",
+            code: 'validation_error',
+            message: 'Failed to create payment intent',
             details: payment_intent.errors.full_messages
           )
         end
@@ -69,8 +71,8 @@ module Api
       # GET /api/v1/payment_intents
       def index
         payment_intents = current_merchant.payment_intents
-          .includes(:customer, :payment_method)
-          .order(created_at: :desc)
+                                          .includes(:customer, :payment_method)
+                                          .order(created_at: :desc)
 
         result = paginate(payment_intents)
 
@@ -83,16 +85,16 @@ module Api
       # GET /api/v1/payment_intents/:id
       def show
         payment_intent = current_merchant.payment_intents
-          .includes(:customer, :payment_method, :transactions)
-          .find(params[:id])
+                                         .includes(:customer, :payment_method, :transactions)
+                                         .find(params[:id])
 
         render json: {
           data: serialize_payment_intent(payment_intent)
         }
       rescue ActiveRecord::RecordNotFound
         render_error(
-          code: "not_found",
-          message: "Payment intent not found",
+          code: 'not_found',
+          message: 'Payment intent not found',
           status: :not_found
         )
       end
@@ -106,7 +108,7 @@ module Api
         idempotency = IdempotencyService.call(
           merchant: current_merchant,
           idempotency_key: idempotency_key,
-          endpoint: "authorize",
+          endpoint: 'authorize',
           request_params: { payment_intent_id: payment_intent.id }
         )
 
@@ -128,7 +130,7 @@ module Api
               payment_intent: serialize_payment_intent(service.result[:payment_intent])
             }
           }
-          
+
           idempotency.store_response(
             response_body: response_data,
             status_code: 200
@@ -137,14 +139,14 @@ module Api
           render json: response_data
         else
           render_error(
-            code: "authorization_failed",
-            message: service.errors.join(", ")
+            code: 'authorization_failed',
+            message: service.errors.join(', ')
           )
         end
       rescue ActiveRecord::RecordNotFound
         render_error(
-          code: "not_found",
-          message: "Payment intent not found",
+          code: 'not_found',
+          message: 'Payment intent not found',
           status: :not_found
         )
       end
@@ -158,7 +160,7 @@ module Api
         idempotency = IdempotencyService.call(
           merchant: current_merchant,
           idempotency_key: idempotency_key,
-          endpoint: "capture",
+          endpoint: 'capture',
           request_params: { payment_intent_id: payment_intent.id }
         )
 
@@ -180,7 +182,7 @@ module Api
               payment_intent: serialize_payment_intent(service.result[:payment_intent])
             }
           }
-          
+
           idempotency.store_response(
             response_body: response_data,
             status_code: 200
@@ -189,14 +191,14 @@ module Api
           render json: response_data
         else
           render_error(
-            code: "capture_failed",
-            message: service.errors.join(", ")
+            code: 'capture_failed',
+            message: service.errors.join(', ')
           )
         end
       rescue ActiveRecord::RecordNotFound
         render_error(
-          code: "not_found",
-          message: "Payment intent not found",
+          code: 'not_found',
+          message: 'Payment intent not found',
           status: :not_found
         )
       end
@@ -210,7 +212,7 @@ module Api
         idempotency = IdempotencyService.call(
           merchant: current_merchant,
           idempotency_key: idempotency_key,
-          endpoint: "void",
+          endpoint: 'void',
           request_params: { payment_intent_id: payment_intent.id }
         )
 
@@ -232,7 +234,7 @@ module Api
               payment_intent: serialize_payment_intent(service.result[:payment_intent])
             }
           }
-          
+
           idempotency.store_response(
             response_body: response_data,
             status_code: 200
@@ -241,14 +243,14 @@ module Api
           render json: response_data
         else
           render_error(
-            code: "void_failed",
-            message: service.errors.join(", ")
+            code: 'void_failed',
+            message: service.errors.join(', ')
           )
         end
       rescue ActiveRecord::RecordNotFound
         render_error(
-          code: "not_found",
-          message: "Payment intent not found",
+          code: 'not_found',
+          message: 'Payment intent not found',
           status: :not_found
         )
       end

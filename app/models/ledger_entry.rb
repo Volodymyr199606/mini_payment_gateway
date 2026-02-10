@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 class LedgerEntry < ApplicationRecord
   belongs_to :merchant
-  belongs_to :payment_transaction, class_name: "Transaction", optional: true, foreign_key: "transaction_id"
+  belongs_to :payment_transaction, class_name: 'Transaction', optional: true, foreign_key: 'transaction_id'
 
   validates :entry_type, inclusion: { in: %w[charge refund fee] }
   validates :amount_cents, presence: true
@@ -8,7 +10,7 @@ class LedgerEntry < ApplicationRecord
 
   # Convention: positive amounts for charges, negative for refunds
   # Fees can be positive (merchant pays) or negative (merchant receives)
-  scope :charges, -> { where(entry_type: "charge") }
-  scope :refunds, -> { where(entry_type: "refund") }
-  scope :fees, -> { where(entry_type: "fee") }
+  scope :charges, -> { where(entry_type: 'charge') }
+  scope :refunds, -> { where(entry_type: 'refund') }
+  scope :fees, -> { where(entry_type: 'fee') }
 end

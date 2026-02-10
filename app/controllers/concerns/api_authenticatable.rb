@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ApiAuthenticatable
   extend ActiveSupport::Concern
 
@@ -8,27 +10,27 @@ module ApiAuthenticatable
   private
 
   def authenticate_merchant!
-    api_key = request.headers["X-API-KEY"]
-    
+    api_key = request.headers['X-API-KEY']
+
     unless api_key.present?
       render_error(
-        code: "unauthorized",
-        message: "Missing API key. Provide X-API-KEY header.",
+        code: 'unauthorized',
+        message: 'Missing API key. Provide X-API-KEY header.',
         status: :unauthorized
       )
       return
     end
 
     @current_merchant = find_merchant_by_api_key(api_key)
-    
-    unless @current_merchant
-      render_error(
-        code: "unauthorized",
-        message: "Invalid API key.",
-        status: :unauthorized
-      )
-      return
-    end
+
+    return if @current_merchant
+
+    render_error(
+      code: 'unauthorized',
+      message: 'Invalid API key.',
+      status: :unauthorized
+    )
+    nil
   end
 
   def current_merchant

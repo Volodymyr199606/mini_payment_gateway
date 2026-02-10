@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class VoidService < BaseService
   def initialize(payment_intent:, idempotency_key: nil)
     super()
@@ -18,23 +20,23 @@ class VoidService < BaseService
 
     ActiveRecord::Base.transaction do
       transaction = @payment_intent.transactions.create!(
-        kind: "void",
-        status: success ? "succeeded" : "failed",
+        kind: 'void',
+        status: success ? 'succeeded' : 'failed',
         amount_cents: @payment_intent.amount_cents,
-        failure_code: success ? nil : "void_failed",
-        failure_message: success ? nil : "Void failed"
+        failure_code: success ? nil : 'void_failed',
+        failure_message: success ? nil : 'Void failed'
       )
 
       if success
-        @payment_intent.update!(status: "canceled")
-        
+        @payment_intent.update!(status: 'canceled')
+
         # Create ledger entry for void (refund of authorization)
         # Only create ledger entry if it was previously authorized (had money held)
-        if original_status == "authorized"
+        if original_status == 'authorized'
           LedgerService.call(
             merchant: @payment_intent.merchant,
             transaction: transaction,
-            entry_type: "refund",
+            entry_type: 'refund',
             amount_cents: -@payment_intent.amount_cents, # Negative for refund
             currency: @payment_intent.currency
           )
@@ -42,33 +44,33 @@ class VoidService < BaseService
 
         # Create audit log
         create_audit_log(
-          action: "payment_voided",
+          action: 'payment_voided',
           auditable: transaction,
           metadata: {
             payment_intent_id: @payment_intent.id,
             amount_cents: transaction.amount_cents,
-            status: "succeeded",
+            status: 'succeeded',
             original_status: original_status
           }
         )
       else
         # Create audit log for failure
         create_audit_log(
-          action: "payment_void_failed",
+          action: 'payment_void_failed',
           auditable: transaction,
           metadata: {
             payment_intent_id: @payment_intent.id,
             amount_cents: transaction.amount_cents,
-            status: "failed",
+            status: 'failed',
             failure_code: transaction.failure_code
           }
         )
       end
 
       set_result({
-        transaction: transaction,
-        payment_intent: @payment_intent.reload
-      })
+                   transaction: transaction,
+                   payment_intent: @payment_intent.reload
+                 })
     end
 
     self

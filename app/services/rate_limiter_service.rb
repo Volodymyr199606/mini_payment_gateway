@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RateLimiterService < BaseService
   DEFAULT_LIMIT = 100
   DEFAULT_WINDOW = 60 # seconds
@@ -43,7 +45,7 @@ class RateLimiterService < BaseService
     Rails.cache.write(key, current + 1, expires_in: @window.seconds)
   end
 
-  def get_reset_time(key)
+  def get_reset_time(_key)
     # Get expiration time from cache
     # Since we can't easily get TTL from Rails cache, estimate based on window
     Time.current + @window.seconds

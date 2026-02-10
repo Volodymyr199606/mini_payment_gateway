@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class IdempotencyRecord < ApplicationRecord
   belongs_to :merchant
 
@@ -7,8 +9,8 @@ class IdempotencyRecord < ApplicationRecord
   validates :response_body, presence: true
   validates :status_code, presence: true
 
-  validates :idempotency_key, uniqueness: { 
-    scope: [:merchant_id, :endpoint],
-    message: "already used for this endpoint"
+  validates :idempotency_key, uniqueness: {
+    scope: %i[merchant_id endpoint],
+    message: 'already used for this endpoint'
   }
 end

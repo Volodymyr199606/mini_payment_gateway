@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 class LedgerService < BaseService
-  def initialize(merchant:, transaction:, entry_type:, amount_cents:, currency: "USD")
+  def initialize(merchant:, transaction:, entry_type:, amount_cents:, currency: 'USD')
     super()
     @merchant = merchant
     @transaction = transaction

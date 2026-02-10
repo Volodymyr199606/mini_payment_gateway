@@ -1,17 +1,19 @@
+# frozen_string_literal: true
+
 class BaseService
   attr_reader :result, :errors
 
-  def self.call(*args, **kwargs)
-    new(*args, **kwargs).call
+  def self.call(*, **)
+    new(*, **).call
   end
 
-  def initialize(*args, **kwargs)
+  def initialize(*_args, **_kwargs)
     @errors = []
     @result = nil
   end
 
   def call
-    raise NotImplementedError, "Subclasses must implement #call"
+    raise NotImplementedError, 'Subclasses must implement #call'
   end
 
   def success?

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module StructuredLogging
   extend ActiveSupport::Concern
 
@@ -8,11 +10,11 @@ module StructuredLogging
   private
 
   def log_request
-    request_id = request.env["request_id"] || Thread.current[:request_id]
+    request_id = request.env['request_id'] || Thread.current[:request_id]
     start_time = Time.current
 
     log_info(
-      event: "request_started",
+      event: 'request_started',
       method: request.method,
       path: request.path,
       merchant_id: current_merchant&.id,
@@ -22,7 +24,7 @@ module StructuredLogging
     yield
   rescue StandardError => e
     log_error(
-      event: "request_error",
+      event: 'request_error',
       error: e.class.name,
       message: e.message,
       merchant_id: current_merchant&.id,
@@ -32,7 +34,7 @@ module StructuredLogging
   ensure
     duration = ((Time.current - start_time) * 1000).round(2)
     log_info(
-      event: "request_completed",
+      event: 'request_completed',
       method: request.method,
       path: request.path,
       status: response.status,
@@ -54,7 +56,7 @@ module StructuredLogging
     # Structured JSON logging
     attributes.merge(
       timestamp: Time.current.iso8601,
-      service: "mini_payment_gateway"
+      service: 'mini_payment_gateway'
     ).to_json
   end
 
@@ -67,7 +69,7 @@ module StructuredLogging
       transaction_kind: transaction.kind,
       transaction_status: transaction.status,
       amount_cents: transaction.amount_cents,
-      request_id: request.env["request_id"] || Thread.current[:request_id]
+      request_id: request.env['request_id'] || Thread.current[:request_id]
     )
   end
 end

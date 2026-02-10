@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class RefundsController < BaseController
@@ -6,9 +8,9 @@ module Api
       def create
         payment_intent = current_merchant.payment_intents.find(params[:payment_intent_id])
 
-        if payment_intent.status != "captured"
+        if payment_intent.status != 'captured'
           render_error(
-            code: "invalid_state",
+            code: 'invalid_state',
             message: "Payment intent must be in 'captured' state to refund",
             status: :unprocessable_entity
           )
@@ -19,8 +21,8 @@ module Api
 
         if amount_cents > payment_intent.refundable_cents
           render_error(
-            code: "validation_error",
-            message: "Refund amount exceeds refundable amount",
+            code: 'validation_error',
+            message: 'Refund amount exceeds refundable amount',
             details: {
               refundable_cents: payment_intent.refundable_cents,
               requested_cents: amount_cents
@@ -31,8 +33,8 @@ module Api
 
         if amount_cents <= 0
           render_error(
-            code: "validation_error",
-            message: "Refund amount must be greater than zero",
+            code: 'validation_error',
+            message: 'Refund amount must be greater than zero',
             details: { refundable_cents: payment_intent.refundable_cents }
           )
           return
@@ -44,7 +46,7 @@ module Api
           idempotency = IdempotencyService.call(
             merchant: current_merchant,
             idempotency_key: idempotency_key,
-            endpoint: "refund",
+            endpoint: 'refund',
             request_params: { payment_intent_id: payment_intent.id, amount_cents: amount_cents }
           )
 
@@ -69,7 +71,7 @@ module Api
             }
           }
 
-          if idempotency_key.present? && idempotency && idempotency.result && !idempotency.result[:cached]
+          if idempotency_key.present? && idempotency&.result && !idempotency.result[:cached]
             idempotency.store_response(
               response_body: response_data,
               status_code: 201
@@ -79,14 +81,14 @@ module Api
           render json: response_data, status: :created
         else
           render_error(
-            code: "refund_failed",
-            message: service.errors.join(", ")
+            code: 'refund_failed',
+            message: service.errors.join(', ')
           )
         end
       rescue ActiveRecord::RecordNotFound
         render_error(
-          code: "not_found",
-          message: "Payment intent not found",
+          code: 'not_found',
+          message: 'Payment intent not found',
           status: :not_found
         )
       end

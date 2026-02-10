@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RefundService < BaseService
   include WebhookTriggerable
   include Auditable
@@ -11,7 +13,7 @@ class RefundService < BaseService
 
   def call
     # Validate state
-    unless @payment_intent.status == "captured"
+    unless @payment_intent.status == 'captured'
       add_error("Payment intent must be in 'captured' state to refund")
       return self
     end
@@ -21,12 +23,12 @@ class RefundService < BaseService
 
     # Validate refund amount
     if refund_amount <= 0
-      add_error("Refund amount must be greater than zero")
+      add_error('Refund amount must be greater than zero')
       return self
     end
 
     if refund_amount > @payment_intent.refundable_cents
-      add_error("Refund amount exceeds refundable amount")
+      add_error('Refund amount exceeds refundable amount')
       return self
     end
 
@@ -35,11 +37,11 @@ class RefundService < BaseService
 
     ActiveRecord::Base.transaction do
       transaction = @payment_intent.transactions.create!(
-        kind: "refund",
-        status: success ? "succeeded" : "failed",
+        kind: 'refund',
+        status: success ? 'succeeded' : 'failed',
         amount_cents: refund_amount,
-        failure_code: success ? nil : "refund_failed",
-        failure_message: success ? nil : "Refund failed"
+        failure_code: success ? nil : 'refund_failed',
+        failure_message: success ? nil : 'Refund failed'
       )
 
       if success
@@ -47,55 +49,55 @@ class RefundService < BaseService
         LedgerService.call(
           merchant: @payment_intent.merchant,
           transaction: transaction,
-          entry_type: "refund",
+          entry_type: 'refund',
           amount_cents: -refund_amount, # Negative for refund
           currency: @payment_intent.currency
         )
 
         # Create audit log
         create_audit_log(
-          action: "payment_refunded",
+          action: 'payment_refunded',
           auditable: transaction,
           metadata: {
             payment_intent_id: @payment_intent.id,
             amount_cents: refund_amount,
-            status: "succeeded",
-            refund_type: refund_amount == @payment_intent.refundable_cents ? "full" : "partial"
+            status: 'succeeded',
+            refund_type: refund_amount == @payment_intent.refundable_cents ? 'full' : 'partial'
           }
         )
 
         # Trigger webhook event
         trigger_webhook_event(
-          event_type: "transaction.succeeded",
+          event_type: 'transaction.succeeded',
           transaction: transaction,
           payment_intent: @payment_intent
         )
       else
         # Create audit log for failure
         create_audit_log(
-          action: "payment_refund_failed",
+          action: 'payment_refund_failed',
           auditable: transaction,
           metadata: {
             payment_intent_id: @payment_intent.id,
             amount_cents: refund_amount,
-            status: "failed",
+            status: 'failed',
             failure_code: transaction.failure_code
           }
         )
-        
+
         # Trigger webhook event for failure
         trigger_webhook_event(
-          event_type: "transaction.failed",
+          event_type: 'transaction.failed',
           transaction: transaction,
           payment_intent: @payment_intent
         )
       end
 
       set_result({
-        transaction: transaction,
-        payment_intent: @payment_intent.reload,
-        refund_amount_cents: refund_amount
-      })
+                   transaction: transaction,
+                   payment_intent: @payment_intent.reload,
+                   refund_amount_cents: refund_amount
+                 })
     end
 
     self

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PaymentMethod < ApplicationRecord
   belongs_to :customer
   has_many :payment_intents, dependent: :nullify

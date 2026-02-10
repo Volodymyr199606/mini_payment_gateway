@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Auditable
   extend ActiveSupport::Concern
 
@@ -5,10 +7,10 @@ module Auditable
 
   def create_audit_log(action:, auditable: nil, metadata: {})
     merchant = extract_merchant
-    
+
     AuditLogService.call(
       merchant: merchant,
-      actor_type: "merchant",
+      actor_type: 'merchant',
       actor_id: merchant&.id,
       action: action,
       auditable: auditable,

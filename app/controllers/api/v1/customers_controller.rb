@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class CustomersController < BaseController
@@ -13,8 +15,8 @@ module Api
           }, status: :created
         else
           render_error(
-            code: "validation_error",
-            message: "Failed to create customer",
+            code: 'validation_error',
+            message: 'Failed to create customer',
             details: customer.errors.full_messages
           )
         end
@@ -40,8 +42,8 @@ module Api
         }
       rescue ActiveRecord::RecordNotFound
         render_error(
-          code: "not_found",
-          message: "Customer not found",
+          code: 'not_found',
+          message: 'Customer not found',
           status: :not_found
         )
       end

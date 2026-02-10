@@ -1,5 +1,7 @@
-require "net/http"
-require "uri"
+# frozen_string_literal: true
+
+require 'net/http'
+require 'uri'
 
 class WebhookDeliveryService < BaseService
   MAX_ATTEMPTS = 3
@@ -15,10 +17,10 @@ class WebhookDeliveryService < BaseService
     if @merchant_webhook_url.blank?
       # No webhook URL configured - mark as succeeded (stored for viewing)
       @webhook_event.update!(
-        delivery_status: "succeeded",
+        delivery_status: 'succeeded',
         delivered_at: Time.current
       )
-      set_result({ delivered: false, reason: "no_url_configured" })
+      set_result({ delivered: false, reason: 'no_url_configured' })
       return self
     end
 
@@ -29,7 +31,7 @@ class WebhookDeliveryService < BaseService
 
       if response.is_a?(Net::HTTPSuccess)
         @webhook_event.update!(
-          delivery_status: "succeeded",
+          delivery_status: 'succeeded',
           delivered_at: Time.current
         )
         set_result({ delivered: true, status_code: response.code })
@@ -48,22 +50,22 @@ class WebhookDeliveryService < BaseService
   def deliver_webhook
     uri = URI.parse(@merchant_webhook_url)
     http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = (uri.scheme == "https")
+    http.use_ssl = (uri.scheme == 'https')
     http.read_timeout = 10
     http.open_timeout = 5
 
     request = Net::HTTP::Post.new(uri.request_uri)
-    request["Content-Type"] = "application/json"
-    request["X-WEBHOOK-SIGNATURE"] = @webhook_event.signature if @webhook_event.signature
-    request["X-WEBHOOK-EVENT-TYPE"] = @webhook_event.event_type
+    request['Content-Type'] = 'application/json'
+    request['X-WEBHOOK-SIGNATURE'] = @webhook_event.signature if @webhook_event.signature
+    request['X-WEBHOOK-EVENT-TYPE'] = @webhook_event.event_type
     request.body = @webhook_event.payload.to_json
 
     http.request(request)
   end
 
-  def handle_delivery_failure(response)
+  def handle_delivery_failure(_response)
     if @webhook_event.attempts >= MAX_ATTEMPTS
-      @webhook_event.update!(delivery_status: "failed")
+      @webhook_event.update!(delivery_status: 'failed')
       add_error("Webhook delivery failed after #{MAX_ATTEMPTS} attempts")
     else
       # Schedule retry with exponential backoff
@@ -75,9 +77,9 @@ class WebhookDeliveryService < BaseService
 
   def handle_delivery_error(exception)
     Rails.logger.error("Webhook delivery error: #{exception.message}")
-    
+
     if @webhook_event.attempts >= MAX_ATTEMPTS
-      @webhook_event.update!(delivery_status: "failed")
+      @webhook_event.update!(delivery_status: 'failed')
       add_error("Webhook delivery error: #{exception.message}")
     else
       delay = calculate_backoff(@webhook_event.attempts)
@@ -87,12 +89,12 @@ class WebhookDeliveryService < BaseService
   end
 
   def calculate_backoff(attempt_number)
-    BACKOFF_MULTIPLIER ** attempt_number
+    BACKOFF_MULTIPLIER**attempt_number
   end
 
   def merchant_webhook_url_from_config
     # In production, this would come from merchant settings
     # For now, use environment variable or return nil
-    ENV["MERCHANT_WEBHOOK_URL"]
+    ENV.fetch('MERCHANT_WEBHOOK_URL', nil)
   end
 end

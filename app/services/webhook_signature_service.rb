@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class WebhookSignatureService < BaseService
   def initialize(payload:, signature:)
     super()
@@ -7,19 +9,19 @@ class WebhookSignatureService < BaseService
 
   def call
     secret = webhook_secret
-    
+
     if secret.blank?
-      add_error("Webhook secret not configured")
+      add_error('Webhook secret not configured')
       return self
     end
 
     expected_signature = generate_signature(@payload, secret)
-    
+
     # Use secure comparison to prevent timing attacks
     if ActiveSupport::SecurityUtils.secure_compare(expected_signature, @signature)
       set_result(true)
     else
-      add_error("Invalid webhook signature")
+      add_error('Invalid webhook signature')
       set_result(false)
     end
 
@@ -27,7 +29,7 @@ class WebhookSignatureService < BaseService
   end
 
   def self.generate_signature(payload, secret)
-    OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
+    OpenSSL::HMAC.hexdigest('SHA256', secret, payload)
   end
 
   private

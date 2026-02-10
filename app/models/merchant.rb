@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Merchant < ApplicationRecord
   has_secure_password validations: false
 
@@ -15,7 +17,7 @@ class Merchant < ApplicationRecord
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true }
   validates :password, length: { minimum: 6 }, allow_nil: true
 
-  scope :active, -> { where(status: "active") }
+  scope :active, -> { where(status: 'active') }
 
   def self.generate_api_key
     SecureRandom.hex(32)
@@ -24,7 +26,7 @@ class Merchant < ApplicationRecord
   def self.create_with_api_key(attributes = {})
     api_key = generate_api_key
     api_key_digest = BCrypt::Password.create(api_key)
-    
+
     merchant = create!(attributes.merge(api_key_digest: api_key_digest))
     [merchant, api_key]
   end
@@ -42,6 +44,7 @@ class Merchant < ApplicationRecord
 
   def api_key_matches?(api_key)
     return false if api_key.blank?
+
     BCrypt::Password.new(api_key_digest) == api_key
   rescue BCrypt::Errors::InvalidHash
     false

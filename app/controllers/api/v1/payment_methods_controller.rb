@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class PaymentMethodsController < BaseController
@@ -12,15 +14,15 @@ module Api
           }, status: :created
         else
           render_error(
-            code: "validation_error",
-            message: "Failed to create payment method",
+            code: 'validation_error',
+            message: 'Failed to create payment method',
             details: payment_method.errors.full_messages
           )
         end
       rescue ActiveRecord::RecordNotFound
         render_error(
-          code: "not_found",
-          message: "Customer not found",
+          code: 'not_found',
+          message: 'Customer not found',
           status: :not_found
         )
       end

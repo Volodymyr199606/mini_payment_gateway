@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ProcessorEventService < BaseService
   EVENT_TYPES = %w[
     transaction.succeeded
@@ -22,7 +24,7 @@ class ProcessorEventService < BaseService
       merchant: @payload[:merchant],
       event_type: @event_type,
       payload: @payload,
-      delivery_status: "pending"
+      delivery_status: 'pending'
     )
 
     # Generate signature

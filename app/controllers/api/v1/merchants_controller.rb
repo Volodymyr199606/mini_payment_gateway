@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class MerchantsController < BaseController
@@ -9,13 +11,11 @@ module Api
       def create
         attrs = {
           name: params[:name] || "Merchant #{SecureRandom.hex(4)}",
-          status: "active"
+          status: 'active'
         }
         attrs[:email] = params[:email].to_s.strip.presence
         merchant, api_key = Merchant.create_with_api_key(attrs)
-        if params[:password].present?
-          merchant.update!(password: params[:password])
-        end
+        merchant.update!(password: params[:password]) if params[:password].present?
 
         render json: {
           data: {
@@ -27,8 +27,8 @@ module Api
         }, status: :created
       rescue ActiveRecord::RecordInvalid => e
         render_error(
-          code: "validation_error",
-          message: "Failed to create merchant",
+          code: 'validation_error',
+          message: 'Failed to create merchant',
           details: e.record.errors.full_messages
         )
       end

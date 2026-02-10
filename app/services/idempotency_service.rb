@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class IdempotencyService < BaseService
   def initialize(merchant:, idempotency_key:, endpoint:, request_params: {})
     super()
@@ -21,10 +23,10 @@ class IdempotencyService < BaseService
     if existing_record
       # Return cached response
       set_result({
-        cached: true,
-        response_body: existing_record.response_body,
-        status_code: existing_record.status_code
-      })
+                   cached: true,
+                   response_body: existing_record.response_body,
+                   status_code: existing_record.status_code
+                 })
       return self
     end
 

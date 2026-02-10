@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 class AuditLogService < BaseService
-  def initialize(merchant:, actor_type: "merchant", actor_id: nil, action:, auditable: nil, metadata: {})
+  def initialize(merchant:, action:, actor_type: 'merchant', actor_id: nil, auditable: nil, metadata: {})
     super()
     @merchant = merchant
     @actor_type = actor_type

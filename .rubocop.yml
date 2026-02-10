@@ -1,0 +1,28 @@
+# RuboCop configuration for Mini Payment Gateway (Rails 7.2, Ruby 4.0).
+
+plugins:
+  - rubocop-rails
+  - rubocop-performance
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 4.0
+  Exclude:
+    - bin/**/*
+    - db/schema.rb
+    - db/migrate/**/*
+    - tmp/**/*
+    - log/**/*
+    - node_modules/**/*
+    - vendor/**/*
+    - public/**/*
+    - storage/**/*
+
+Layout/LineLength:
+  Max: 120
+
+Metrics/MethodLength:
+  Max: 20
+
+Metrics/ClassLength:
+  Max: 200

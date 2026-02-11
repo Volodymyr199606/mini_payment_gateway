@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'timeout'
+
 class CaptureService < BaseService
   include WebhookTriggerable
   include Auditable
@@ -24,17 +26,37 @@ class CaptureService < BaseService
       return self
     end
 
-    # Simulate processor capture
-    success = simulate_processor_capture
+    success = false
+    processor_failure_code = nil
+    processor_failure_message = nil
+    begin
+      success = Timeout.timeout(processor_timeout_seconds) { simulate_processor_capture }
+    rescue Timeout::Error
+      processor_failure_code = 'timeout'
+      processor_failure_message = 'Processor request timed out'
+    end
+
+    failure_code = success ? nil : (processor_failure_code || 'capture_failed')
+    failure_message = success ? nil : (processor_failure_message || 'Capture failed')
 
     ActiveRecord::Base.transaction do
       transaction = @payment_intent.transactions.create!(
         kind: 'capture',
         status: success ? 'succeeded' : 'failed',
         amount_cents: @payment_intent.amount_cents,
-        failure_code: success ? nil : 'capture_failed',
-        failure_message: success ? nil : 'Capture failed'
+        failure_code: failure_code,
+        failure_message: failure_message
       )
+
+      if !success && processor_failure_code == 'timeout'
+        log_processor_timeout(
+          merchant_id: @payment_intent.merchant_id,
+          payment_intent_id: @payment_intent.id,
+          transaction_id: transaction.id,
+          kind: 'capture',
+          timeout_seconds: processor_timeout_seconds
+        )
+      end
 
       if success
         @payment_intent.update!(status: 'captured')

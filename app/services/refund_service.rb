@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'timeout'
+
 class RefundService < BaseService
   include WebhookTriggerable
   include Auditable
@@ -32,17 +34,37 @@ class RefundService < BaseService
       return self
     end
 
-    # Simulate processor refund
-    success = simulate_processor_refund
+    success = false
+    processor_failure_code = nil
+    processor_failure_message = nil
+    begin
+      success = Timeout.timeout(processor_timeout_seconds) { simulate_processor_refund }
+    rescue Timeout::Error
+      processor_failure_code = 'timeout'
+      processor_failure_message = 'Processor request timed out'
+    end
+
+    failure_code = success ? nil : (processor_failure_code || 'refund_failed')
+    failure_message = success ? nil : (processor_failure_message || 'Refund failed')
 
     ActiveRecord::Base.transaction do
       transaction = @payment_intent.transactions.create!(
         kind: 'refund',
         status: success ? 'succeeded' : 'failed',
         amount_cents: refund_amount,
-        failure_code: success ? nil : 'refund_failed',
-        failure_message: success ? nil : 'Refund failed'
+        failure_code: failure_code,
+        failure_message: failure_message
       )
+
+      if !success && processor_failure_code == 'timeout'
+        log_processor_timeout(
+          merchant_id: @payment_intent.merchant_id,
+          payment_intent_id: @payment_intent.id,
+          transaction_id: transaction.id,
+          kind: 'refund',
+          timeout_seconds: processor_timeout_seconds
+        )
+      end
 
       if success
         # Create ledger entry for refund (negative amount)

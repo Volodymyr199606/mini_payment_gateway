@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'timeout'
+
 class VoidService < BaseService
   def initialize(payment_intent:, idempotency_key: nil)
     super()
@@ -14,8 +16,18 @@ class VoidService < BaseService
       return self
     end
 
-    # Simulate processor void
-    success = simulate_processor_void
+    success = false
+    processor_failure_code = nil
+    processor_failure_message = nil
+    begin
+      success = Timeout.timeout(processor_timeout_seconds) { simulate_processor_void }
+    rescue Timeout::Error
+      processor_failure_code = 'timeout'
+      processor_failure_message = 'Processor request timed out'
+    end
+
+    failure_code = success ? nil : (processor_failure_code || 'void_failed')
+    failure_message = success ? nil : (processor_failure_message || 'Void failed')
     original_status = @payment_intent.status
 
     ActiveRecord::Base.transaction do
@@ -23,9 +35,19 @@ class VoidService < BaseService
         kind: 'void',
         status: success ? 'succeeded' : 'failed',
         amount_cents: @payment_intent.amount_cents,
-        failure_code: success ? nil : 'void_failed',
-        failure_message: success ? nil : 'Void failed'
+        failure_code: failure_code,
+        failure_message: failure_message
       )
+
+      if !success && processor_failure_code == 'timeout'
+        log_processor_timeout(
+          merchant_id: @payment_intent.merchant_id,
+          payment_intent_id: @payment_intent.id,
+          transaction_id: transaction.id,
+          kind: 'void',
+          timeout_seconds: processor_timeout_seconds
+        )
+      end
 
       if success
         @payment_intent.update!(status: 'canceled')

@@ -12,4 +12,8 @@ worker_count = ENV.fetch('WEB_CONCURRENCY', Gem.win_platform? ? '0' : '2').to_i
 workers worker_count
 preload_app! if worker_count.positive?
 
+# Coarse-grained safety net: worker is killed after this many seconds of handling a request.
+# Not a precise per-request timeout; use for runaway request protection only.
+worker_timeout ENV.fetch('PUMA_WORKER_TIMEOUT_SECONDS', '60').to_i
+
 plugin :tmp_restart

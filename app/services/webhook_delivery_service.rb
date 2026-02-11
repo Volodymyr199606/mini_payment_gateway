@@ -51,8 +51,8 @@ class WebhookDeliveryService < BaseService
     uri = URI.parse(@merchant_webhook_url)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = (uri.scheme == 'https')
-    http.read_timeout = 10
-    http.open_timeout = 5
+    http.open_timeout = ENV.fetch('WEBHOOK_OPEN_TIMEOUT_SECONDS', '5').to_i
+    http.read_timeout = ENV.fetch('WEBHOOK_READ_TIMEOUT_SECONDS', '10').to_i
 
     request = Net::HTTP::Post.new(uri.request_uri)
     request['Content-Type'] = 'application/json'

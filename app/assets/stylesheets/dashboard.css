@@ -637,6 +637,24 @@ a.muted:hover {
   color: #4b5563;
 }
 
+/* chargeback badge (orange/warning) */
+.dashboard .badge-chargeback {
+  background: #ffedd5;
+  color: #9a3412;
+  margin-left: 0.25rem;
+}
+
+/* dispute status badges */
+.dashboard .badge-dispute-none {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.dashboard .badge-dispute-open {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 /* Empty state */
 .dashboard .empty-state {
   padding: 2.5rem 1.5rem;

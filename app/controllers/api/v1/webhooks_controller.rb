@@ -53,6 +53,15 @@ module Api
           signature: signature
         )
 
+        # Chargeback: set dispute_status on payment intent if identifiable
+        if event_type == 'chargeback.opened'
+          pi_id = payload.dig('data', 'payment_intent_id')
+          if pi_id && merchant
+            pi = merchant.payment_intents.find_by(id: pi_id)
+            pi&.update!(dispute_status: 'open')
+          end
+        end
+
         # Queue delivery to merchant (if configured)
         WebhookDeliveryJob.perform_later(webhook_event.id)
 

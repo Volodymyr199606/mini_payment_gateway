@@ -12,6 +12,7 @@ class PaymentIntent < ApplicationRecord
     in: %w[created authorized captured canceled failed]
   }
   validates :idempotency_key, uniqueness: { scope: :merchant_id }, allow_nil: true
+  validates :dispute_status, inclusion: { in: %w[none open] }
 
   scope :created, -> { where(status: 'created') }
   scope :authorized, -> { where(status: 'authorized') }

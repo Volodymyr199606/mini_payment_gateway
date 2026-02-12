@@ -14,6 +14,10 @@
         <dd><span class="badge badge-<%= @payment_intent.status %>"><%= @payment_intent.status %></span></dd>
       </div>
       <div class="detail-item">
+        <dt>Dispute Status</dt>
+        <dd><span class="badge badge-dispute-<%= @payment_intent.dispute_status %>"><%= @payment_intent.dispute_status %></span></dd>
+      </div>
+      <div class="detail-item">
         <dt>Amount</dt>
         <dd><%= number_to_currency(@payment_intent.amount) %> <%= @payment_intent.currency %></dd>
       </div>

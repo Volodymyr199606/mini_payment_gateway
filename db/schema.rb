@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_03_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_11_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -90,6 +90,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_03_000001) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "dispute_status", default: "none", null: false
     t.index ["customer_id"], name: "index_payment_intents_on_customer_id"
     t.index ["merchant_id", "idempotency_key"], name: "index_payment_intents_on_merchant_id_and_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
     t.index ["merchant_id"], name: "index_payment_intents_on_merchant_id"

@@ -104,17 +104,18 @@ module Api
         payment_intent = current_merchant.payment_intents.find(params[:id])
         idempotency_key = params[:idempotency_key]
 
-        # Check idempotency
-        idempotency = IdempotencyService.call(
-          merchant: current_merchant,
-          idempotency_key: idempotency_key,
-          endpoint: 'authorize',
-          request_params: { payment_intent_id: payment_intent.id }
-        )
-
-        if idempotency.result[:cached]
-          render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
-          return
+        idempotency = nil
+        if idempotency_key.present?
+          idempotency = IdempotencyService.call(
+            merchant: current_merchant,
+            idempotency_key: idempotency_key,
+            endpoint: 'authorize',
+            request_params: { payment_intent_id: payment_intent.id }
+          )
+          if idempotency.result[:cached]
+            render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
+            return
+          end
         end
 
         # Call service
@@ -131,7 +132,7 @@ module Api
             }
           }
 
-          idempotency.store_response(
+          idempotency&.store_response(
             response_body: response_data,
             status_code: 200
           )
@@ -156,17 +157,18 @@ module Api
         payment_intent = current_merchant.payment_intents.find(params[:id])
         idempotency_key = params[:idempotency_key]
 
-        # Check idempotency
-        idempotency = IdempotencyService.call(
-          merchant: current_merchant,
-          idempotency_key: idempotency_key,
-          endpoint: 'capture',
-          request_params: { payment_intent_id: payment_intent.id }
-        )
-
-        if idempotency.result[:cached]
-          render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
-          return
+        idempotency = nil
+        if idempotency_key.present?
+          idempotency = IdempotencyService.call(
+            merchant: current_merchant,
+            idempotency_key: idempotency_key,
+            endpoint: 'capture',
+            request_params: { payment_intent_id: payment_intent.id }
+          )
+          if idempotency.result[:cached]
+            render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
+            return
+          end
         end
 
         # Call service
@@ -183,7 +185,7 @@ module Api
             }
           }
 
-          idempotency.store_response(
+          idempotency&.store_response(
             response_body: response_data,
             status_code: 200
           )
@@ -208,17 +210,18 @@ module Api
         payment_intent = current_merchant.payment_intents.find(params[:id])
         idempotency_key = params[:idempotency_key]
 
-        # Check idempotency
-        idempotency = IdempotencyService.call(
-          merchant: current_merchant,
-          idempotency_key: idempotency_key,
-          endpoint: 'void',
-          request_params: { payment_intent_id: payment_intent.id }
-        )
-
-        if idempotency.result[:cached]
-          render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
-          return
+        idempotency = nil
+        if idempotency_key.present?
+          idempotency = IdempotencyService.call(
+            merchant: current_merchant,
+            idempotency_key: idempotency_key,
+            endpoint: 'void',
+            request_params: { payment_intent_id: payment_intent.id }
+          )
+          if idempotency.result[:cached]
+            render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
+            return
+          end
         end
 
         # Call service
@@ -235,7 +238,7 @@ module Api
             }
           }
 
-          idempotency.store_response(
+          idempotency&.store_response(
             response_body: response_data,
             status_code: 200
           )

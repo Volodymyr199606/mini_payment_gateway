@@ -4,6 +4,7 @@ module Api
   module V1
     class BaseController < ActionController::API
       include ApiAuthenticatable
+      include StructuredLogging
 
       rescue_from StandardError, with: :handle_standard_error
       rescue_from ActiveRecord::RecordInvalid, with: :handle_record_invalid

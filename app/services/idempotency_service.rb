@@ -31,12 +31,13 @@ class IdempotencyService < BaseService
     end
 
     # Store idempotency record placeholder (will be updated after successful operation)
+    # Use non-blank response_body so presence validation passes; { pending: true } is non-blank
     @idempotency_record = IdempotencyRecord.new(
       merchant: @merchant,
       idempotency_key: @idempotency_key,
       endpoint: @endpoint,
       request_hash: request_hash,
-      response_body: {}, # Placeholder
+      response_body: { pending: true },
       status_code: 200 # Placeholder
     )
     @idempotency_record.save!

@@ -23,6 +23,6 @@ class LedgerService < BaseService
     self
   rescue StandardError => e
     add_error("Failed to create ledger entry: #{e.message}")
-    self
+    raise # Re-raise so parent transaction can roll back
   end
 end

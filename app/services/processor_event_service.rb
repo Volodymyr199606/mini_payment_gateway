@@ -36,8 +36,7 @@ class ProcessorEventService < BaseService
 
     webhook_event.update!(signature: signature)
 
-    # Queue delivery job
-    WebhookDeliveryJob.perform_later(webhook_event.id)
+    # Job is enqueued via WebhookEvent#after_commit to ensure delivery happens only after DB commit
 
     set_result(webhook_event)
     self

@@ -21,6 +21,7 @@ gem 'turbo-rails', '~> 1.5'
 gem 'tzinfo-data', platforms: [:windows]
 
 group :development, :test do
+  gem 'brakeman', require: false
   gem 'byebug', platforms: %i[mri mingw x64_mingw]
   gem 'rspec-rails', '~> 6.0'
   gem 'rubocop', require: false
@@ -31,4 +32,5 @@ end
 
 group :development do
   gem 'listen', '~> 3.3'
+  gem 'wdm', '>= 0.1.0', platforms: [:windows]
 end

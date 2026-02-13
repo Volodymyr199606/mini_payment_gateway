@@ -111,7 +111,7 @@ class AuthorizeService < BaseService
 
     self
   rescue StandardError => e
-    add_error("Authorization failed: #{e.message}")
+    add_error('Authorization failed')
     @payment_intent.update!(status: 'failed') if @payment_intent.status == 'created'
     self
   end

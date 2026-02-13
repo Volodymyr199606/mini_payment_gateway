@@ -26,7 +26,7 @@ module StructuredLogging
     log_error(
       event: 'request_error',
       error: e.class.name,
-      message: e.message,
+      message: SafeLogHelper.sanitize_exception_message(e),
       merchant_id: current_merchant&.id,
       request_id: request_id
     )

@@ -18,7 +18,7 @@ module Api
         log_error(
           event: 'exception',
           error: exception.class.name,
-          message: exception.message,
+          message: SafeLogHelper.sanitize_exception_message(exception),
           backtrace: exception.backtrace&.first(5),
           merchant_id: current_merchant&.id,
           request_id: request_id

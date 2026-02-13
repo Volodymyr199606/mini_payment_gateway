@@ -8,6 +8,7 @@ module Api
       # POST /api/v1/webhooks/processor
       # Receives events from payment processor (simulated)
       def processor
+        webhook_event = nil
         signature = request.headers['X-WEBHOOK-SIGNATURE']
         payload_body = request.body.read
 
@@ -73,7 +74,12 @@ module Api
           }
         }, status: :created
       rescue StandardError => e
-        Rails.logger.error("Webhook processing error: #{e.message}")
+        Rails.logger.error(SafeLogHelper.safe_error_payload(
+          event: 'webhook_processing_error',
+          exception: e,
+          webhook_event_id: webhook_event&.id,
+          request_id: request.env['request_id'] || Thread.current[:request_id]
+        ))
         render_error(
           code: 'processing_error',
           message: 'Failed to process webhook',

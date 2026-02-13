@@ -116,7 +116,7 @@ class CaptureService < BaseService
 
     self
   rescue StandardError => e
-    add_error("Capture failed: #{e.message}")
+    add_error('Capture failed')
     self
   end
 

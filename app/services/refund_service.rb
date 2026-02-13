@@ -124,7 +124,7 @@ class RefundService < BaseService
 
     self
   rescue StandardError => e
-    add_error("Refund failed: #{e.message}")
+    add_error('Refund failed')
     self
   end
 

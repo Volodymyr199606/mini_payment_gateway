@@ -97,7 +97,7 @@ class VoidService < BaseService
 
     self
   rescue StandardError => e
-    add_error("Void failed: #{e.message}")
+    add_error('Void failed')
     self
   end
 

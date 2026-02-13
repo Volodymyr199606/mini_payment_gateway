@@ -76,15 +76,21 @@ class WebhookDeliveryService < BaseService
   end
 
   def handle_delivery_error(exception)
-    Rails.logger.error("Webhook delivery error: #{exception.message}")
+    Rails.logger.error(SafeLogHelper.safe_error_payload(
+      event: 'webhook_delivery_error',
+      exception: exception,
+      webhook_event_id: @webhook_event.id,
+      attempts: @webhook_event.attempts,
+      max_attempts: MAX_ATTEMPTS
+    ))
 
     if @webhook_event.attempts >= MAX_ATTEMPTS
       @webhook_event.update!(delivery_status: 'failed')
-      add_error("Webhook delivery error: #{exception.message}")
+      add_error("webhook_delivery_failed_after_#{MAX_ATTEMPTS}_attempts")
     else
       delay = calculate_backoff(@webhook_event.attempts)
       WebhookDeliveryJob.set(wait: delay.seconds).perform_later(@webhook_event.id)
-      add_error("Webhook delivery error (attempt #{@webhook_event.attempts}/#{MAX_ATTEMPTS})")
+      add_error("webhook_delivery_retry_scheduled_attempt_#{@webhook_event.attempts}_of_#{MAX_ATTEMPTS}")
     end
   end
 

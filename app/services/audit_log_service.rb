@@ -28,9 +28,14 @@ class AuditLogService < BaseService
     set_result(audit_log)
     self
   rescue StandardError => e
-    add_error("Failed to create audit log: #{e.message}")
+    add_error('audit_log_creation_failed')
     # Don't fail the main operation if audit logging fails
-    Rails.logger.error("Audit log creation failed: #{e.message}")
+    Rails.logger.error(SafeLogHelper.safe_error_payload(
+      event: 'audit_log_creation_failed',
+      exception: e,
+      merchant_id: @merchant&.id,
+      action: @action
+    ))
     self
   end
 end

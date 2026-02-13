@@ -15,6 +15,10 @@ class WebhookDeliveryJob < ApplicationJob
 
     return if service.success?
 
-    Rails.logger.error("Webhook delivery failed: #{service.errors.join(', ')}")
+    Rails.logger.error(SafeLogHelper.safe_error_payload(
+      event: 'webhook_delivery_job_failed',
+      webhook_event_id: webhook_event_id,
+      error_codes: service.errors
+    ))
   end
 end

@@ -41,7 +41,7 @@ class ProcessorEventService < BaseService
     set_result(webhook_event)
     self
   rescue StandardError => e
-    add_error("Failed to create processor event: #{e.message}")
+    add_error('processor_event_creation_failed')
     self
   end
 

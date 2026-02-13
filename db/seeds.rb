@@ -4,6 +4,13 @@
 # in its default state is loaded. The data can then be loaded with the bin/rails
 # db:seed command (or created alongside the database with db:setup).
 
+# Mask API keys for safe display (never log full keys in production)
+def mask_api_key(key)
+  return '[REDACTED]' if key.blank?
+  return '[REDACTED]' if Rails.env.production?
+  "#{key[0..7]}...#{key[-4..]}"
+end
+
 puts 'Creating merchants...'
 
 # Create test merchants with API keys
@@ -21,10 +28,12 @@ merchant2, api_key2 = Merchant.create_with_api_key(
 merchant1.update!(email: 'acme@example.com', password: 'password123')
 merchant2.update!(email: 'tech@example.com', password: 'password123')
 
-puts "Merchant 1 API Key: #{api_key1}"
-puts "Merchant 2 API Key: #{api_key2}"
-puts 'Dashboard sign-in (email/password): acme@example.com / password123  or  tech@example.com / password123'
-puts "\n⚠️  IMPORTANT: Save API keys - they won't be shown again. Or sign in with email to regenerate."
+puts "Merchant 1 API Key: #{mask_api_key(api_key1)}"
+puts "Merchant 2 API Key: #{mask_api_key(api_key2)}"
+if Rails.env.development?
+  puts 'Dashboard sign-in (email/password): acme@example.com / password123  or  tech@example.com / password123'
+  puts "\n⚠️  IMPORTANT: Save API keys - they won't be shown again. Or sign in with email to regenerate."
+end
 
 puts "\nCreating customers..."
 

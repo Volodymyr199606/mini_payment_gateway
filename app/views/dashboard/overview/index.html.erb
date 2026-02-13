@@ -6,22 +6,85 @@
 <div class="summary-grid summary-grid-kpi">
   <div class="summary-card">
     <div class="summary-label">Captured Volume</div>
-    <div class="summary-value"><%= number_to_currency(@captured_volume_cents / 100.0) %></div>
+    <div class="summary-value"><%= number_to_currency(@metrics[:captured_volume_cents] / 100.0) %></div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Refunded</div>
-    <div class="summary-value text-error"><%= number_to_currency(@refunded_cents / 100.0) %></div>
+    <div class="summary-value text-error"><%= number_to_currency(@metrics[:refunded_cents] / 100.0) %></div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Net</div>
-    <div class="summary-value <%= @net_cents >= 0 ? 'text-success' : 'text-error' %>">
-      <%= number_to_currency(@net_cents / 100.0) %>
+    <div class="summary-value <%= @metrics[:net_cents] >= 0 ? 'text-success' : 'text-error' %>">
+      <%= number_to_currency(@metrics[:net_cents] / 100.0) %>
     </div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Failed Webhooks</div>
-    <div class="summary-value <%= @failed_webhooks_count > 0 ? 'text-error' : '' %>">
-      <%= @failed_webhooks_count %>
+    <div class="summary-value <%= @metrics[:webhook_delivery_failures] > 0 ? 'text-error' : '' %>">
+      <%= @metrics[:webhook_delivery_failures] %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Platform Metrics</h2>
+  </div>
+  <div class="card-body">
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">Payment Intents Created</div>
+        <div class="summary-value"><%= @metrics[:payment_intents_created] %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Transactions Authorized</div>
+        <div class="summary-value"><%= @metrics[:transactions_authorized] %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Transactions Captured</div>
+        <div class="summary-value"><%= @metrics[:transactions_captured] %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Transactions Refunded</div>
+        <div class="summary-value"><%= @metrics[:transactions_refunded] %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Webhook Events Received</div>
+        <div class="summary-value"><%= @metrics[:webhook_events_received] %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Webhook Delivery Failures</div>
+        <div class="summary-value <%= @metrics[:webhook_delivery_failures] > 0 ? 'text-error' : '' %>">
+          <%= @metrics[:webhook_delivery_failures] %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">API Health (daily counters)</h2>
+    <p class="page-description" style="margin: 0.25rem 0 0 0;">Operational metrics for platform stability.</p>
+  </div>
+  <div class="card-body">
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">API Requests</div>
+        <div class="summary-value"><%= @metrics[:api_requests_total] %></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">API Errors (5xx)</div>
+        <div class="summary-value <%= @metrics[:api_errors_total] > 0 ? 'text-error' : '' %>">
+          <%= @metrics[:api_errors_total] %>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Rate Limited</div>
+        <div class="summary-value <%= @metrics[:api_rate_limited_total] > 0 ? 'text-error' : '' %>">
+          <%= @metrics[:api_rate_limited_total] %>
+        </div>
+      </div>
     </div>
   </div>
 </div>

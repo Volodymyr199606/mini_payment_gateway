@@ -10,9 +10,22 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_11_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_13_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "api_request_stats", force: :cascade do |t|
+    t.bigint "merchant_id", null: false
+    t.date "date", null: false
+    t.integer "requests_count", default: 0, null: false
+    t.integer "errors_count", default: 0, null: false
+    t.integer "rate_limited_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["date"], name: "index_api_request_stats_on_date"
+    t.index ["merchant_id", "date"], name: "index_api_request_stats_on_merchant_id_and_date", unique: true
+    t.index ["merchant_id"], name: "index_api_request_stats_on_merchant_id"
+  end
 
   create_table "audit_logs", force: :cascade do |t|
     t.bigint "merchant_id"
@@ -143,6 +156,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_11_000001) do
     t.index ["merchant_id"], name: "index_webhook_events_on_merchant_id"
   end
 
+  add_foreign_key "api_request_stats", "merchants"
   add_foreign_key "audit_logs", "merchants"
   add_foreign_key "customers", "merchants"
   add_foreign_key "idempotency_records", "merchants"

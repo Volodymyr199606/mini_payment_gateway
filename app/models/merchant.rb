@@ -5,10 +5,12 @@ class Merchant < ApplicationRecord
 
   has_many :customers, dependent: :destroy
   has_many :payment_intents, dependent: :destroy
+  has_many :transactions, through: :payment_intents
   has_many :ledger_entries, dependent: :destroy
   has_many :webhook_events, dependent: :destroy
   has_many :audit_logs, dependent: :destroy
   has_many :idempotency_records, dependent: :destroy
+  has_many :api_request_stats, dependent: :destroy
 
   validates :name, presence: true
   validates :status, inclusion: { in: %w[active inactive] }

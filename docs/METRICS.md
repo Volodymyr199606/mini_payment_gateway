@@ -27,7 +27,7 @@ Financial metrics (`refunded_cents`, `net_cents`, and dashboard totals) are deri
 
 ### LedgerEntry.amount_cents by entry_type
 
-- **charge**: Stored **positive**. Represents money charged (e.g. authorization or capture). Sum of charges = total revenue from the ledger.
+- **charge**: Stored **positive**. Represents money settled to the merchant (capture only). Authorization holds funds but does not create a ledger charge; only capture does. Sum of charges = total revenue from the ledger.
 - **refund**: Stored **negative**. Represents money returned to the customer. The app creates refund entries with `amount_cents: -refund_amount`. When we display “refunded” we use the magnitude: `refunds.sum(:amount_cents).abs`.
 - **fee**: Stored **positive** when the merchant pays (e.g. processing fee), **negative** when the merchant receives (e.g. rebate). Sum of fees can be positive or negative.
 

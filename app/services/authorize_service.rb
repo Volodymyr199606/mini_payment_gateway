@@ -54,14 +54,8 @@ class AuthorizeService < BaseService
       if success
         @payment_intent.update!(status: 'authorized')
 
-        # Create ledger entry for authorization (charge)
-        LedgerService.call(
-          merchant: @payment_intent.merchant,
-          transaction: transaction,
-          entry_type: 'charge',
-          amount_cents: @payment_intent.amount_cents,
-          currency: @payment_intent.currency
-        )
+        # No ledger charge on authorize – funds are held, not settled.
+        # Charge is created only on capture (when money actually moves to merchant).
 
         # Create audit log
         create_audit_log(

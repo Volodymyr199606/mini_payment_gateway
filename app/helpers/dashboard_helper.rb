@@ -39,4 +39,17 @@ module DashboardHelper
   end
 
   alias nav_tab_class tab_class
+
+  # Format timestamp in Pacific Time (Bay Area) for dashboard display.
+  # Keeps DB in UTC; converts for display only.
+  # Options: :full => "2026-02-16 19:23:43 PST", :short => "2026-02-16 19:23"
+  def format_time_pacific(time, format: :full)
+    return "—" if time.blank?
+
+    t = time.in_time_zone("America/Los_Angeles")
+    case format
+    when :short then t.strftime("%Y-%m-%d %H:%M %Z")
+    else t.strftime("%Y-%m-%d %H:%M:%S %Z")
+    end
+  end
 end

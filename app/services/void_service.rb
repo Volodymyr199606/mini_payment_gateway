@@ -52,17 +52,8 @@ class VoidService < BaseService
       if success
         @payment_intent.update!(status: 'canceled')
 
-        # Create ledger entry for void (refund of authorization)
-        # Only create ledger entry if it was previously authorized (had money held)
-        if original_status == 'authorized'
-          LedgerService.call(
-            merchant: @payment_intent.merchant,
-            transaction: transaction,
-            entry_type: 'refund',
-            amount_cents: -@payment_intent.amount_cents, # Negative for refund
-            currency: @payment_intent.currency
-          )
-        end
+        # No ledger entry for void – authorize never created a charge,
+        # so there is nothing to reverse. Funds were held, not settled.
 
         # Create audit log
         create_audit_log(

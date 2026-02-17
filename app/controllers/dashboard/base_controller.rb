@@ -15,6 +15,8 @@ module Dashboard
 
       return if @current_merchant
 
+      # Clear stale session (e.g. after db:reset) to avoid redirect loop
+      session[:merchant_id] = nil
       redirect_to dashboard_sign_in_path, alert: 'Please sign in to continue'
     end
 

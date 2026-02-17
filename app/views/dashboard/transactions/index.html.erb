@@ -76,7 +76,7 @@
         <tbody>
           <% @transactions.each do |transaction| %>
             <tr>
-              <td><%= transaction.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+              <td><%= format_time_pacific(transaction.created_at) %></td>
               <td>
                 <%= link_to "##{transaction.payment_intent_id}", 
                     dashboard_payment_intent_path(transaction.payment_intent_id),

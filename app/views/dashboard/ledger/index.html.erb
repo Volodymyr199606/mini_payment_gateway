@@ -43,7 +43,7 @@
         <tbody>
           <% @ledger_entries.each do |entry| %>
             <tr>
-              <td><%= entry.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+              <td><%= format_time_pacific(entry.created_at) %></td>
               <td><span class="badge badge-<%= entry.entry_type %>"><%= entry.entry_type %></span></td>
               <td class="<%= entry.amount_cents >= 0 ? 'text-success' : 'text-error' %>">
                 <%= number_to_currency(entry.amount_cents / 100.0) %>

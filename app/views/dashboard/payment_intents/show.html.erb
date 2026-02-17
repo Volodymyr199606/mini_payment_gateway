@@ -45,7 +45,7 @@
       </div>
       <div class="detail-item">
         <dt>Created</dt>
-        <dd><%= @payment_intent.created_at.strftime("%Y-%m-%d %H:%M:%S UTC") %></dd>
+        <dd><%= format_time_pacific(@payment_intent.created_at) %></dd>
       </div>
     </dl>
   </div>
@@ -71,7 +71,7 @@
         <tbody>
           <% @transactions.each do |transaction| %>
             <tr>
-              <td><%= transaction.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+              <td><%= format_time_pacific(transaction.created_at) %></td>
               <td><span class="badge badge-<%= transaction.kind %>"><%= transaction.kind %></span></td>
               <td><span class="badge badge-<%= transaction.status %>"><%= transaction.status %></span></td>
               <td><%= number_to_currency(transaction.amount_cents / 100.0) %></td>

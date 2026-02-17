@@ -22,7 +22,7 @@
         <tbody>
           <% @webhook_events.each do |event| %>
             <tr>
-              <td><%= event.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+              <td><%= format_time_pacific(event.created_at) %></td>
               <td>
                 <%= event.event_type %>
                 <% if event.event_type&.start_with?('chargeback.') %>
@@ -32,7 +32,7 @@
               <td><span class="badge badge-<%= event.delivery_status %>"><%= event.delivery_status %></span></td>
               <td><%= event.attempts %></td>
               <td class="text-muted">
-                <%= event.delivered_at ? event.delivered_at.strftime("%Y-%m-%d %H:%M") : "—" %>
+                <%= event.delivered_at ? format_time_pacific(event.delivered_at, format: :short) : "—" %>
               </td>
             </tr>
           <% end %>

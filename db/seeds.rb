@@ -63,7 +63,7 @@ payment_method1 = PaymentMethod.create!(
   last4: '4242',
   brand: 'Visa',
   exp_month: 12,
-  exp_year: 2025
+  exp_year: 2026
 )
 
 payment_method2 = PaymentMethod.create!(
@@ -144,22 +144,7 @@ transaction3 = Transaction.create!(
 
 puts "\nCreating ledger entries..."
 
-LedgerEntry.create!(
-  merchant: merchant1,
-  payment_transaction: transaction1,
-  entry_type: 'charge',
-  amount_cents: 10_000,
-  currency: 'USD'
-)
-
-LedgerEntry.create!(
-  merchant: merchant2,
-  payment_transaction: transaction2,
-  entry_type: 'charge',
-  amount_cents: 2500,
-  currency: 'USD'
-)
-
+# Only captures create ledger charges (auth holds funds but doesn't settle)
 LedgerEntry.create!(
   merchant: merchant2,
   payment_transaction: transaction3,

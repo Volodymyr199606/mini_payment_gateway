@@ -45,7 +45,7 @@ body.auth-body input[type="password"] {
   padding: 0.5rem 0.75rem;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-family: inherit;
   background: #fff;
   box-sizing: border-box;
@@ -60,7 +60,7 @@ body.auth-body input:focus {
 body.auth-body input[type="submit"],
 body.auth-body button[type="submit"] {
   padding: 0.625rem 1rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 500;
   font-family: inherit;
   border-radius: 6px;
@@ -172,7 +172,7 @@ body.auth-body .card-body {
 }
 
 .auth-subtitle {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   color: #6b7280;
   margin: 0.25rem 0 0 0;
 }
@@ -191,6 +191,25 @@ body.auth-body .card-body {
   font-size: 0.875rem;
 }
 
+.auth-helper {
+  font-size: 0.9375rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.5;
+}
+
+.auth-section-secondary {
+  padding-top: 0.5rem;
+}
+
+.auth-section-secondary-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
 body.auth-body .auth-form .field {
   margin-bottom: 1rem;
 }
@@ -202,7 +221,7 @@ body.auth-body .auth-form .field:last-of-type {
 body.auth-body .field-label,
 .field-label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 500;
   color: #374151;
   margin-bottom: 0.375rem;
@@ -214,7 +233,7 @@ body.auth-body input.input {
   padding: 0.5rem 0.75rem;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-family: inherit;
   background: #fff;
   box-sizing: border-box;
@@ -251,7 +270,7 @@ body.auth-body .auth-form button[type="submit"] {
   width: 100%;
   margin-top: 1rem;
   padding: 0.625rem 1rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 500;
   font-family: inherit;
   border-radius: 6px;
@@ -299,7 +318,7 @@ body.auth-body .auth-form input.btn-secondary[type="submit"]:hover {
 }
 
 .divider-text {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: #9ca3af;
   text-transform: uppercase;
@@ -333,13 +352,13 @@ a.muted:hover {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid #e5e7eb;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
 }
 
 .auth-footer-help {
   display: block;
   margin-top: 0.75rem;
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   color: #9ca3af;
 }
 

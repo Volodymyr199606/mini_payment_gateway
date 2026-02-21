@@ -8,10 +8,6 @@ RSpec.describe 'Payment flow API', type: :request do
     stub_webhook_delivery
   end
 
-  def create_merchant_with_api_key
-    Merchant.create_with_api_key(name: "Merchant #{SecureRandom.hex(4)}", status: 'active')
-  end
-
   # 1. E2E happy path: create intent → authorize → capture → partial refund → full refund
   it 'completes full flow: create → authorize → capture → partial refund → full refund with correct amounts' do
     m, key = create_merchant_with_api_key

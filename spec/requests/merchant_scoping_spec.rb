@@ -10,8 +10,8 @@ RSpec.describe 'Merchant scoping API', type: :request do
 
   # 12. Merchant scoping: merchant B cannot read/operate on merchant A's intent/txn (404 or 403)
   it 'merchant B cannot read or operate on merchant A payment intent (404)' do
-    m_a, key_a = Merchant.create_with_api_key(name: 'Merchant A', status: 'active')
-    m_b, key_b = Merchant.create_with_api_key(name: 'Merchant B', status: 'active')
+    m_a, key_a = create_merchant_with_api_key(name: 'Merchant A', email: "merchant_a_#{SecureRandom.hex(4)}@example.com")
+    m_b, key_b = create_merchant_with_api_key(name: 'Merchant B', email: "merchant_b_#{SecureRandom.hex(4)}@example.com")
 
     cust_a = Customer.create!(merchant: m_a, email: "cust_a_#{SecureRandom.hex(4)}@example.com")
     pm_a = PaymentMethod.create!(customer: cust_a, method_type: 'card', last4: '4242', brand: 'Visa', exp_month: 12, exp_year: 2026)

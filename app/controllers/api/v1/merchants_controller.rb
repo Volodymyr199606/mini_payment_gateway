@@ -5,31 +5,14 @@ module Api
     class MerchantsController < BaseController
       skip_before_action :authenticate_merchant!, only: [:create]
 
-      # POST /api/v1/merchants
-      # Bootstrap/dev endpoint - returns plaintext API key ONCE
-      # Optional: email, password — set these to sign in to the dashboard without the API key
+      # POST /api/v1/merchants - DISABLED
+      # Merchants must be created via dashboard sign-up (email + password).
+      # Route preserved for backward compatibility; returns 403.
       def create
-        attrs = {
-          name: params[:name] || "Merchant #{SecureRandom.hex(4)}",
-          status: 'active'
-        }
-        attrs[:email] = params[:email].to_s.strip.presence
-        merchant, api_key = Merchant.create_with_api_key(attrs)
-        merchant.update!(password: params[:password]) if params[:password].present?
-
-        render json: {
-          data: {
-            id: merchant.id,
-            name: merchant.name,
-            status: merchant.status,
-            api_key: api_key
-          }
-        }, status: :created
-      rescue ActiveRecord::RecordInvalid => e
         render_error(
-          code: 'validation_error',
-          message: 'Failed to create merchant',
-          details: e.record.errors.full_messages
+          code: 'merchant_creation_disabled',
+          message: 'Merchant creation is disabled. Please sign up at /dashboard/sign_up to create an account.',
+          status: :forbidden
         )
       end
 

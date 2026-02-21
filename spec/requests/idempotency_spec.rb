@@ -8,10 +8,6 @@ RSpec.describe 'Idempotency API', type: :request do
     stub_webhook_delivery
   end
 
-  def create_merchant_with_api_key
-    Merchant.create_with_api_key(name: "Merchant #{SecureRandom.hex(4)}", status: 'active')
-  end
-
   # 8. Authorize idempotency: same key → same response, only 1 auth transaction + ledger entries
   it 'authorize idempotency: same key returns same response, only 1 auth transaction and ledger entries' do
     m, key = create_merchant_with_api_key

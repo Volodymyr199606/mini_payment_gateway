@@ -53,6 +53,67 @@
 
 <div class="card">
   <div class="card-header">
+    <h2 class="card-title">Actions</h2>
+  </div>
+  <div class="card-body actions-card-body">
+    <% pi = @payment_intent %>
+    <% auth_key = SecureRandom.uuid %>
+    <% capt_key = SecureRandom.uuid %>
+    <% void_key = SecureRandom.uuid %>
+    <% refund_key = SecureRandom.uuid %>
+
+    <div class="actions-row">
+      <div class="action-item">
+        <% if pi.status == "created" %>
+          <%= button_to "Authorize", authorize_dashboard_payment_intent_path(pi), method: :post, class: "btn btn-primary", params: { idempotency_key: auth_key } %>
+        <% else %>
+          <%= button_tag "Authorize", type: "button", disabled: true, class: "btn btn-secondary" %>
+          <p class="action-helper text-muted">Requires status: created</p>
+        <% end %>
+      </div>
+
+      <div class="action-item">
+        <% if pi.status == "authorized" %>
+          <%= button_to "Capture", capture_dashboard_payment_intent_path(pi), method: :post, class: "btn btn-primary", params: { idempotency_key: capt_key } %>
+        <% else %>
+          <%= button_tag "Capture", type: "button", disabled: true, class: "btn btn-secondary" %>
+          <p class="action-helper text-muted">Authorize required first</p>
+        <% end %>
+      </div>
+
+      <div class="action-item">
+        <% if pi.status == "authorized" %>
+          <%= button_to "Void", void_dashboard_payment_intent_path(pi), method: :post, class: "btn btn-secondary", params: { idempotency_key: void_key }, data: { turbo_confirm: "Void this authorization?" } %>
+        <% else %>
+          <%= button_tag "Void", type: "button", disabled: true, class: "btn btn-secondary" %>
+          <p class="action-helper text-muted">Only authorized intents can be voided</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="action-item action-item-refund">
+      <% if pi.status == "captured" && pi.refundable_cents > 0 %>
+        <%= form_with url: refund_dashboard_payment_intent_path(pi), method: :post, local: true, scope: :refund, class: "refund-form" do |f| %>
+          <%= hidden_field_tag :idempotency_key, refund_key %>
+          <%= f.label :amount_cents, "Amount (cents, blank = full refund)", class: "form-label" %>
+          <%= f.number_field :amount_cents, value: nil, min: 1, placeholder: "Full refund", class: "form-input refund-amount-input" %>
+          <%= f.submit "Refund", class: "btn btn-secondary" %>
+        <% end %>
+      <% else %>
+        <p class="action-helper text-muted">
+          <% if pi.status != "captured" %>
+            Capture required first
+          <% else %>
+            Nothing refundable
+          <% end %>
+        </p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
     <h2 class="card-title">Transactions</h2>
   </div>
   <div class="card-body">

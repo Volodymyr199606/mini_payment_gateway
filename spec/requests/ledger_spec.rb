@@ -8,10 +8,6 @@ RSpec.describe 'Ledger net math API', type: :request do
     stub_webhook_delivery
   end
 
-  def create_merchant_with_api_key
-    Merchant.create_with_api_key(name: "Merchant #{SecureRandom.hex(4)}", status: 'active')
-  end
-
   # 11. Ledger net math: captured - refunded == net; sums match expected after partial+full
   it 'ledger net math: charges minus refunds equals net; sums match after partial and full refund' do
     m, key = create_merchant_with_api_key

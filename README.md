@@ -18,6 +18,8 @@ A Rails 7+ API learning project that models real payment-platform concepts (Brai
    ```
    Use your actual Ruby install path if different (e.g. `C:\Ruby31-x64\bin`).
 
+   **Windows + Ruby 4.x:** If you see "Could not find 'fiddle'" when running `bundle install` or `bundle update --bundler`, the Gemfile.lock has `BUNDLED WITH` removed so the system Bundler (4.x) is used instead of 2.4.x. Run `bundle install` again.
+
 1. Install dependencies:
    ```bash
    bundle install
@@ -51,7 +53,7 @@ All endpoints are under `/api/v1` namespace. Most endpoints require `X-API-KEY` 
 - `GET /api/v1/health` - Returns `{status: "ok"}`
 
 ### Merchants
-- `POST /api/v1/merchants` - Create merchant (returns API key)
+- `POST /api/v1/merchants` - Disabled; merchants must sign up via dashboard
 - `GET /api/v1/merchants/me` - Get current merchant
 
 ### Customers

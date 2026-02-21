@@ -13,20 +13,23 @@ end
 
 puts 'Creating merchants...'
 
-# Create test merchants with API keys
+# Merchants are created with email + password (required for dashboard sign-in).
+# API keys are auto-generated; save them for API testing.
 merchant1, api_key1 = Merchant.create_with_api_key(
   name: 'Acme Corp',
-  status: 'active'
+  status: 'active',
+  email: 'acme@example.com',
+  password: 'password123',
+  password_confirmation: 'password123'
 )
 
 merchant2, api_key2 = Merchant.create_with_api_key(
   name: 'Tech Startup Inc',
-  status: 'active'
+  status: 'active',
+  email: 'tech@example.com',
+  password: 'password123',
+  password_confirmation: 'password123'
 )
-
-# Set email and password so you can sign in to the dashboard without the API key
-merchant1.update!(email: 'acme@example.com', password: 'password123')
-merchant2.update!(email: 'tech@example.com', password: 'password123')
 
 puts "Merchant 1 API Key: #{mask_api_key(api_key1)}"
 puts "Merchant 2 API Key: #{mask_api_key(api_key2)}"

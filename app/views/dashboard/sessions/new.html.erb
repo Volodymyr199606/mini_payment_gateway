@@ -2,26 +2,14 @@
   <div class="auth-card card">
     <div class="auth-card-header">
       <h1 class="auth-brand">Mini Payment Gateway</h1>
-      <p class="auth-subtitle">Sign in to Dashboard</p>
+      <p class="auth-subtitle">Sign in</p>
     </div>
     <div class="card-body">
       <% if flash[:alert] %>
         <div class="auth-alert" role="alert"><%= flash[:alert] %></div>
       <% end %>
 
-      <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "auth-form" do |f| %>
-        <div class="field">
-          <%= f.label :api_key, "API Key", class: "field-label" %>
-          <%= f.text_field :api_key, class: "input", placeholder: "Enter your API key", value: params[:api_key] %>
-        </div>
-        <%= f.submit "Sign in with API key", class: "btn btn-primary" %>
-      <% end %>
-
-      <div class="divider">
-        <span class="divider-line"></span>
-        <span class="divider-text">or</span>
-        <span class="divider-line"></span>
-      </div>
+      <p class="auth-helper muted">Use email and password to access the dashboard. API keys are primarily for API access and can also be used for quick sign-in after setup.</p>
 
       <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "auth-form" do |f| %>
         <div class="field">
@@ -32,12 +20,28 @@
           <%= f.label :password, "Password", class: "field-label" %>
           <%= f.password_field :password, class: "input", placeholder: "Password", autocomplete: "current-password" %>
         </div>
-        <%= f.submit "Sign in with email", class: "btn btn-secondary" %>
+        <%= f.submit "Sign in", class: "btn btn-primary" %>
       <% end %>
+
+      <div class="divider">
+        <span class="divider-line"></span>
+        <span class="divider-text">or</span>
+        <span class="divider-line"></span>
+      </div>
+
+      <div class="auth-section-secondary">
+        <p class="auth-section-secondary-label">API key (optional)</p>
+        <%= form_with url: dashboard_sign_in_path, method: :post, local: true, class: "auth-form" do |f| %>
+          <div class="field">
+            <%= f.label :api_key, "API Key", class: "field-label" %>
+            <%= f.text_field :api_key, class: "input", placeholder: "Enter your API key", value: params[:api_key] %>
+          </div>
+          <%= f.submit "Sign in with API key", class: "btn btn-secondary" %>
+        <% end %>
+      </div>
 
       <div class="auth-footer muted">
         <%= link_to "Sign up", dashboard_sign_up_path, class: "muted" %> to create an account.
-        <span class="auth-footer-help">Forgot your API key? Sign in with email, then go to Account to regenerate.</span>
       </div>
     </div>
   </div>

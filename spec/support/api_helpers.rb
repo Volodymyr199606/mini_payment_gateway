@@ -9,6 +9,19 @@ module ApiHelpers
     }
   end
 
+  # Create a merchant with API key (email/password required for model validation).
+  def create_merchant_with_api_key(name: nil, email: nil)
+    name ||= "Merchant #{SecureRandom.hex(4)}"
+    email ||= "test_#{SecureRandom.hex(4)}@example.com"
+    Merchant.create_with_api_key(
+      name: name,
+      status: 'active',
+      email: email,
+      password: 'password123',
+      password_confirmation: 'password123'
+    )
+  end
+
   # Stub processor simulations so tests get deterministic success.
   # Uses built-in RSpec; no new gems. Stubs private methods on service instances.
   def stub_processor_success

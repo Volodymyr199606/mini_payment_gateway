@@ -116,3 +116,5 @@ Thumbs.db
 # Gemfile.lock
 # package-lock.json
 # yarn.lock
+
+/config/master.key

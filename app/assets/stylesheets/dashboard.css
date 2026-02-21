@@ -535,6 +535,34 @@ a.muted:hover {
   border-bottom: 1px solid #e0e0e0;
 }
 
+.dashboard .card-header-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard .empty-state-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+}
+
+.dashboard .empty-state .btn {
+  margin-top: 1rem;
+}
+
+.dashboard .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dashboard .new-entity-fields {
+  padding-left: 0.5rem;
+  border-left: 2px solid #e5e7eb;
+}
+
 .dashboard .card-title {
   font-size: 1rem;
   font-weight: 600;
@@ -550,6 +578,14 @@ a.muted:hover {
   margin-bottom: 1.5rem;
 }
 
+.dashboard .page-header-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
 .dashboard .page-title {
   font-size: 1.5rem;
   font-weight: 600;
@@ -562,6 +598,49 @@ a.muted:hover {
   color: #6b7280;
   margin: 0;
   line-height: 1.5;
+}
+
+/* Actions card (payment intent show) */
+.dashboard .actions-card-body {
+  padding: 1.25rem;
+}
+
+.dashboard .actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard .action-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dashboard .action-item .action-helper {
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.dashboard .action-item-refund {
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dashboard .refund-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.dashboard .refund-form .form-label {
+  margin-bottom: 0;
+}
+
+.dashboard .refund-amount-input {
+  width: 140px;
 }
 
 /* Table: borders + row spacing */
@@ -725,10 +804,24 @@ a.muted:hover {
   border-color: #1a1a1a;
 }
 
+.dashboard .btn-primary:hover,
+.dashboard a.btn-primary:hover {
+  background: #374151;
+  border-color: #374151;
+  color: #fff;
+}
+
 .dashboard .btn-secondary {
   background: #6b7280;
   color: #fff;
   border-color: #6b7280;
+}
+
+.dashboard .btn-secondary:hover,
+.dashboard a.btn-secondary:hover {
+  background: #4b5563;
+  border-color: #4b5563;
+  color: #fff;
 }
 
 .dashboard .filter-row {

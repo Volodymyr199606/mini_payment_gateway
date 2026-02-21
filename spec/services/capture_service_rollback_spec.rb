@@ -4,7 +4,13 @@ require 'rails_helper'
 
 RSpec.describe CaptureService, 'transaction rollback' do
   let(:merchant) do
-    _m, = Merchant.create_with_api_key(name: 'Test Merchant', status: 'active')
+    _m, = Merchant.create_with_api_key(
+      name: 'Test Merchant',
+      status: 'active',
+      email: "test_#{SecureRandom.hex(4)}@example.com",
+      password: 'password123',
+      password_confirmation: 'password123'
+    )
     Merchant.last
   end
 

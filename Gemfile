@@ -27,10 +27,12 @@ group :development, :test do
   gem 'rubocop', require: false
   gem 'rubocop-performance', require: false
   gem 'rubocop-rails', require: false
-    gem "fiddle"
 end
 
 group :development do
   gem 'listen', '~> 3.3'
   gem 'wdm', '>= 0.1.0', platforms: [:windows]
+  # Required by kamal/net-ssh on Ruby 4+ (fiddle removed from default gems)
+  gem 'fiddle'
+  gem 'kamal', '~> 2.10'
 end

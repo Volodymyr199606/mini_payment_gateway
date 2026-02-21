@@ -15,9 +15,9 @@ class Merchant < ApplicationRecord
   validates :name, presence: true
   validates :status, inclusion: { in: %w[active inactive] }
   validates :api_key_digest, presence: true, uniqueness: true
-  validates :email, uniqueness: { case_sensitive: false, allow_blank: true }
-  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true }
-  validates :password, length: { minimum: 6 }, allow_nil: true
+  validates :email, presence: true, uniqueness: { case_sensitive: false }
+  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :password, presence: true, length: { minimum: 6 }, on: :create
 
   scope :active, -> { where(status: 'active') }
 

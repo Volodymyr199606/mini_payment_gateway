@@ -1,6 +1,9 @@
-<div class="page-header">
-  <h1 class="page-title">Payment Intents</h1>
-  <p class="page-description">View and manage payment intents created through the API.</p>
+<div class="page-header page-header-with-action">
+  <div>
+    <h1 class="page-title">Payment Intents</h1>
+    <p class="page-description">View and manage payment intents created through the API.</p>
+  </div>
+  <%= link_to "Create payment intent", new_dashboard_payment_intent_path, class: "btn btn-primary" %>
 </div>
 
 <div class="card">
@@ -39,7 +42,9 @@
       </div>
     <% else %>
       <div class="empty-state">
-        <p class="empty-state-text">No payment intents yet. Create a payment intent via the API to see it here.</p>
+        <h3 class="empty-state-title">No payment intents yet</h3>
+        <p class="empty-state-text">Create your first payment intent to start testing the payment flow.</p>
+        <%= link_to "Create payment intent", new_dashboard_payment_intent_path, class: "btn btn-primary" %>
       </div>
     <% end %>
   </div>

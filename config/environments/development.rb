@@ -26,6 +26,8 @@ Rails.application.configure do
   config.active_record.verbose_query_logs = true
   # Only set asset options when asset pipeline is loaded (e.g. not in api_only mode)
   config.assets.quiet = true if config.respond_to?(:assets)
+  # Use memory cache to avoid File.rename permission errors on Windows
+  config.assets.configure { |env| env.cache = ActiveSupport::Cache.lookup_store(:memory_store) } if config.respond_to?(:assets)
   config.file_watcher = ActiveSupport::EventedFileUpdateChecker
   # Use :inline to avoid concurrent-ruby thread pool issues on Windows/Ruby 4
   config.active_job.queue_adapter = :inline

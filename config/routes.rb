@@ -15,7 +15,14 @@ Rails.application.routes.draw do
 
     get 'overview', to: 'overview#index', as: :overview
     resources :transactions, only: [:index]
-    resources :payment_intents, only: %i[index show]
+    resources :payment_intents, only: %i[index show new create] do
+      member do
+        post :authorize
+        post :capture
+        post :void
+        post :refund
+      end
+    end
     resources :ledger, only: [:index], controller: 'ledger'
     resources :webhooks, only: [:index], controller: 'webhooks'
 

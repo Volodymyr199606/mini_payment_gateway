@@ -1,0 +1,13 @@
+%% Mini Payment Gateway - System Context (C4 Level 1)
+%% Render with: Mermaid CLI, GitHub, or mermaid.live
+
+C4Context
+    title System Context - Mini Payment Gateway
+
+    Person(merchant, "Merchant / Integrator", "Uses API or Dashboard")
+    Person(processor, "Processor (Simulated)", "Future: real processor")
+
+    System(gateway, "Mini Payment Gateway", "Rails 7.2 monolith")
+
+    Rel(merchant, gateway, "HTTPS", "REST API / Dashboard")
+    Rel(gateway, processor, "Simulated", "No real integration yet")

@@ -1,0 +1,23 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-cn62v6 sitelibdir\=./.gem.20260219-9104-cn62v6 clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-cn62v6 sitelibdir\=./.gem.20260219-9104-cn62v6
+generating bcrypt_pbkdf_ext-x64-mingw-ucrt.def
+compiling bcrypt_pbkdf.c
+compiling bcrypt_pbkdf_ext.c
+compiling blowfish.c
+compiling hash_sha512.c
+compiling explicit_bzero.c
+linking shared-object bcrypt_pbkdf_ext.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-cn62v6 sitelibdir\=./.gem.20260219-9104-cn62v6 install
+/usr/bin/install -c -m 0755 bcrypt_pbkdf_ext.so ./.gem.20260219-9104-cn62v6
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bcrypt_pbkdf-1.1.2/ext/mri
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-cn62v6 sitelibdir\=./.gem.20260219-9104-cn62v6 clean

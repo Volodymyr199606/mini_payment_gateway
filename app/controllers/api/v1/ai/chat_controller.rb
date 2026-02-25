@@ -31,11 +31,7 @@ module Api
 
           agent_key = ::Ai::Router.new(message).call
           agent_class = agent_class_for(agent_key)
-          agent = agent_class.new(
-            message: message,
-            context_text: context_text,
-            citations: citations
-          )
+          agent = build_agent(agent_class, agent_key, message, context_text, citations)
 
           started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           out = agent.call
@@ -52,14 +48,24 @@ module Api
             fallback_used: out[:fallback_used]
           )
 
-          render json: {
+          payload = {
             reply: out[:reply],
             agent: agent_key.to_s,
             citations: out[:citations]
           }
+          payload[:data] = out[:data] if out[:data].present?
+          render json: payload
         end
 
         private
+
+        def build_agent(agent_class, agent_key, message, context_text, citations)
+          if agent_key == :reporting_calculation
+            agent_class.new(merchant_id: current_merchant.id, message: message, context_text: context_text, citations: citations)
+          else
+            agent_class.new(message: message, context_text: context_text, citations: citations)
+          end
+        end
 
         def chat_params
           params.permit(:message)
@@ -72,6 +78,7 @@ module Api
           when :developer_onboarding then ::Ai::Agents::OnboardingAgent
           when :operational then ::Ai::Agents::OperationalAgent
           when :reconciliation_analyst then ::Ai::Agents::ReconciliationAgent
+          when :reporting_calculation then ::Ai::Agents::ReportingCalculationAgent
           else ::Ai::Agents::SupportFaqAgent
           end
         end

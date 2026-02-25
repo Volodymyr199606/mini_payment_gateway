@@ -1,0 +1,18 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/nio4r-2.7.5/ext/nio4r
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/nio4r-2.7.5/ext/nio4r
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-ekbnsa sitelibdir\=./.gem.20260219-9104-ekbnsa clean
+make: *** No rule to make target 'clean'.  Stop.
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/nio4r-2.7.5/ext/nio4r
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-ekbnsa sitelibdir\=./.gem.20260219-9104-ekbnsa
+make: Nothing to be done for 'all'.
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/nio4r-2.7.5/ext/nio4r
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-ekbnsa sitelibdir\=./.gem.20260219-9104-ekbnsa install
+make: Nothing to be done for 'install'.
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/nio4r-2.7.5/ext/nio4r
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-ekbnsa sitelibdir\=./.gem.20260219-9104-ekbnsa clean
+make: *** No rule to make target 'clean'.  Stop.

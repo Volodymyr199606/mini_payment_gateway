@@ -1,0 +1,44 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/fiddle-1.1.8/ext/fiddle
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+checking for --enable-debug-build option... no
+checking for pkg-config for libffi... ["-IC:/Ruby40-x64/msys64/ucrt64/bin/../include ", "-LC:/Ruby40-x64/msys64/ucrt64/bin/../lib/../lib", "-lffi"]
+checking for pkg-config for libffi... "3.5.2"
+checking for ffi.h... yes
+checking for -lffi... yes
+libffi_version: 3.5.2
+checking for sys/mman.h... no
+checking for link.h... no
+checking for dlfcn.h... no
+checking for windows.h... yes
+checking for LoadLibrary()... yes
+checking for FreeLibrary()... yes
+checking for GetProcAddress()... yes
+checking for GetModuleFileName()... yes
+checking for -lws2_32... yes
+checking for FFI_STDCALL in ffi.h... no
+checking signedness of size_t... unsigned
+checking for rb_str_to_interned_str()... yes
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/fiddle-1.1.8/ext/fiddle
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-4324-fhhfzy sitelibdir\=./.gem.20260219-4324-fhhfzy clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/fiddle-1.1.8/ext/fiddle
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-4324-fhhfzy sitelibdir\=./.gem.20260219-4324-fhhfzy
+generating fiddle-x64-mingw-ucrt.def
+compiling closure.c
+compiling conversions.c
+compiling fiddle.c
+compiling function.c
+compiling handle.c
+compiling memory_view.c
+compiling pinned.c
+compiling pointer.c
+linking shared-object fiddle.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/fiddle-1.1.8/ext/fiddle
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-4324-fhhfzy sitelibdir\=./.gem.20260219-4324-fhhfzy install
+/usr/bin/install -c -m 0755 fiddle.so ./.gem.20260219-4324-fhhfzy
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/fiddle-1.1.8/ext/fiddle
+make DESTDIR\= sitearchdir\=./.gem.20260219-4324-fhhfzy sitelibdir\=./.gem.20260219-4324-fhhfzy clean

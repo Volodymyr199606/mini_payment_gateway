@@ -1,0 +1,19 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/cgi-0.5.1/ext/cgi/escape
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/cgi-0.5.1/ext/cgi/escape
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-h5hpey sitelibdir\=./.gem.20260219-9104-h5hpey clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/cgi-0.5.1/ext/cgi/escape
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-h5hpey sitelibdir\=./.gem.20260219-9104-h5hpey
+generating escape-x64-mingw-ucrt.def
+compiling escape.c
+linking shared-object cgi/escape.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/cgi-0.5.1/ext/cgi/escape
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-h5hpey sitelibdir\=./.gem.20260219-9104-h5hpey install
+/usr/bin/install -c -m 0755 escape.so ./.gem.20260219-9104-h5hpey/cgi
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/cgi-0.5.1/ext/cgi/escape
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-h5hpey sitelibdir\=./.gem.20260219-9104-h5hpey clean

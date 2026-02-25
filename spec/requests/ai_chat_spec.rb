@@ -42,5 +42,20 @@ RSpec.describe 'AI chat API', type: :request do
       expect(response).to have_http_status(:bad_request)
       expect(response.parsed_body['error']['code']).to eq('validation_error')
     end
+
+    it 'returns reporting_calculation agent and data.totals for "How much in fees last 7 days?"' do
+      _m, api_key = create_merchant_with_api_key
+      post '/api/v1/ai/chat',
+           params: { message: 'How much in fees last 7 days?' },
+           headers: api_headers(api_key),
+           as: :json
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body['agent']).to eq('reporting_calculation')
+      expect(body).to have_key('data')
+      expect(body['data']).to have_key('totals')
+      expect(body['data']['totals']).to include('charges_cents', 'refunds_cents', 'fees_cents', 'net_cents')
+      expect(body).to have_key('reply')
+    end
   end
 end

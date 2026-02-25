@@ -1,0 +1,20 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/stringio-3.2.0/ext/stringio
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+checking for rb_io_mode_t in ruby/io.h... yes
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/stringio-3.2.0/ext/stringio
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-xo4hti sitelibdir\=./.gem.20260219-9104-xo4hti clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/stringio-3.2.0/ext/stringio
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-xo4hti sitelibdir\=./.gem.20260219-9104-xo4hti
+generating stringio-x64-mingw-ucrt.def
+compiling stringio.c
+linking shared-object stringio.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/stringio-3.2.0/ext/stringio
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-xo4hti sitelibdir\=./.gem.20260219-9104-xo4hti install
+/usr/bin/install -c -m 0755 stringio.so ./.gem.20260219-9104-xo4hti
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/stringio-3.2.0/ext/stringio
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-xo4hti sitelibdir\=./.gem.20260219-9104-xo4hti clean

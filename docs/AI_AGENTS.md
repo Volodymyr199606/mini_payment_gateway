@@ -8,7 +8,8 @@ Merchant-facing AI chat powered by Groq API with lightweight RAG over the `docs/
 
 - **Auth:** `X-API-KEY` header (required). Same as existing API; merchant-scoped.
 - **Request body:** `{ "message": "Your question here" }`
-- **Response:** `{ "reply": "...", "agent": "...", "citations": [{ "file": "docs/...", "heading": "...", "anchor": "...", "excerpt": "..." }] }`
+- **Response:** `{ "reply": "...", "agent": "...", "citations": [...], "data": null | {...} }`  
+  For the reporting agent, `data` contains the ledger summary used for the reply; for other agents `data` is `null`.
 
 ### Example
 
@@ -32,8 +33,9 @@ X-API-KEY: your_api_key
 
 ## Agents
 
-| Agent | Role | Triggered by keywords (examples) |
-|-------|------|----------------------------------|
+| Agent | Role | Triggered by |
+|-------|------|---------------|
+| **reporting_calculation** | Totals from ledger (charges, refunds, fees, net) for a time range | Phrases: "how much", "last 7 days", "last week", "this month", "last month", "yesterday", "refund volume", "net balance", "total charges/refunds/fees"; or words: total, sum, spent, fees, net, balance |
 | **support_faq** | Refunds, statuses, API usage, general how-to | Default when no other agent matches |
 | **security_compliance** | PCI, PAN, tokenization, logging, webhook signatures | PCI, PAN, CVV, token, webhook signature |
 | **developer_onboarding** | Integration: endpoints, idempotency, webhooks | idempotency, integrate, curl, endpoint, API key |
@@ -41,6 +43,53 @@ X-API-KEY: your_api_key
 | **reconciliation_analyst** | Design guidance only | reconciliation, settlement, payout, matching |
 
 **Reconciliation:** This agent clearly states that reconciliation is **not implemented** in the gateway. It only explains what reconciliation would involve and suggests future docs or features.
+
+### Reporting / Calculation agent
+
+The **reporting_calculation** agent answers “how much” / totals / volume / fees / refunds questions using **real ledger data** (no LLM arithmetic). It:
+
+1. Parses the user’s timeframe with a deterministic Ruby parser (see **Time-range parser** below).
+2. Calls `Reporting::LedgerSummary` with `merchant_id` from auth, `from`/`to`, optional `currency`, optional `group_by`.
+3. Formats a human reply from the tool output (totals in dollars, timeframe, disclaimer).
+
+**Sign convention (ledger summary):**
+
+- Ledger: charge entries positive, refund entries negative.
+- Output: `charges_cents`, `refunds_cents` (displayed as positive), `fees_cents` (signed: positive = merchant pays).
+- **Net:** `net_cents = charges_cents - refunds_cents - fees_cents` (merchant view: receive charges, pay refunds and fees).
+
+**Disclaimer in reply:** “Totals are based on ledger entries created on capture/refund (not authorize/void).”
+
+**Time-range parser** (`Ai::TimeRangeParser`):
+
+- Supported phrases: `"today"`, `"yesterday"`, `"last 7 days"`, `"last week"`, `"this month"`, `"last month"`.
+- Timezone: **America/Los_Angeles**. “Last week” = previous Monday 00:00 to Sunday 23:59:59.
+- Max range: **365 days**; larger ranges return 400 with a helpful message.
+
+**Example (reporting):**
+
+```http
+POST /api/v1/ai/chat
+Content-Type: application/json
+X-API-KEY: your_api_key
+
+{ "message": "How much in fees last 7 days?" }
+```
+
+```json
+{
+  "reply": "For the last 7 days (2025-02-05 to 2025-02-11): Fees: $1.00. Totals are based on ledger entries created on capture/refund (not authorize/void).",
+  "agent": "reporting_calculation",
+  "citations": [],
+  "data": {
+    "currency": "USD",
+    "from": "2025-02-05T08:00:00.000Z",
+    "to": "2025-02-11T07:59:59.999Z",
+    "totals": { "charges_cents": 0, "refunds_cents": 0, "fees_cents": 100, "net_cents": -100 },
+    "counts": { "captures_count": 0, "refunds_count": 0 }
+  }
+}
+```
 
 ## RAG (Retrieval)
 
@@ -69,7 +118,10 @@ X-API-KEY: your_api_key
 ## Code layout
 
 - `app/services/ai/groq_client.rb` — Groq API wrapper (Faraday).
-- `app/services/ai/router.rb` — Keyword-based agent selection.
-- `app/services/ai/agents/` — Base agent + specialist agents (support_faq, security, onboarding, operational, reconciliation).
+- `app/services/ai/router.rb` — Phrase/keyword-based agent selection (reporting phrases first).
+- `app/services/ai/agents/` — Base agent + specialist agents (support_faq, security, onboarding, operational, reconciliation, **reporting_calculation**).
+- `app/services/ai/time_range_parser.rb` — Deterministic parser for “today”, “last 7 days”, “last week”, etc. (America/Los_Angeles, max 365 days).
+- `app/services/reporting/ledger_summary.rb` — Ledger totals by merchant and time range (charges, refunds, fees, net, counts, optional breakdown).
+- `app/helpers/ai_money_helper.rb` — Format cents as `"$12.34"`.
 - `app/services/ai/rag/` — Docs index, Markdown section extractor, retriever.
-- `app/controllers/api/v1/ai/chat_controller.rb` — Single chat action: auth, rate limit, RAG, router, agent, JSON response.
+- `app/controllers/api/v1/ai/chat_controller.rb` — Single chat action: auth, rate limit, RAG, router, agent, JSON response (includes `data` for reporting agent).

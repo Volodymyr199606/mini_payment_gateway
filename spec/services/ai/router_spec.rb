@@ -18,6 +18,12 @@ RSpec.describe Ai::Router do
     expect(described_class.new('authorize then capture').call).to eq(:operational)
   end
 
+  it 'returns :reporting_calculation for totals/volume/timeframe keywords' do
+    expect(described_class.new('How much in fees last 7 days?').call).to eq(:reporting_calculation)
+    expect(described_class.new('total spent this month').call).to eq(:reporting_calculation)
+    expect(described_class.new('refund volume yesterday').call).to eq(:reporting_calculation)
+  end
+
   it 'returns :reconciliation_analyst for reconciliation keywords' do
     expect(described_class.new('reconciliation settlement').call).to eq(:reconciliation_analyst)
   end

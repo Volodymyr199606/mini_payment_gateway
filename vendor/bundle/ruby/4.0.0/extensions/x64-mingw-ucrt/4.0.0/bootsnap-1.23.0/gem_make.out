@@ -1,0 +1,23 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bootsnap-1.23.0/ext/bootsnap
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+checking for fdatasync() in unistd.h... no
+checking for fstatat() in sys/stat.h... no
+checking for whether -O3 is accepted as CFLAGS... yes
+checking for whether -std=c99 is accepted as CFLAGS... yes
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bootsnap-1.23.0/ext/bootsnap
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-nk7wbe sitelibdir\=./.gem.20260219-9104-nk7wbe clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bootsnap-1.23.0/ext/bootsnap
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-nk7wbe sitelibdir\=./.gem.20260219-9104-nk7wbe
+generating bootsnap-x64-mingw-ucrt.def
+compiling bootsnap.c
+linking shared-object bootsnap/bootsnap.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bootsnap-1.23.0/ext/bootsnap
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-nk7wbe sitelibdir\=./.gem.20260219-9104-nk7wbe install
+/usr/bin/install -c -m 0755 bootsnap.so ./.gem.20260219-9104-nk7wbe/bootsnap
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/bootsnap-1.23.0/ext/bootsnap
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-nk7wbe sitelibdir\=./.gem.20260219-9104-nk7wbe clean

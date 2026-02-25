@@ -1,0 +1,23 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/byebug-13.0.0/ext/byebug
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/byebug-13.0.0/ext/byebug
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-8ppc1a sitelibdir\=./.gem.20260219-9104-8ppc1a clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/byebug-13.0.0/ext/byebug
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-8ppc1a sitelibdir\=./.gem.20260219-9104-8ppc1a
+generating byebug-x64-mingw-ucrt.def
+compiling breakpoint.c
+compiling byebug.c
+compiling context.c
+compiling locker.c
+compiling threads.c
+linking shared-object byebug/byebug.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/byebug-13.0.0/ext/byebug
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-8ppc1a sitelibdir\=./.gem.20260219-9104-8ppc1a install
+/usr/bin/install -c -m 0755 byebug.so ./.gem.20260219-9104-8ppc1a/byebug
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/byebug-13.0.0/ext/byebug
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-8ppc1a sitelibdir\=./.gem.20260219-9104-8ppc1a clean

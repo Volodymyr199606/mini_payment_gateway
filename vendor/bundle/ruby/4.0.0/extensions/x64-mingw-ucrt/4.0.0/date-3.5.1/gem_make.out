@@ -1,0 +1,25 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/date-3.5.1/ext/date
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+checking for rb_category_warn()... yes
+checking for timezone in time.h with -Werror... no
+checking for altzone in time.h with -Werror... no
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/date-3.5.1/ext/date
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-738bm6 sitelibdir\=./.gem.20260219-9104-738bm6 clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/date-3.5.1/ext/date
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-738bm6 sitelibdir\=./.gem.20260219-9104-738bm6
+generating date_core-x64-mingw-ucrt.def
+compiling date_core.c
+compiling date_parse.c
+compiling date_strftime.c
+compiling date_strptime.c
+linking shared-object date_core.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/date-3.5.1/ext/date
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-738bm6 sitelibdir\=./.gem.20260219-9104-738bm6 install
+/usr/bin/install -c -m 0755 date_core.so ./.gem.20260219-9104-738bm6
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/date-3.5.1/ext/date
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-738bm6 sitelibdir\=./.gem.20260219-9104-738bm6 clean

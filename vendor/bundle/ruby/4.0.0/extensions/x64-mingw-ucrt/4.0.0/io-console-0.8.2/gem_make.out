@@ -1,0 +1,30 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/io-console-0.8.2/ext/io/console
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+checking for rb_syserr_fail_str(0, Qnil)... yes
+checking for rb_interned_str_cstr()... yes
+checking for rb_io_path() in ruby/io.h... yes
+checking for rb_io_descriptor() in ruby/io.h... yes
+checking for rb_io_get_write_io() in ruby/io.h... yes
+checking for rb_io_closed_p() in ruby/io.h... yes
+checking for rb_io_open_descriptor() in ruby/io.h... yes
+checking for rb_ractor_local_storage_value_newkey()... yes
+checking for HAVE_RUBY_FIBER_SCHEDULER_H... yes
+checking for ttyname_r()... no
+checking for ttyname()... no
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/io-console-0.8.2/ext/io/console
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-vw93lo sitelibdir\=./.gem.20260219-9104-vw93lo clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/io-console-0.8.2/ext/io/console
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-vw93lo sitelibdir\=./.gem.20260219-9104-vw93lo
+generating console-x64-mingw-ucrt.def
+compiling console.c
+linking shared-object io/console.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/io-console-0.8.2/ext/io/console
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-vw93lo sitelibdir\=./.gem.20260219-9104-vw93lo install
+/usr/bin/install -c -m 0755 console.so ./.gem.20260219-9104-vw93lo/io
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/io-console-0.8.2/ext/io/console
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-vw93lo sitelibdir\=./.gem.20260219-9104-vw93lo clean

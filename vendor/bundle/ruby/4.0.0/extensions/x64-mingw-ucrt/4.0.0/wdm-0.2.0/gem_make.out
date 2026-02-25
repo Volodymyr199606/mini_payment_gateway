@@ -1,0 +1,28 @@
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/wdm-0.2.0/ext/wdm
+C:/Ruby40-x64/bin/ruby.exe extconf.rb
+checking for -lkernel32... yes
+checking for windows.h... yes
+creating Makefile
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/wdm-0.2.0/ext/wdm
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-t793wu sitelibdir\=./.gem.20260219-9104-t793wu clean
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/wdm-0.2.0/ext/wdm
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-t793wu sitelibdir\=./.gem.20260219-9104-t793wu
+generating wdm_ext-x64-mingw-ucrt.def
+compiling entry.c
+compiling memory.c
+compiling monitor.c
+compiling queue.c
+compiling rb_change.c
+compiling rb_monitor.c
+compiling utils.c
+compiling wdm.c
+linking shared-object wdm_ext.so
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/wdm-0.2.0/ext/wdm
+make -j9 DESTDIR\= sitearchdir\=./.gem.20260219-9104-t793wu sitelibdir\=./.gem.20260219-9104-t793wu install
+/usr/bin/install -c -m 0755 wdm_ext.so ./.gem.20260219-9104-t793wu
+
+current directory: C:/Users/hp/Desktop/mini_payment_gateway/vendor/bundle/ruby/4.0.0/gems/wdm-0.2.0/ext/wdm
+make DESTDIR\= sitearchdir\=./.gem.20260219-9104-t793wu sitelibdir\=./.gem.20260219-9104-t793wu clean

@@ -175,11 +175,12 @@ module Dashboard
 
     # Returns [customer, payment_method] for use when creating a payment intent.
     # Uses most recent existing records, or creates default ones if none exist.
+    # Default customer email: merchant's account email when present, else synthetic.
     def resolve_or_create_customer_and_payment_method
       customer = current_merchant.customers.order(created_at: :desc).first
       if customer.nil?
-        slug = default_customer_email_slug
-        email = slug.present? ? "customer@#{slug}.example" : "customer@example.com"
+        email = current_merchant.email.to_s.strip.presence
+        email ||= default_synthetic_customer_email
         customer = current_merchant.customers.create!(
           name: "Default Customer",
           email: email
@@ -205,6 +206,11 @@ module Dashboard
       name = current_merchant.name.to_s.strip
       return "" if name.blank?
       name.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|-\z/, "")
+    end
+
+    def default_synthetic_customer_email
+      slug = default_customer_email_slug
+      slug.present? ? "customer@#{slug}.example" : "customer@example.com"
     end
   end
 end

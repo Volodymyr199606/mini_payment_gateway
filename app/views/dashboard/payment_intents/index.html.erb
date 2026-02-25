@@ -1,9 +1,11 @@
-<div class="page-header page-header-with-action">
+<div class="page-header <%= 'page-header-with-action' if @payment_intents.any? %>">
   <div>
     <h1 class="page-title">Payment Intents</h1>
     <p class="page-description">View and manage payment intents created through the API.</p>
   </div>
-  <%= link_to "Create payment intent", new_dashboard_payment_intent_path, class: "btn btn-primary" %>
+  <% if @payment_intents.any? %>
+    <%= link_to "Create payment intent", new_dashboard_payment_intent_path, class: "btn btn-primary" %>
+  <% end %>
 </div>
 
 <div class="card">

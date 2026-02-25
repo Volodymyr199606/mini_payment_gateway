@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mini_payment_gateway_production
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  web:
+    image: hpvova/mini-payment-gateway:latest
+    depends_on:
+      - db
+    environment:
+      RAILS_ENV: production
+      SECRET_KEY_BASE: dummy
+      DATABASE_URL: postgres://postgres:postgres@db:5432/mini_payment_gateway_production
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+

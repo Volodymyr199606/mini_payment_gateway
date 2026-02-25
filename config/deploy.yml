@@ -1,0 +1,29 @@
+service: mini-payment-gateway
+image: hpvova/mini-payment-gateway
+
+servers:
+  web:
+    - 44.255.64.193
+
+ssh:
+  user: deploy
+
+registry:
+  username: hpvova
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+proxy:
+  ssl: false
+
+builder:
+  arch: amd64
+
+env:
+  clear:
+    RAILS_ENV: production
+    RAILS_LOG_TO_STDOUT: true
+    RAILS_SERVE_STATIC_FILES: true
+  secret:
+    - RAILS_MASTER_KEY
+    - DATABASE_URL

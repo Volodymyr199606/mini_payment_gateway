@@ -1,0 +1,27 @@
+<div class="page-header">
+  <h1 class="page-title">Create Payment Intent</h1>
+  <%= link_to "← Back to Payment Intents", dashboard_payment_intents_path, class: "link" %>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">New Payment Intent</h2>
+  </div>
+  <div class="card-body">
+    <% if @errors&.any? %>
+      <div class="dashboard-alert dashboard-alert-error">
+        <%= @errors.to_sentence %>
+      </div>
+    <% end %>
+
+    <%= form_with url: dashboard_payment_intents_path, method: :post, local: true, class: "payment-intent-form" do |f| %>
+      <%= hidden_field_tag "payment_intent[currency]", "usd" %>
+      <div class="form-group">
+        <%= f.label :amount_cents, "Amount (cents)", class: "form-label" %>
+        <%= f.number_field :amount_cents, name: "payment_intent[amount_cents]", class: "form-input", min: 1, required: true, placeholder: "e.g. 5000 for $50.00" %>
+      </div>
+
+      <%= f.submit "Create Payment Intent", class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>

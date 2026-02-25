@@ -7,3 +7,5 @@ pin 'application'
 pin '@hotwired/turbo-rails', to: 'https://esm.sh/@hotwired/turbo@8.0.11', preload: true
 pin '@hotwired/stimulus', to: 'https://esm.sh/@hotwired/stimulus@3.2.2', preload: true
 pin '@hotwired/stimulus-loading', to: 'stimulus-loading.js'
+pin 'controllers', to: 'controllers/index.js'
+pin_all_from 'app/javascript/controllers', under: 'controllers'

@@ -61,7 +61,7 @@ module Ai
         max_tokens: max_tokens
       }
 
-      response = connection.post('/chat/completions') do |req|
+      response = connection.post('chat/completions') do |req|
         req.headers['Authorization'] = "Bearer #{@api_key}"
         req.headers['Content-Type'] = 'application/json'
         req.body = body.to_json

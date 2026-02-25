@@ -78,6 +78,9 @@ All endpoints are under `/api/v1` namespace. Most endpoints require `X-API-KEY` 
 ### Webhooks
 - `POST /api/v1/webhooks/processor` - Receive processor events (no auth required, signature verified)
 
+### AI Chat
+- `POST /api/v1/ai/chat` - Merchant-scoped AI chat (Groq + RAG over `docs/`). Request: `{ "message": "..." }`. See [docs/AI_AGENTS.md](docs/AI_AGENTS.md).
+
 ## Dashboard
 
 Visit `/dashboard` to access the merchant dashboard. Sign in with your API key to view:

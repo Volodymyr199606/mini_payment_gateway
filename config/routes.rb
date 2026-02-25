@@ -59,6 +59,11 @@ Rails.application.routes.draw do
 
       # Webhooks
       post 'webhooks/processor', to: 'webhooks#processor'
+
+      # AI chat (merchant-scoped, X-API-KEY)
+      namespace :ai do
+        post 'chat', to: 'chat#create'
+      end
     end
   end
 end

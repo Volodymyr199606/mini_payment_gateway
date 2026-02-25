@@ -10,6 +10,7 @@
 | [DIAGRAMS.md](DIAGRAMS.md) | System context, containers, state machine, ERD |
 
 **Additional docs:**
+- [AI_AGENTS.md](AI_AGENTS.md) – AI chat endpoint, agents, RAG, env vars, safety
 - [REFUNDS_API.md](REFUNDS_API.md) – Refunds API details
 - [METRICS.md](METRICS.md) – Metrics and observability
 - [PCI_COMPLIANCE.md](PCI_COMPLIANCE.md) – PCI compliance notes

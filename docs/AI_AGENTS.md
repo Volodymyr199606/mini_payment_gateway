@@ -94,7 +94,8 @@ X-API-KEY: your_api_key
 ## RAG (Retrieval)
 
 - **Index:** All `docs/**/*.md` files are parsed into sections by Markdown headings (`#`, `##`, `###`).
-- **Search:** Naive keyword scoring over section heading + content; top sections (deduped by file) are retrieved (max 3 sections, ~1200 chars each).
+- **Agent-aware retrieval:** The message is routed to an agent first; then retrieval is restricted and boosted by that agent’s doc policy (`AgentDocPolicy`). Each agent has an allowed list of docs (and optionally preferred docs for scoring boost). This reduces irrelevant citations and improves answers (e.g. “authorize vs capture” gets context from PAYMENT_LIFECYCLE, ARCHITECTURE).
+- **Search:** Naive keyword scoring over section heading + content; candidates are filtered by the agent’s allowed docs, preferred docs get a score boost; top sections (deduped by file) are retrieved (max 3 sections, ~1200 chars each).
 - **Citations:** Every reply includes a `citations` array with `file`, `heading`, `anchor` (slugified heading for deep links), and `excerpt` (first 160 chars of the section). The model is instructed to only claim facts supported by retrieved docs; if not found, it says so and suggests which doc to add/update.
 
 ## Environment variables
@@ -123,5 +124,5 @@ X-API-KEY: your_api_key
 - `app/services/ai/time_range_parser.rb` — Deterministic parser for “today”, “last 7 days”, “last week”, etc. (America/Los_Angeles, max 365 days).
 - `app/services/reporting/ledger_summary.rb` — Ledger totals by merchant and time range (charges, refunds, fees, net, counts, optional breakdown).
 - `app/helpers/ai_money_helper.rb` — Format cents as `"$12.34"`.
-- `app/services/ai/rag/` — Docs index, Markdown section extractor, retriever.
+- `app/services/ai/rag/` — Docs index, Markdown section extractor, retriever, **agent_doc_policy** (per-agent allowed/preferred docs).
 - `app/controllers/api/v1/ai/chat_controller.rb` — Single chat action: auth, rate limit, RAG, router, agent, JSON response (includes `data` for reporting agent).

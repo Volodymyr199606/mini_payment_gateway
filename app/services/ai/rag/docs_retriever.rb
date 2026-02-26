@@ -3,19 +3,26 @@
 module Ai
   module Rag
     # Retrieves top 2–3 doc sections for a message, deduped by file.
+    # Optional agent_key: restricts and boosts by AgentDocPolicy (allowed + preferred files).
     # Returns { context_text:, citations: [{ file:, heading:, anchor:, excerpt: }] }
     class DocsRetriever
       MAX_SECTIONS = 3
       MAX_CHARS_PER_SECTION = 1200
       EXCERPT_LENGTH = 160
 
-      def initialize(message)
+      def initialize(message, agent_key: nil)
         @message = message.to_s
+        @agent_key = agent_key
       end
 
       def call
         index = DocsIndex.instance
-        top_sections = index.search(@message, top_k: 5)
+        policy = AgentDocPolicy.for_agent(@agent_key) if @agent_key
+        search_opts = { top_k: 5 }
+        search_opts[:allowed_files] = policy[:allowed] if policy && policy[:allowed].present?
+        search_opts[:preferred_files] = policy[:preferred] if policy && policy[:preferred].present?
+
+        top_sections = index.search(@message, **search_opts)
         deduped = dedupe_by_file(top_sections, MAX_SECTIONS)
         context_parts = []
         citations = []

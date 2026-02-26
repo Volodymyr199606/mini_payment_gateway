@@ -55,11 +55,18 @@ module Ai
         @sections
       end
 
-      def search(query, top_k: 5)
+      # optional allowed_files: restrict to these doc paths (e.g. docs/PAYMENT_LIFECYCLE.md)
+      # optional preferred_files: add score boost for sections from these paths
+      def search(query, top_k: 5, allowed_files: nil, preferred_files: nil)
         terms = query.to_s.downcase.split(/\s+/).reject { |t| t.length < 2 }
         return [] if terms.empty?
 
-        scored = sections.map do |s|
+        candidate_sections = sections
+        candidate_sections = candidate_sections.select { |s| allowed_files.include?(s[:file]) } if allowed_files.present?
+        return [] if candidate_sections.empty?
+
+        preferred_set = (preferred_files || []).to_set
+        scored = candidate_sections.map do |s|
           score = 0
           text = "#{s[:heading]} #{s[:content]}".downcase
           terms.each do |term|
@@ -67,6 +74,7 @@ module Ai
             score += count * 2 if s[:heading].to_s.downcase.include?(term)
             score += count
           end
+          score += 10 if preferred_set.include?(s[:file])
           [score, s]
         end
         scored.select { |sc, _| sc.positive? }.sort_by { |sc, _| -sc }.first(top_k).map(&:last)

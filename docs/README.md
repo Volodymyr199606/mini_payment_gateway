@@ -3,6 +3,7 @@
 | Document | Purpose |
 |----------|---------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System overview, directory structure, service usage, implementation plan |
+| [PAYMENT_LIFECYCLE.md](PAYMENT_LIFECYCLE.md) | Authorize vs capture, statuses, void/refund, timeouts, ledger implications |
 | [SEQUENCE_DIAGRAMS.md](SEQUENCE_DIAGRAMS.md) | Mermaid sequence diagrams (authorize, capture, refund, webhook, idempotency) |
 | [DATA_FLOW.md](DATA_FLOW.md) | Payment lifecycle data, ledger conventions, entity relationships |
 | [SECURITY.md](SECURITY.md) | Auth, merchant scoping, PCI, webhooks, rate limiting |

@@ -25,11 +25,11 @@ module Api
             )
           end
 
-          retriever_result = ::Ai::Rag::DocsRetriever.new(message).call
+          agent_key = ::Ai::Router.new(message).call
+          retriever_result = ::Ai::Rag::DocsRetriever.new(message, agent_key: agent_key).call
           context_text = retriever_result[:context_text]
           citations = retriever_result[:citations]
 
-          agent_key = ::Ai::Router.new(message).call
           agent_class = agent_class_for(agent_key)
           agent = build_agent(agent_class, agent_key, message, context_text, citations)
 

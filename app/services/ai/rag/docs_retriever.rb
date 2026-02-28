@@ -53,13 +53,15 @@ module Ai
         text.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/\A-|-\z/, '')
       end
 
+      # Allow up to 2 sections per file so we can return both "Authorize (in this project)"
+      # and "Capture (in this project)" from PAYMENT_LIFECYCLE.md for authorize vs capture queries.
       def dedupe_by_file(sections, max)
-        seen = {}
+        file_counts = Hash.new(0)
         sections.each_with_object([]) do |s, acc|
           next if acc.size >= max
           key = s[:file]
-          next if seen[key]
-          seen[key] = true
+          next if file_counts[key] >= 2
+          file_counts[key] += 1
           acc << s
         end
       end

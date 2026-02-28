@@ -6,6 +6,8 @@ class PaymentIntent < ApplicationRecord
   belongs_to :payment_method, optional: true
   has_many :transactions, dependent: :destroy
 
+  before_validation :normalize_currency
+
   validates :amount_cents, presence: true, numericality: { greater_than: 0 }
   validates :currency, presence: true, length: { is: 3 }
   validates :status, inclusion: {
@@ -33,5 +35,11 @@ class PaymentIntent < ApplicationRecord
 
     captured_amount = transactions.where(kind: 'capture', status: 'succeeded').sum(:amount_cents)
     captured_amount - total_refunded_cents
+  end
+
+  private
+
+  def normalize_currency
+    self.currency = currency.to_s.strip.upcase if currency.present?
   end
 end

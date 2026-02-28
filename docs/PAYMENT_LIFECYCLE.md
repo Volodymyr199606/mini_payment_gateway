@@ -35,23 +35,23 @@ Valid transitions:
 
 ### Authorize (in this project)
 
-- **What it means:** Request to hold the payment amount. The simulated processor approves or declines; no money moves to the merchant.
+- **What it does:** Simulated processor authorize—request to hold the payment amount. The processor approves or declines; no money moves to the merchant.
 - **When it runs:** Only when the payment intent is in status `created`.
-- **On success:**
-  - A **Transaction** is created with `kind: 'authorize'`, `status: 'succeeded'`.
-  - The payment intent status is set to **`authorized`**.
-- **What does NOT happen:** No ledger entry is created. Funds are held, not settled. The merchant cannot “see” the money in their ledger until capture.
-- **On failure (including processor timeout):** A transaction with `kind: 'authorize'`, `status: 'failed'` is created, and the payment intent status is set to **`failed`**.
+- **Status transition on success:** Payment intent status is set to **`authorized`**. A **Transaction** is created with `kind: 'authorize'`, `status: 'succeeded'`.
+- **Timeout behavior (see [TIMEOUTS.md](TIMEOUTS.md)):** Authorize timeout → payment intent is set to **`failed`**. A transaction with `kind: 'authorize'`, `status: 'failed'`, `failure_code: 'timeout'` is created. Intent is terminal.
+- **Ledger behavior:** No ledger entries are created on authorize. Funds are held, not settled.
+- **Idempotency:** Authorize uses idempotency protection. Same idempotency key returns the same response; only one authorize transaction is created.
+- **On failure (non-timeout):** A transaction with `kind: 'authorize'`, `status: 'failed'` is created, and the payment intent status is set to **`failed`**.
 
 ### Capture (in this project)
 
-- **What it means:** Request to settle the previously authorized amount. Money is considered to move to the merchant.
+- **What it does:** Request to settle the previously authorized amount. Simulated processor capture; money is considered to move to the merchant.
 - **When it runs:** Only when the payment intent is in status `authorized` (and not already captured).
-- **On success:**
-  - A **Transaction** is created with `kind: 'capture'`, `status: 'succeeded'`.
-  - The payment intent status is set to **`captured`**.
-  - A **LedgerEntry** is created: `entry_type: 'charge'`, positive `amount_cents`. This is the only place a charge (money in) is written to the ledger.
-- **On failure (including processor timeout):** A transaction with `kind: 'capture'`, `status: 'failed'` is created; the payment intent status **remains `authorized`** (unchanged). No ledger entry is created.
+- **Status transition on success:** Payment intent status is set to **`captured`**. A **Transaction** is created with `kind: 'capture'`, `status: 'succeeded'`.
+- **Ledger entries created:** One **LedgerEntry** with `entry_type: 'charge'`, positive `amount_cents`. This is the only place a charge (money in) is written to the ledger. Fee entries if applicable.
+- **Timeout behavior (see [TIMEOUTS.md](TIMEOUTS.md)):** Capture timeout → payment intent status **remains `authorized`** (unchanged). A transaction with `kind: 'capture'`, `status: 'failed'`, `failure_code: 'timeout'` is created. No ledger entry is created.
+- **Idempotency:** Capture uses idempotency protection. Same idempotency key returns the same response; only one capture transaction and one charge ledger entry.
+- **On failure (non-timeout):** A transaction with `kind: 'capture'`, `status: 'failed'` is created; the payment intent status **remains `authorized`**. No ledger entry is created.
 
 ### Void (related action)
 

@@ -58,7 +58,7 @@ RSpec.describe 'AI chat API', type: :request do
       expect(body).to have_key('reply')
     end
 
-    it 'returns operational agent and citations from PAYMENT_LIFECYCLE or ARCHITECTURE for "authorize vs capture"' do
+    it 'returns operational agent and citations from PAYMENT_LIFECYCLE or TIMEOUTS for "authorize vs capture"' do
       _m, api_key = create_merchant_with_api_key
       stub_groq_and_retriever!
 
@@ -72,8 +72,35 @@ RSpec.describe 'AI chat API', type: :request do
       expect(body['agent']).to eq('operational')
       expect(body['citations']).to be_a(Array)
       citation_files = body['citations'].map { |c| c['file'] || c[:file] }.compact.map(&:to_s)
-      has_lifecycle_or_arch = citation_files.any? { |f| f.include?('PAYMENT_LIFECYCLE') || f.include?('ARCHITECTURE') }
-      expect(has_lifecycle_or_arch).to be true
+      has_lifecycle_or_timeouts = citation_files.any? { |f| f.include?('PAYMENT_LIFECYCLE') || f.include?('TIMEOUTS') }
+      expect(has_lifecycle_or_timeouts).to be true
+    end
+
+    it 'passes context including Authorize/Capture subsections when asking about authorize vs capture' do
+      _m, api_key = create_merchant_with_api_key
+      retriever_result = {
+        context_text: "[docs/PAYMENT_LIFECYCLE.md :: Authorize (in this project)]\n\n- Ledger: no entries on authorize.\n\n---\n[docs/PAYMENT_LIFECYCLE.md :: Capture (in this project)]\n\n- Ledger: charge entry on capture.",
+        citations: [
+          { file: 'docs/PAYMENT_LIFECYCLE.md', heading: 'Authorize (in this project)', anchor: 'authorize-in-this-project', excerpt: 'Ledger: no entries on authorize.' },
+          { file: 'docs/PAYMENT_LIFECYCLE.md', heading: 'Capture (in this project)', anchor: 'capture-in-this-project', excerpt: 'Ledger: charge entry on capture.' }
+        ]
+      }
+      allow(Ai::Rag::DocsRetriever).to receive(:new).and_return(
+        instance_double(Ai::Rag::DocsRetriever, call: retriever_result)
+      )
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'In this project, authorize holds funds (status -> authorized, no ledger). Capture settles (status -> captured, charge ledger). See PAYMENT_LIFECYCLE.md.' })
+      )
+
+      post '/api/v1/ai/chat',
+           params: { message: 'What is the difference between authorize and capture?' },
+           headers: api_headers(api_key),
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body['agent']).to eq('operational')
+      expect(body['citations'].map { |c| c['file'] || c[:file] }).to include('docs/PAYMENT_LIFECYCLE.md')
     end
   end
 end

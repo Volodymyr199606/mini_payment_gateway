@@ -7,6 +7,8 @@
     <%= csp_meta_tag %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "dashboard", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "dashboard_ai_chat", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "dashboard_ai_widget", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
   <body class="dashboard">
@@ -24,5 +26,11 @@
         <%= yield %>
       </div>
     </main>
+
+    <div class="ai-widget-root">
+      <%= link_to dashboard_ai_path, class: "ai-widget-button", "aria-label": "Open AI chat" do %>
+        <span class="ai-widget-button-icon">💬</span>
+      <% end %>
+    </div>
   </body>
 </html>

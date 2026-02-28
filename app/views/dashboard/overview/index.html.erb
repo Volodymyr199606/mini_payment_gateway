@@ -7,16 +7,19 @@
   <div class="summary-card">
     <div class="summary-label">Captured Volume</div>
     <div class="summary-value"><%= number_to_currency(@metrics[:captured_volume_cents] / 100.0) %></div>
+    <div class="summary-subtitle text-muted">All-time</div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Refunded</div>
     <div class="summary-value text-error"><%= number_to_currency(@metrics[:refunded_cents] / 100.0) %></div>
+    <div class="summary-subtitle text-muted">All-time</div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Net</div>
     <div class="summary-value <%= @metrics[:net_cents] >= 0 ? 'text-success' : 'text-error' %>">
       <%= number_to_currency(@metrics[:net_cents] / 100.0) %>
     </div>
+    <div class="summary-subtitle text-muted">All-time</div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Failed Webhooks</div>
@@ -65,6 +68,7 @@
 <div class="card">
   <div class="card-header">
     <h2 class="card-title">API Health (daily counters)</h2>
+    <p class="page-description" style="margin: 0;">Last 24h</p>
     <p class="page-description" style="margin: 0.25rem 0 0 0;">Operational metrics for platform stability.</p>
   </div>
   <div class="card-body">

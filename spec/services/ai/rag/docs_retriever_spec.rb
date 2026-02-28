@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Ai::Rag::DocsRetriever do
+  before { Ai::Rag::DocsIndex.reset! }
+
   it 'returns context_text and citations' do
     retriever = described_class.new('refund API')
     result = retriever.call
@@ -16,5 +18,13 @@ RSpec.describe Ai::Rag::DocsRetriever do
       expect(c).to have_key(:excerpt)
       expect(c[:excerpt].to_s.length).to be <= 160
     end
+  end
+
+  it 'returns "Authorize (in this project)" and "Capture (in this project)" subsections for authorize vs capture query' do
+    retriever = described_class.new('authorize vs capture', agent_key: :operational)
+    result = retriever.call
+    context_text = result[:context_text].to_s
+    expect(context_text).to include('Authorize (in this project)')
+    expect(context_text).to include('Capture (in this project)')
   end
 end

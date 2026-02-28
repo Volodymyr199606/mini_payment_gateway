@@ -8,8 +8,8 @@ RSpec.describe 'Idempotency API', type: :request do
     stub_webhook_delivery
   end
 
-  # 8. Authorize idempotency: same key → same response, only 1 auth transaction + ledger entries
-  it 'authorize idempotency: same key returns same response, only 1 auth transaction and ledger entries' do
+  # 8. Authorize idempotency: same key → same response, only 1 auth transaction (no ledger on authorize)
+  it 'authorize idempotency: same key returns same response, only 1 auth transaction' do
     m, key = create_merchant_with_api_key
     cust = Customer.create!(merchant: m, email: "cust_#{SecureRandom.hex(4)}@example.com")
     pm = PaymentMethod.create!(customer: cust, method_type: 'card', last4: '4242', brand: 'Visa', exp_month: 12, exp_year: 2026)
@@ -33,7 +33,8 @@ RSpec.describe 'Idempotency API', type: :request do
 
     expect(second_body).to eq(first_body)
     expect(pi.reload.transactions.where(kind: 'authorize', status: 'succeeded').count).to eq(1)
-    expect(pi.merchant.ledger_entries.where(entry_type: 'charge').count).to eq(1)
+    # Ledger entries are created on capture, not authorize
+    expect(pi.merchant.ledger_entries.where(entry_type: 'charge').count).to eq(0)
   end
 
   # 9. Capture idempotency: same key → only 1 capture transaction + ledger entries

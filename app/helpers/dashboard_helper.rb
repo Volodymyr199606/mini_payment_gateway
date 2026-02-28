@@ -33,6 +33,7 @@ module DashboardHelper
              when :payment_intents then request.path.match?(%r{/dashboard/payment_intents})
              when :ledger then current_page?(dashboard_ledger_index_path)
              when :webhooks then current_page?(dashboard_webhooks_path)
+             when :ai then current_page?(dashboard_ai_path)
              else false
              end
     active ? 'subnav-tab-active' : ''

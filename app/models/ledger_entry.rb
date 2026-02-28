@@ -4,6 +4,8 @@ class LedgerEntry < ApplicationRecord
   belongs_to :merchant
   belongs_to :payment_transaction, class_name: 'Transaction', optional: true, foreign_key: 'transaction_id'
 
+  before_validation :normalize_currency
+
   validates :entry_type, inclusion: { in: %w[charge refund fee] }
   validates :amount_cents, presence: true
   validates :currency, presence: true, length: { is: 3 }
@@ -13,4 +15,10 @@ class LedgerEntry < ApplicationRecord
   scope :charges, -> { where(entry_type: 'charge') }
   scope :refunds, -> { where(entry_type: 'refund') }
   scope :fees, -> { where(entry_type: 'fee') }
+
+  private
+
+  def normalize_currency
+    self.currency = currency.to_s.strip.upcase if currency.present?
+  end
 end

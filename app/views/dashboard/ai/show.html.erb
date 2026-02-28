@@ -1,0 +1,40 @@
+<div
+  class="ai-chat-page"
+  data-controller="dashboard-ai-chat"
+  data-dashboard-ai-chat-url-value="<%= dashboard_ai_chat_path %>"
+>
+  <div class="page-header">
+    <h1 class="page-title">AI Chat</h1>
+    <p class="page-description">Ask questions about the payment gateway. Uses session auth—no API key needed.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="ai-transcript ai-chat-transcript" data-dashboard-ai-chat-target="transcript">
+        <p class="text-muted">Send a message to start. Example: "What is the difference between authorize and capture?"</p>
+      </div>
+
+      <form data-action="submit->dashboard-ai-chat#send" class="ai-chat-form">
+        <div class="ai-chat-input-row">
+          <textarea
+            data-dashboard-ai-chat-target="input"
+            name="message"
+            placeholder="Type your question..."
+            rows="3"
+            class="ai-chat-input"
+          ></textarea>
+          <div class="ai-chat-send-wrap">
+            <span data-dashboard-ai-chat-target="statusIcon" class="ai-status-icon ai-hidden" aria-hidden="true"></span>
+            <button
+              type="submit"
+              data-dashboard-ai-chat-target="sendButton"
+              class="btn btn-primary"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

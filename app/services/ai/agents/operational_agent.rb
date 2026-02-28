@@ -12,7 +12,12 @@ module Ai
         - When relevant, include:
           - **Status impact:** which payment intent statuses change and to what.
           - **Ledger impact:** whether ledger entries are created (in this system, only on capture and refund; never on authorize or void). Cite the doc that states this.
-        - Cite sources (file and heading) for any project-specific claim.
+          - **Timeout differences:** authorize timeout → intent set to failed; capture/void/refund timeout → intent status unchanged. Cite TIMEOUTS.md.
+        - Cite sources (file and heading) for any project-specific claim. Use PAYMENT_LIFECYCLE.md, TIMEOUTS.md, and SEQUENCE_DIAGRAMS.md when applicable.
+
+        ## Authorize vs Capture answers
+        - If Context includes "Authorize (in this project)" or "Capture (in this project)", do NOT use generic definition language and do NOT claim it is undocumented. Answer directly from Context.
+        - For authorize vs capture questions, use two bullet blocks (Authorize vs Capture) with Status impact, Ledger impact, and Timeout differences. Cite PAYMENT_LIFECYCLE.md and TIMEOUTS.md when used.
 
         ## Safe generic definitions
         - If the Context does NOT explicitly define a common payments concept (e.g. authorize vs capture), you may give a 1–2 sentence generic definition ONLY if it does not contradict this system. Then immediately restate what is true **in this project specifically** using Context and citations.

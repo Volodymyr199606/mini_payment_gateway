@@ -26,6 +26,9 @@ Rails.application.routes.draw do
     resources :ledger, only: [:index], controller: 'ledger'
     resources :webhooks, only: [:index], controller: 'webhooks'
 
+    get 'ai', to: 'ai#show', as: :ai
+    post 'ai/chat', to: 'ai#chat', as: :ai_chat
+
     root to: 'overview#index'
   end
 

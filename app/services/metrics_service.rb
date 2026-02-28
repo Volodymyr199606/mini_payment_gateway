@@ -4,7 +4,11 @@
 # No stateful counters, no external dependencies.
 #
 # Use MetricsService.compute(merchant: m) for merchant-scoped metrics.
+# Financial KPIs (captured_volume, refunded, net) use LedgerEntry as single source of truth via Reporting::LedgerSummary.
 class MetricsService
+  # All-time range for financial KPIs (matches dashboard cards and reporting agent default).
+  ALL_TIME_FROM = Time.zone.parse('2000-01-01 00:00:00')
+
   def self.compute(merchant:)
     new(merchant: merchant).compute
   end
@@ -21,10 +25,10 @@ class MetricsService
       transactions_refunded: transactions_refunded,
       webhook_events_received: webhook_events_received,
       webhook_delivery_failures: webhook_delivery_failures,
-      # Financial KPIs (for dashboard consistency)
-      captured_volume_cents: captured_volume_cents,
-      refunded_cents: refunded_cents,
-      net_cents: net_cents,
+      # Financial KPIs (LedgerEntry single source of truth, all-time)
+      captured_volume_cents: ledger_totals[:charges_cents],
+      refunded_cents: ledger_totals[:refunds_cents],
+      net_cents: ledger_totals[:net_cents],
       # API Health (last 24h, merchant-scoped)
       api_requests_total: api_requests_total_24h,
       api_errors_total: api_errors_total_24h,
@@ -56,23 +60,18 @@ class MetricsService
     @merchant.webhook_events.failed.count
   end
 
-  def captured_volume_cents
-    @merchant.payment_intents
-             .joins(:transactions)
-             .where(transactions: { kind: 'capture', status: 'succeeded' })
-             .sum('transactions.amount_cents')
-  end
-
-  def refunded_cents
-    # Refunds are stored negative; we return the magnitude (positive) for display.
-    @merchant.ledger_entries.refunds.sum(:amount_cents).abs
-  end
-
-  # net_cents = charges − refunded_cents − fees (see docs/METRICS.md ledger sign conventions).
-  def net_cents
-    total_charges = @merchant.ledger_entries.charges.sum(:amount_cents)
-    total_fees = @merchant.ledger_entries.fees.sum(:amount_cents)
-    total_charges - refunded_cents - total_fees
+  # All-time totals from LedgerEntry via Reporting::LedgerSummary.
+  def ledger_totals
+    @ledger_totals ||= begin
+      result = Reporting::LedgerSummary.new(
+        merchant_id: @merchant.id,
+        from: ALL_TIME_FROM,
+        to: Time.current,
+        currency: 'USD',
+        group_by: 'none'
+      ).call
+      result[:totals]
+    end
   end
 
   # API request stats: sum of daily counters for recent activity (1–2 calendar days; see docs/METRICS.md).

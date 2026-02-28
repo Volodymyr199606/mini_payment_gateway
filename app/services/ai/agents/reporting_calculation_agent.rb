@@ -5,8 +5,8 @@ module Ai
     # Answers "how much" / totals questions using real ledger data via Reporting::LedgerSummary.
     # LLM is used only to format the reply; numbers come from the tool only.
     class ReportingCalculationAgent < BaseAgent
-      DEFAULT_RANGE = 'last 7 days'
       DISCLAIMER = 'Totals are based on ledger entries created on capture/refund (not authorize/void).'
+      INFERRED_NOTE = "You didn't specify a range, so I used ALL TIME. Ask 'last 30 days' if you want a narrower window."
 
       def initialize(merchant_id:, message:, context_text: nil, citations: [])
         super(merchant_context: nil, message: message, context_text: context_text, citations: citations)
@@ -14,16 +14,16 @@ module Ai
       end
 
       def call
-        from_time, to_time = parse_time_range
+        range_info = ::Ai::TimeRangeParser.extract_and_parse(@message)
         summary = ::Reporting::LedgerSummary.new(
           merchant_id: @merchant_id,
-          from: from_time,
-          to: to_time,
+          from: range_info[:from],
+          to: range_info[:to],
           currency: 'USD',
           group_by: 'none'
         ).call
 
-        reply = format_reply(summary, from_time, to_time)
+        reply = format_reply(summary, range_info)
         {
           reply: reply,
           citations: @citations,
@@ -35,41 +35,30 @@ module Ai
 
       private
 
-      def parse_time_range
-        phrase = detect_time_phrase
-        ::Ai::TimeRangeParser.parse(phrase)
-      rescue ::Ai::TimeRangeParser::ParseError
-        # Fallback to default range (max 365 days is enforced in parser)
-        ::Ai::TimeRangeParser.parse(DEFAULT_RANGE)
-      end
-
-      def detect_time_phrase
-        msg = @message.downcase
-        ::Ai::TimeRangeParser::PHRASES.each_key do |phrase|
-          return phrase if msg.include?(phrase)
-        end
-        DEFAULT_RANGE
-      end
-
-      def format_reply(summary, from_time, to_time)
+      def format_reply(summary, range_info)
         totals = summary[:totals]
-        from_s = from_time.strftime('%Y-%m-%d')
-        to_s = to_time.strftime('%Y-%m-%d')
 
         charges_s = AiMoneyHelper.format_cents(totals[:charges_cents])
         refunds_s = AiMoneyHelper.format_cents(totals[:refunds_cents])
         fees_s = AiMoneyHelper.format_cents(totals[:fees_cents])
         net_s = AiMoneyHelper.format_cents(totals[:net_cents])
 
+        suffix = range_info[:inferred] ? ' (inferred)' : ''
+        first_line = "Range: #{range_info[:range_label]}#{suffix}"
+        inferred_note = range_info[:inferred] && range_info[:default_used] == 'all_time' ? "\n\n#{INFERRED_NOTE}" : ''
+        entry_count = totals[:charges_cents].zero? && totals[:refunds_cents].zero? ? 'No' : (summary.dig(:counts, :captures_count).to_i + summary.dig(:counts, :refunds_count).to_i)
+
         <<~TEXT.strip
-          For #{from_s} through #{to_s} (#{summary[:currency]}):
+          #{first_line}
+
+          For #{range_info[:from].strftime('%Y-%m-%d')} through #{range_info[:to].strftime('%Y-%m-%d')} (#{summary[:currency]}):
           • Charges: #{charges_s}
           • Refunds: #{refunds_s}
           • Fees: #{fees_s}
           • Net: #{net_s}
-          (#{totals[:charges_cents].zero? && totals[:refunds_cents].zero? ? 'No' : summary.dig(:counts, :captures_count).to_i + summary.dig(:counts, :refunds_count).to_i} ledger entries in range.)
+          (#{entry_count} ledger entries in range.)
 
-          #{DISCLAIMER}
+          #{DISCLAIMER}#{inferred_note}
         TEXT
       end
     end

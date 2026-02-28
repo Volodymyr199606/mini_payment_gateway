@@ -14,7 +14,7 @@ RSpec.describe CaptureService, 'transaction rollback' do
     Merchant.last
   end
 
-  let(:customer) { Customer.create!(merchant: merchant, email: 'test@example.com') }
+  let(:customer) { Customer.create!(merchant: merchant, email: "cust_#{SecureRandom.hex(4)}@example.com") }
   let(:payment_method) do
     PaymentMethod.create!(
       customer: customer,
@@ -33,15 +33,9 @@ RSpec.describe CaptureService, 'transaction rollback' do
       payment_method: payment_method,
       amount_cents: 5000,
       currency: 'USD',
-      status: 'created'
+      status: 'authorized'
     )
-    Transaction.create!(
-      payment_intent: pi,
-      kind: 'authorize',
-      status: 'succeeded',
-      amount_cents: 5000
-    )
-    pi.update!(status: 'authorized')
+    Transaction.create!(payment_intent: pi, kind: 'authorize', status: 'succeeded', amount_cents: 5000)
     pi
   end
 
@@ -53,7 +47,6 @@ RSpec.describe CaptureService, 'transaction rollback' do
     webhook_count_before = WebhookEvent.count
 
     allow(LedgerService).to receive(:call).and_raise(RuntimeError.new('Simulated ledger failure'))
-
     allow_any_instance_of(CaptureService).to receive(:simulate_processor_capture).and_return(true)
 
     service = CaptureService.call(payment_intent: payment_intent)
@@ -62,6 +55,7 @@ RSpec.describe CaptureService, 'transaction rollback' do
     expect(service.errors).to include(/Capture failed/)
 
     payment_intent.reload
+    # After rollback, PI stays 'authorized'; capture never committed
     expect(payment_intent.status).to eq('authorized')
 
     expect(Transaction.count).to eq(tx_count_before)

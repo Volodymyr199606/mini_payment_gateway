@@ -72,8 +72,34 @@
   80%      { transform: translateX(4px); }
 }
 
+/* Transcript container: fixed height, scroll */
+.ai-chat-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.ai-chat-transcript .ai-transcript-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ai-chat-error {
+  padding: 0.5rem 0.75rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
 /* Chat bubbles */
-.ai-transcript {
+.ai-transcript,
+.ai-transcript-inner {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -108,6 +134,12 @@
   background: #f3f4f6;
   color: #1f2937;
   border: 1px solid #e5e7eb;
+}
+
+.ai-bubble-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
 }
 
 .ai-bubble-content {

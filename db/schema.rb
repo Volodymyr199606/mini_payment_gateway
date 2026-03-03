@@ -10,9 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_17_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_02_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "ai_chat_messages", force: :cascade do |t|
+    t.bigint "merchant_id", null: false
+    t.string "role", null: false
+    t.text "content", null: false
+    t.string "agent"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["merchant_id", "created_at"], name: "index_ai_chat_messages_on_merchant_id_and_created_at"
+    t.index ["merchant_id"], name: "index_ai_chat_messages_on_merchant_id"
+  end
 
   create_table "api_request_stats", force: :cascade do |t|
     t.bigint "merchant_id", null: false
@@ -156,6 +167,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_17_000001) do
     t.index ["merchant_id"], name: "index_webhook_events_on_merchant_id"
   end
 
+  add_foreign_key "ai_chat_messages", "merchants"
   add_foreign_key "api_request_stats", "merchants"
   add_foreign_key "audit_logs", "merchants"
   add_foreign_key "customers", "merchants"

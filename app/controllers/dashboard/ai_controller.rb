@@ -10,9 +10,9 @@ module Dashboard
     end
 
     def chat
-      msg = chat_params[:message].to_s.strip
+      msg = parse_message_param.to_s.strip
       if msg.blank?
-        return render json: { error: 'message_required' }, status: :unprocessable_entity
+        return render json: { error: 'message_required', message: 'Message is required' }, status: :bad_request
       end
 
       if ai_rate_limited?
@@ -21,6 +21,12 @@ module Dashboard
           message: "AI chat limit: #{AI_RATE_LIMIT} requests per #{AI_RATE_WINDOW} seconds."
         }, status: :too_many_requests
       end
+
+      store = ::Ai::ConversationStore.new
+      store.append!(merchant_id: current_merchant.id, role: "user", content: msg)
+
+      recent = store.recent_messages(merchant_id: current_merchant.id, limit: 10)
+      conversation_history = recent.size > 1 ? recent[0..-2] : []
 
       agent_param = chat_params[:agent].to_s.strip
       agent_key = if agent_param.present? && agent_param != "auto"
@@ -33,11 +39,13 @@ module Dashboard
       citations = retriever_result[:citations]
 
       agent_class = agent_class_for(agent_key)
-      agent = build_agent(agent_class, agent_key, msg, context_text, citations)
+      agent = build_agent(agent_class, agent_key, msg, context_text, citations, conversation_history: conversation_history)
 
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       out = agent.call
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+
+      store.append!(merchant_id: current_merchant.id, role: "assistant", content: out[:reply], agent: agent_key.to_s)
 
       increment_ai_chat_count
 
@@ -59,11 +67,22 @@ module Dashboard
       params.permit(:message, :agent)
     end
 
-    def build_agent(agent_class, agent_key, message, context_text, citations)
+    # Accept JSON body { message: "..." } or form-encoded message param.
+    def parse_message_param
+      return chat_params[:message] if params.key?(:message) || params.key?("message")
+      return nil unless request.content_type.to_s.include?("application/json")
+
+      parsed = JSON.parse(request.raw_post)
+      parsed["message"] || parsed[:message]
+    rescue JSON::ParserError
+      nil
+    end
+
+    def build_agent(agent_class, agent_key, message, context_text, citations, conversation_history: [])
       if agent_key == :reporting_calculation
         agent_class.new(merchant_id: current_merchant.id, message: message, context_text: context_text, citations: citations)
       else
-        agent_class.new(message: message, context_text: context_text, citations: citations)
+        agent_class.new(message: message, context_text: context_text, citations: citations, conversation_history: conversation_history)
       end
     end
 

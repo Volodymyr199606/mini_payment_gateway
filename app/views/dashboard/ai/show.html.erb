@@ -1,8 +1,4 @@
-<div
-  class="ai-chat-page"
-  data-controller="dashboard-ai-chat"
-  data-dashboard-ai-chat-chat-url-value="<%= dashboard_ai_chat_path %>"
->
+<div class="ai-chat-page">
   <div class="page-header">
     <h1 class="page-title">AI Chat</h1>
     <p class="page-description">Ask questions about the payment gateway. Uses session auth—no API key needed.</p>
@@ -10,28 +6,142 @@
 
   <div class="card">
     <div class="card-body">
-      <div class="ai-chat-transcript">
-        <div class="ai-transcript-inner" data-dashboard-ai-chat-target="transcript">
-          <p class="text-muted">Send a message to start. Example: "What is the difference between authorize and capture?"</p>
+      <div
+        class="ai-chat-form"
+        id="ai-chat-form"
+        data-chat-url="<%= dashboard_ai_chat_path %>"
+      >
+        <div class="ai-chat-transcript">
+          <div class="ai-transcript-inner" data-target="transcript">
+            <p class="text-muted">Send a message to start. Example: "What is the difference between authorize and capture?"</p>
+          </div>
+          <div data-target="error" class="ai-chat-error" hidden></div>
         </div>
-        <div data-dashboard-ai-chat-target="error" class="ai-chat-error" hidden></div>
-      </div>
-
-      <form data-action="submit->dashboard-ai-chat#send" data-turbo="false" class="ai-chat-form">
         <div class="ai-chat-input-row">
           <textarea
-            data-dashboard-ai-chat-target="input"
             name="message"
+            id="ai-chat-message"
             placeholder="Type your question..."
             rows="3"
             class="ai-chat-input"
           ></textarea>
           <div class="ai-chat-send-wrap">
-            <span data-dashboard-ai-chat-target="statusIcon" class="ai-status-icon ai-hidden" aria-hidden="true"></span>
-            <button type="submit" data-dashboard-ai-chat-target="sendButton" class="btn btn-primary">Send</button>
+            <span class="ai-status-icon ai-hidden" aria-hidden="true"></span>
+            <button type="button" id="ai-chat-send-btn" class="btn btn-primary">Send</button>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   </div>
+
+  <%# Fallback handler: ensures Send works if Stimulus controller does not connect %>
+  <script>
+    (function() {
+      var form = document.getElementById('ai-chat-form');
+      var btn = document.getElementById('ai-chat-send-btn');
+      var input = document.getElementById('ai-chat-message');
+      if (!form || !btn || !input) return;
+      var chatUrl = form.getAttribute('data-chat-url') || '/dashboard/ai/chat';
+      var transcript = form.querySelector('[data-target="transcript"]');
+      var errorEl = form.querySelector('[data-target="error"]');
+      var sendBtnTarget = btn;
+      var csrfToken = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').content;
+
+      function handleSend(e) {
+        e.preventDefault();
+        var msg = input.value.trim();
+        if (!msg) {
+          if (errorEl) { errorEl.textContent = 'Please enter a message.'; errorEl.hidden = false; }
+          return;
+        }
+        if (errorEl) { errorEl.textContent = ''; errorEl.hidden = true; }
+
+        // Append user bubble
+        if (transcript) {
+          var muted = transcript.querySelector('.text-muted');
+          if (muted) transcript.innerHTML = '';
+          var wrap = document.createElement('div');
+          wrap.className = 'ai-bubble-row ai-bubble-row-user';
+          var bubble = document.createElement('div');
+          bubble.className = 'ai-bubble ai-bubble-user';
+          bubble.textContent = msg;
+          wrap.appendChild(bubble);
+          transcript.appendChild(wrap);
+          var sc = transcript.closest('.ai-chat-transcript') || transcript;
+          if (sc) sc.scrollTop = sc.scrollHeight;
+        }
+        input.value = '';
+        if (sendBtnTarget) sendBtnTarget.disabled = true;
+
+        fetch(chatUrl, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-Token': csrfToken || ''
+          },
+          body: JSON.stringify({ message: msg, agent: 'auto' })
+        })
+          .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
+          .then(function(result) {
+            if (result.ok) {
+              var reply = result.data.reply || 'No reply.';
+              var agent = result.data.agent || 'agent';
+              var modelUsed = result.data.model_used || '—';
+              var citations = result.data.citations || [];
+              if (transcript) {
+                var aw = document.createElement('div');
+                aw.className = 'ai-bubble-row ai-bubble-row-assistant';
+                var ab = document.createElement('div');
+                ab.className = 'ai-bubble ai-bubble-assistant';
+                var rt = document.createElement('div');
+                rt.className = 'ai-bubble-content';
+                rt.textContent = reply;
+                ab.appendChild(rt);
+                if (citations.length > 0) {
+                  var details = document.createElement('details');
+                  details.className = 'ai-sources';
+                  var summary = document.createElement('summary');
+                  summary.textContent = 'Sources';
+                  details.appendChild(summary);
+                  var ul = document.createElement('ul');
+                  ul.className = 'ai-sources-list';
+                  for (var i = 0; i < citations.length; i++) {
+                    var c = citations[i];
+                    var file = c.file || '';
+                    var heading = c.heading || '';
+                    var excerpt = c.excerpt || '';
+                    var li = document.createElement('li');
+                    li.textContent = file + (heading ? ' :: ' + heading : '') + (excerpt ? ' — ' + excerpt : '');
+                    ul.appendChild(li);
+                  }
+                  details.appendChild(ul);
+                  ab.appendChild(details);
+                }
+                var meta = document.createElement('div');
+                meta.className = 'ai-bubble-meta';
+                meta.textContent = 'agent: ' + agent + ' · model: ' + modelUsed;
+                ab.appendChild(meta);
+                aw.appendChild(ab);
+                transcript.appendChild(aw);
+                var sc = transcript.closest('.ai-chat-transcript') || transcript;
+                if (sc) sc.scrollTop = sc.scrollHeight;
+              }
+            } else {
+              var errMsg = (result.data && (result.data.message || result.data.error)) || ('Request failed (' + (result.status || 'unknown') + ')');
+              if (errorEl) { errorEl.textContent = errMsg; errorEl.hidden = false; }
+            }
+          })
+          .catch(function(err) {
+            if (errorEl) { errorEl.textContent = err.message || 'Network error'; errorEl.hidden = false; }
+          })
+          .finally(function() {
+            if (sendBtnTarget) sendBtnTarget.disabled = false;
+          });
+      }
+
+      btn.addEventListener('click', handleSend);
+    })();
+  </script>
 </div>

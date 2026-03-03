@@ -9,6 +9,12 @@ module Ai
       MAX_SECTIONS = 3
       MAX_CHARS_PER_SECTION = 1200
       EXCERPT_LENGTH = 160
+      CORE_DOCS = %w[
+        docs/PAYMENT_LIFECYCLE.md
+        docs/ARCHITECTURE.md
+        docs/REFUNDS_API.md
+        docs/SECURITY.md
+      ].freeze
 
       def initialize(message, agent_key: nil)
         @message = message.to_s
@@ -18,9 +24,11 @@ module Ai
       def call
         index = DocsIndex.instance
         policy = AgentDocPolicy.for_agent(@agent_key) if @agent_key
-        search_opts = { top_k: 5 }
+        search_opts = { top_k: 6 }
         search_opts[:allowed_files] = policy[:allowed] if policy && policy[:allowed].present?
-        search_opts[:preferred_files] = policy[:preferred] if policy && policy[:preferred].present?
+        preferred = (policy && policy[:preferred].present? ? policy[:preferred] : []).dup
+        preferred.concat(CORE_DOCS)
+        search_opts[:preferred_files] = preferred.uniq
 
         top_sections = index.search(@message, **search_opts)
         deduped = dedupe_by_file(top_sections, MAX_SECTIONS)

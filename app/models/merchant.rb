@@ -11,6 +11,7 @@ class Merchant < ApplicationRecord
   has_many :audit_logs, dependent: :destroy
   has_many :idempotency_records, dependent: :destroy
   has_many :api_request_stats, dependent: :destroy
+  has_many :ai_chat_sessions, dependent: :destroy
   has_many :ai_chat_messages, dependent: :destroy
 
   validates :name, presence: true

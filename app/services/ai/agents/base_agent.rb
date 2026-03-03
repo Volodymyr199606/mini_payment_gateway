@@ -5,6 +5,7 @@ module Ai
     class BaseAgent
       # Minimum context length (chars) to consider calling the LLM; below this we return a deterministic fallback.
       LOW_CONTEXT_THRESHOLD = 80
+      MAX_MEMORY_CHARS = 2000
 
       SYSTEM_RULES = <<~TEXT
         You are a read-only assistant for a payment gateway. Use ONLY the provided Context sections to answer.
@@ -34,12 +35,13 @@ module Ai
         - Do not instruct users to run real payment actions (authorize, capture, refund, void) or to store card numbers (PAN). You only explain and guide.
       TEXT
 
-      def initialize(merchant_context: nil, message:, context_text:, citations: [], conversation_history: [])
+      def initialize(merchant_context: nil, message:, context_text:, citations: [], conversation_history: [], memory_text: '')
         @merchant_context = merchant_context
         @message = message.to_s
         @context_text = context_text
         @citations = citations
         @conversation_history = conversation_history.to_a
+        @memory_text = memory_text.to_s.strip
       end
 
       def call
@@ -92,14 +94,21 @@ module Ai
       end
 
       def build_messages
-        system_content = system_instructions + "\n\nContext (use only this):\n#{@context_text || 'No context retrieved.'}"
+        system_content = system_instructions
+
+        # Memory (summary + recent messages) before RAG context; capped to keep token budget sane.
+        if @memory_text.present?
+          memory_block = @memory_text.length > MAX_MEMORY_CHARS ? @memory_text.truncate(MAX_MEMORY_CHARS) : @memory_text
+          system_content += "\n\nMemory:\n#{memory_block}"
+        end
+
+        system_content += "\n\nContext (use only this):\n#{@context_text || 'No context retrieved.'}"
         user_content = @message
         user_content += "\n\n[Context ends. Answer using only the context above. Do NOT embed citation strings in your reply; citations are passed separately.]" if @context_text.present?
 
+        # When memory is present, recent messages are in Memory; otherwise use conversation_history.
         messages = [{ role: 'system', content: system_content }]
-        @conversation_history.each do |h|
-          messages << { role: h[:role].to_s, content: h[:content].to_s }
-        end
+        @conversation_history.each { |h| messages << { role: h[:role].to_s, content: h[:content].to_s } } if @memory_text.blank?
         messages << { role: 'user', content: user_content }
         messages
       end

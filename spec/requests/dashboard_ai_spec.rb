@@ -122,5 +122,84 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       expect(message_contents).to include('Authorize holds funds')
       expect(message_contents).to include('So capture creates a ledger entry')
     end
+
+    it 'finds or creates AiChatSession for the merchant and persists user message' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'OK', model_used: 'test', fallback_used: false })
+      )
+
+      expect { post_chat('Hello') }.to change(AiChatSession, :count).by(1).and change(AiChatMessage, :count).by(2)
+
+      session = merchant.ai_chat_sessions.reload.last
+      expect(session).to be_present
+      user_msg = session.ai_chat_messages.find_by(role: 'user')
+      expect(user_msg).to be_present
+      expect(user_msg.content).to eq('Hello')
+    end
+
+    it 'includes Memory section when session already has messages' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+
+      chat_calls = []
+      client = instance_double(Ai::GroqClient)
+      allow(client).to receive(:chat) do |messages:, **_kwargs|
+        chat_calls << messages
+        { content: 'Follow-up reply.', model_used: 'test', fallback_used: false }
+      end
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      post_chat('What is authorize?')
+      expect(response).to have_http_status(:ok)
+
+      post_chat('And capture?')
+      expect(response).to have_http_status(:ok)
+
+      expect(chat_calls.size).to eq(2)
+      follow_up_messages = chat_calls.last
+      system_msg = follow_up_messages.find { |m| (m[:role] || m['role']) == 'system' }
+      expect(system_msg).to be_present
+      system_content = (system_msg[:content] || system_msg['content']).to_s
+      expect(system_content).to include('Memory:')
+      expect(system_content).to include('What is authorize?')
+      expect(system_content).to include('Follow-up reply.')
+    end
+
+    it 'POST /dashboard/ai/chat_sessions/reset creates fresh session and returns ok when signed in' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+      tok = csrf_token
+
+      expect { post dashboard_reset_ai_chat_session_path, headers: { 'Accept' => 'application/json', 'X-CSRF-Token' => tok }, params: {} }
+        .to change { merchant.ai_chat_sessions.reload.count }.by(1)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['ok']).to be true
+      expect(AiChatSession.where(merchant: merchant).count).to be >= 1
+    end
+
+    it 'persists assistant reply as AiChatMessage on the same session' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'Stubbed reply.', model_used: 'test', fallback_used: false })
+      )
+
+      post_chat('What is a refund?')
+
+      session = merchant.ai_chat_sessions.reload.last
+      expect(session.ai_chat_messages.count).to eq(2)
+      expect(session.ai_chat_messages.pluck(:role)).to match_array(%w[user assistant])
+      assistant_msg = session.ai_chat_messages.find_by(role: 'assistant')
+      expect(assistant_msg.content).to eq('Stubbed reply.')
+    end
   end
 end

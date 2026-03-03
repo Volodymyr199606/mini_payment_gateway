@@ -9,6 +9,11 @@ module Dashboard
       # Renders the AI chat page
     end
 
+    def reset_chat_session
+      current_merchant.ai_chat_sessions.create!
+      render json: { ok: true }
+    end
+
     def chat
       msg = parse_message_param.to_s.strip
       if msg.blank?
@@ -22,11 +27,17 @@ module Dashboard
         }, status: :too_many_requests
       end
 
-      store = ::Ai::ConversationStore.new
-      store.append!(merchant_id: current_merchant.id, role: "user", content: msg)
+      chat_session = find_or_create_chat_session
+      AiChatMessage.create!(
+        ai_chat_session: chat_session,
+        merchant_id: current_merchant.id,
+        role: 'user',
+        content: msg
+      )
 
-      recent = store.recent_messages(merchant_id: current_merchant.id, limit: 10)
-      conversation_history = recent.size > 1 ? recent[0..-2] : []
+      ctx = ::Ai::ConversationContextBuilder.call(chat_session, max_turns: 8)
+      memory_text = ctx[:memory_text].to_s
+      conversation_history = memory_text.present? ? [] : chat_session.ai_chat_messages.chronological.limit(10).map { |m| { role: m.role, content: m.content } }[0..-2] || []
 
       agent_param = chat_params[:agent].to_s.strip
       agent_key = if agent_param.present? && agent_param != "auto"
@@ -39,13 +50,19 @@ module Dashboard
       citations = retriever_result[:citations]
 
       agent_class = agent_class_for(agent_key)
-      agent = build_agent(agent_class, agent_key, msg, context_text, citations, conversation_history: conversation_history)
+      agent = build_agent(agent_class, agent_key, msg, context_text, citations, conversation_history: conversation_history, memory_text: memory_text)
 
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       out = agent.call
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
 
-      store.append!(merchant_id: current_merchant.id, role: "assistant", content: out[:reply], agent: agent_key.to_s)
+      AiChatMessage.create!(
+        ai_chat_session: chat_session,
+        merchant_id: current_merchant.id,
+        role: 'assistant',
+        content: out[:reply],
+        agent: agent_key.to_s
+      )
 
       increment_ai_chat_count
 
@@ -78,11 +95,17 @@ module Dashboard
       nil
     end
 
-    def build_agent(agent_class, agent_key, message, context_text, citations, conversation_history: [])
+    def build_agent(agent_class, agent_key, message, context_text, citations, conversation_history: [], memory_text: '')
       if agent_key == :reporting_calculation
         agent_class.new(merchant_id: current_merchant.id, message: message, context_text: context_text, citations: citations)
       else
-        agent_class.new(message: message, context_text: context_text, citations: citations, conversation_history: conversation_history)
+        agent_class.new(
+          message: message,
+          context_text: context_text,
+          citations: citations,
+          conversation_history: conversation_history,
+          memory_text: memory_text
+        )
       end
     end
 
@@ -108,6 +131,12 @@ module Dashboard
       key = "ai_chat:merchant:#{current_merchant.id}"
       count = (Rails.cache.read(key) || 0).to_i
       Rails.cache.write(key, count + 1, expires_in: AI_RATE_WINDOW.seconds)
+    end
+
+    # Find the most recent chat session for the current merchant, or create one (scoped to merchant).
+    def find_or_create_chat_session
+      current_merchant.ai_chat_sessions.order(updated_at: :desc).first ||
+        current_merchant.ai_chat_sessions.create!
     end
   end
 end

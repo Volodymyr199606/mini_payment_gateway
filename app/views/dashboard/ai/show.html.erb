@@ -1,7 +1,20 @@
-<div class="ai-chat-page">
-  <div class="page-header">
-    <h1 class="page-title">AI Chat</h1>
-    <p class="page-description">Ask questions about the payment gateway. Uses session auth—no API key needed.</p>
+<div
+  class="ai-chat-page"
+  data-controller="dashboard-ai-chat"
+  data-dashboard-ai-chat-reset-url-value="<%= dashboard_reset_ai_chat_session_path %>"
+>
+  <div class="page-header page-header-with-action">
+    <div>
+      <h1 class="page-title">AI Chat</h1>
+      <p class="page-description">Ask questions about the payment gateway. Uses session auth—no API key needed.</p>
+    </div>
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm"
+      data-action="click->dashboard-ai-chat#reset"
+    >
+      New chat
+    </button>
   </div>
 
   <div class="card">
@@ -12,7 +25,7 @@
         data-chat-url="<%= dashboard_ai_chat_path %>"
       >
         <div class="ai-chat-transcript">
-          <div class="ai-transcript-inner" data-target="transcript">
+          <div class="ai-transcript-inner" data-dashboard-ai-chat-target="transcript" data-target="transcript">
             <p class="text-muted">Send a message to start. Example: "What is the difference between authorize and capture?"</p>
           </div>
           <div data-target="error" class="ai-chat-error" hidden></div>

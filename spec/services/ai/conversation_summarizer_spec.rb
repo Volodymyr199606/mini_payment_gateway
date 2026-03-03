@@ -1,0 +1,92 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Ai::ConversationSummarizer do
+  include ApiHelpers
+
+  let(:merchant) { create_merchant_with_api_key.first }
+  let(:session) { merchant.ai_chat_sessions.create! }
+
+  def add_message(role, content, created_at: nil)
+    msg = session.ai_chat_messages.create!(role: role, content: content, merchant_id: merchant.id)
+    msg.update_column(:created_at, created_at) if created_at
+    msg
+  end
+
+  describe 'threshold: when summarization runs' do
+    it 'does not summarize when summary is blank and message count < 6' do
+      2.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") } # 4 messages
+      expect(Ai::GroqClient).not_to receive(:new)
+
+      result = described_class.call(session)
+      expect(result).to eq('')
+      expect(session.reload.summary_text).to be_blank
+    end
+
+    it 'summarizes when summary is blank and message count >= 6' do
+      6.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") }
+      client = instance_double(Ai::GroqClient, chat: { content: '- User asked about refunds.', model_used: 'test', fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      result = described_class.call(session)
+      expect(result).to include('User asked about refunds')
+      expect(session.reload.summary_text).to be_present
+      expect(session.summary_updated_at).to be_present
+    end
+
+    it 'does not summarize when messages since summary_updated_at are below threshold' do
+      past = 2.hours.ago
+      4.times do |i|
+        add_message('user', "Q#{i}", created_at: past + i.minutes)
+        add_message('assistant', "A#{i}", created_at: past + i.minutes + 30.seconds)
+      end
+      session.update!(summary_text: 'Prior summary.', summary_updated_at: 1.hour.ago)
+
+      expect(Ai::GroqClient).not_to receive(:new)
+      result = described_class.call(session)
+      expect(result).to eq('Prior summary.')
+      expect(session.reload.summary_text).to eq('Prior summary.')
+    end
+
+    it 'summarizes when messages since summary_updated_at >= 8' do
+      cutoff = 1.hour.ago
+      session.update!(summary_text: 'Old summary.', summary_updated_at: cutoff)
+      # Add 8 messages with created_at after cutoff so they count as "new since summary"
+      8.times do |i|
+        add_message('user', "Q#{i}", created_at: cutoff + (i + 1).minutes)
+        add_message('assistant', "A#{i}", created_at: cutoff + (i + 1).minutes + 30.seconds)
+      end
+      session.reload
+      client = instance_double(Ai::GroqClient, chat: { content: '- Refunds and capture discussed.', model_used: 'test', fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      result = described_class.call(session)
+      expect(result).to be_present
+      session.reload
+      expect(session.summary_text).to include('Refunds and capture')
+      expect(session.summary_updated_at).to be >= cutoff
+    end
+  end
+
+  describe 'sanitizer integration' do
+    it 'does not send raw secrets to Groq' do
+      add_message('user', 'My api_key=sk_live_abc123def456')
+      add_message('assistant', 'OK')
+      5.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") }
+
+      sent_messages = []
+      client = instance_double(Ai::GroqClient)
+      allow(client).to receive(:chat) do |messages:, temperature: nil, max_tokens: nil|
+        sent_messages.replace(messages)
+        { content: '- User shared preferences.', model_used: 'test', fallback_used: false }
+      end
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      described_class.call(session)
+      flat = sent_messages.map { |m| m[:content] }.join(' ')
+      expect(flat).to include('[REDACTED]')
+      expect(flat).not_to include('sk_live_abc123def456')
+    end
+  end
+end

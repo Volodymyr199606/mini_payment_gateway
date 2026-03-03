@@ -8,7 +8,7 @@ import { Controller } from "@hotwired/stimulus"
  */
 export default class extends Controller {
   static targets = ["transcript", "input", "sendButton", "statusIcon", "error"]
-  static values = { chatUrl: String }
+  static values = { chatUrl: String, resetUrl: String }
 
   SUCCESS_MS = 700
   ERROR_MS = 700
@@ -16,6 +16,31 @@ export default class extends Controller {
   connect() {
     console.log("[AI_CHAT] connected")
     this.initialTranscript = this.transcriptTarget?.innerHTML
+  }
+
+  async reset(event) {
+    event.preventDefault()
+    const resetUrl = this.resetUrlValue || "/dashboard/ai/chat_sessions/reset"
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+
+    try {
+      const res = await fetch(resetUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": csrfToken || ""
+        },
+        body: JSON.stringify({})
+      })
+      if (!res.ok) return
+      if (this.hasTranscriptTarget && this.initialTranscript) {
+        this.transcriptTarget.innerHTML = this.initialTranscript
+      }
+    } catch {
+      // Silently fail
+    }
   }
 
   async send(event) {

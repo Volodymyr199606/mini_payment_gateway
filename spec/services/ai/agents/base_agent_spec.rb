@@ -5,7 +5,8 @@ require 'rails_helper'
 RSpec.describe Ai::Agents::BaseAgent do
   # Use SupportFaqAgent as a concrete subclass for testing base behavior
   let(:agent_class) { Ai::Agents::SupportFaqAgent }
-  let(:context_text) { "docs/REFUNDS_API.md: Refunds are processed via POST /refunds." }
+  # Must be >= BaseAgent::LOW_CONTEXT_THRESHOLD (80) so agent calls Groq in reply-format examples
+  let(:context_text) { "docs/REFUNDS_API.md: Refunds are processed via POST /refunds. Use the idempotency key when retrying. Refunds appear in the ledger." }
   let(:citations) { [{ file: 'docs/REFUNDS_API.md', heading: 'Refunds', anchor: 'refunds', excerpt: '...' }] }
 
   describe 'reply format' do
@@ -55,6 +56,44 @@ RSpec.describe Ai::Agents::BaseAgent do
       expect(out[:citations]).to eq(citations)
       expect(out[:citations]).to be_a(Array)
       expect(out[:citations].first).to include(file: 'docs/REFUNDS_API.md', heading: 'Refunds')
+    end
+  end
+
+  describe 'low context (empty or too small)' do
+    it 'returns deterministic fallback and does not call Groq when context is empty' do
+      client = instance_double(Ai::GroqClient, chat: { content: 'Never used', model_used: nil, fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      agent = agent_class.new(message: 'How do refunds work?', context_text: '', citations: [])
+      out = agent.call
+
+      expect(out[:reply]).to eq("I don't have enough docs context to answer this yet. Try asking about a documented topic (e.g. refunds, authorize vs capture) or add a doc section for your question in docs/.")
+      expect(out[:fallback_used]).to be true
+      expect(out[:model_used]).to be_nil
+      expect(out[:citations]).to eq([])
+      expect(client).not_to have_received(:chat)
+    end
+
+    it 'returns deterministic fallback when context is below threshold' do
+      client = instance_double(Ai::GroqClient, chat: { content: 'Never used', model_used: nil, fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      agent = agent_class.new(message: 'Foo?', context_text: 'Short.', citations: [])
+      out = agent.call
+
+      expect(out[:reply]).to include("I don't have enough docs context")
+      expect(out[:fallback_used]).to be true
+      expect(client).not_to have_received(:chat)
+    end
+
+    it 'calls Groq when context is above threshold' do
+      client = instance_double(Ai::GroqClient, chat: { content: 'Refunds use POST.', model_used: 'test', fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
+      agent.call
+
+      expect(client).to have_received(:chat)
     end
   end
 

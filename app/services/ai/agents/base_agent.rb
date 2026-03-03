@@ -3,14 +3,21 @@
 module Ai
   module Agents
     class BaseAgent
+      # Minimum context length (chars) to consider calling the LLM; below this we return a deterministic fallback.
+      LOW_CONTEXT_THRESHOLD = 80
+
       SYSTEM_RULES = <<~TEXT
         You are a read-only assistant for a payment gateway. Use ONLY the provided Context sections to answer.
 
         ## Style (strict)
         - Write directly. Never use meta phrases like "According to the provided context", "Based on the context", "We can infer", "The context states".
-        - Answer must be supported by retrieved Context OR explicitly say: "Not found in docs yet."
-        - If not found: suggest exactly ONE doc file to add/update and the section name to add.
+        - Answer must be supported by retrieved Context. Do NOT invent or guess.
         - Do NOT put citation references inside the prose (no [docs/...], no inline file paths). Citations are passed separately; your reply text must be clean.
+
+        ## When the answer is NOT in the provided context (strict)
+        - Respond with exactly: "Not found in docs yet."
+        - Then suggest exactly ONE specific docs/*.md file to add or update, and exactly ONE section title to add (e.g. "Add docs/REFUNDS.md with section 'Refund time limits'").
+        - Then ask exactly ONE clarifying question if it would help (e.g. time range, which product). If not needed, omit.
 
         ## Output format
         - 1–2 sentence direct answer first
@@ -36,6 +43,15 @@ module Ai
       end
 
       def call
+        if detect_low_context?(@context_text)
+          return {
+            reply: low_context_fallback_message,
+            citations: @citations,
+            model_used: nil,
+            fallback_used: true
+          }
+        end
+
         messages = build_messages
         result = groq_client.chat(messages: messages, temperature: 0.3, max_tokens: 1024)
         content = result[:content].to_s.strip
@@ -48,6 +64,17 @@ module Ai
           model_used: result[:model_used],
           fallback_used: result[:fallback_used]
         }
+      end
+
+      # True when context is empty or too small to answer from; agent should return deterministic fallback without calling LLM.
+      def detect_low_context?(context_text)
+        return true if context_text.blank?
+        context_text.to_s.length < LOW_CONTEXT_THRESHOLD
+      end
+
+      # Deterministic message when context is too low (no LLM call).
+      def low_context_fallback_message
+        "I don't have enough docs context to answer this yet. Try asking about a documented topic (e.g. refunds, authorize vs capture) or add a doc section for your question in docs/."
       end
 
       def agent_name

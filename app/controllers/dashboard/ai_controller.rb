@@ -45,7 +45,7 @@ module Dashboard
                   else
                     ::Ai::Router.new(msg).call
                   end
-      retriever_result = ::Ai::Rag::DocsRetriever.new(msg, agent_key: agent_key).call
+      retriever_result = ::Ai::Rag::RetrievalService.call(msg, agent_key: agent_key)
       context_text = retriever_result[:context_text]
       citations = retriever_result[:citations]
 

@@ -7,6 +7,19 @@ module Ai
       LOW_CONTEXT_THRESHOLD = 80
       MAX_MEMORY_CHARS = 2000
 
+      # Shown when retriever returns no sections; suggests where to look next.
+      EMPTY_RETRIEVAL_FALLBACK = "I couldn't find this in the docs. Here's what I can say generally: " \
+        "check the Dashboard for live data, the API reference for endpoints, and the docs in this app for " \
+        "payment lifecycle, refunds, and security. Try asking about a specific topic (e.g. refunds, authorize vs capture) " \
+        "or rephrase your question."
+      WHERE_TO_LOOK_SUGGESTIONS = [
+        'Dashboard (payments, refunds)',
+        'docs/PAYMENT_LIFECYCLE.md',
+        'docs/REFUNDS_API.md',
+        'docs/ARCHITECTURE.md',
+        'docs/SECURITY.md'
+      ].freeze
+
       SYSTEM_RULES = <<~TEXT
         You are a read-only assistant for a payment gateway. Use ONLY the provided Context sections to answer.
 
@@ -60,6 +73,19 @@ module Ai
         content = "I couldn't generate a reply." if content.blank? && result[:error].present?
         content = fallback_message if content.blank?
         content = strip_inline_citations(strip_filler_phrases(content))
+
+        # Citation enforcement: when we have sections, require the reply to reference at least one source.
+        if @citations.any? && !reply_references_citations?(content, @citations)
+          retry_messages = messages + [
+            { role: 'assistant', content: content },
+            { role: 'user', content: 'Answer again and cite sources.' }
+          ]
+          retry_result = groq_client.chat(messages: retry_messages, temperature: 0.3, max_tokens: 1024)
+          retry_content = retry_result[:content].to_s.strip
+          content = strip_inline_citations(strip_filler_phrases(retry_content)) if retry_content.present?
+          result = retry_result if retry_content.present?
+        end
+
         {
           reply: content,
           citations: @citations,
@@ -74,9 +100,10 @@ module Ai
         context_text.to_s.length < LOW_CONTEXT_THRESHOLD
       end
 
-      # Deterministic message when context is too low (no LLM call).
+      # Deterministic message when context is too low or retriever returned no sections (no LLM call).
       def low_context_fallback_message
-        "I don't have enough docs context to answer this yet. Try asking about a documented topic (e.g. refunds, authorize vs capture) or add a doc section for your question in docs/."
+        suggestions = WHERE_TO_LOOK_SUGGESTIONS.map { |s| "• #{s}" }.join("\n")
+        "#{EMPTY_RETRIEVAL_FALLBACK}\n\nWhere to look next:\n#{suggestions}"
       end
 
       def agent_name
@@ -115,6 +142,17 @@ module Ai
 
       def fallback_message
         "Not found in docs yet. Consider adding or updating a doc in docs/ with a section for this topic."
+      end
+
+      # True if reply text references at least one citation by file path or doc name (not just heading word).
+      def reply_references_citations?(reply, citations)
+        return false if reply.blank? || citations.blank?
+        normalized = reply.to_s.downcase
+        citations.any? do |c|
+          file = c[:file].to_s
+          base = File.basename(file, '.*')
+          normalized.include?(file.downcase) || normalized.include?(base.downcase)
+        end
       end
 
       # Remove any inline citation refs the model might have added

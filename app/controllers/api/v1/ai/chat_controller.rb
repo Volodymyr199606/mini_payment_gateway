@@ -26,7 +26,7 @@ module Api
           end
 
           agent_key = ::Ai::Router.new(message).call
-          retriever_result = ::Ai::Rag::DocsRetriever.new(message, agent_key: agent_key).call
+          retriever_result = ::Ai::Rag::RetrievalService.call(message, agent_key: agent_key)
           context_text = retriever_result[:context_text]
           citations = retriever_result[:citations]
 

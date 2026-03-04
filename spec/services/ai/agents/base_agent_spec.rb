@@ -67,7 +67,9 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'How do refunds work?', context_text: '', citations: [])
       out = agent.call
 
-      expect(out[:reply]).to eq("I don't have enough docs context to answer this yet. Try asking about a documented topic (e.g. refunds, authorize vs capture) or add a doc section for your question in docs/.")
+      expect(out[:reply]).to include("I couldn't find this in the docs")
+      expect(out[:reply]).to include("Where to look next:")
+      expect(out[:reply]).to include("docs/REFUNDS_API.md")
       expect(out[:fallback_used]).to be true
       expect(out[:model_used]).to be_nil
       expect(out[:citations]).to eq([])
@@ -81,19 +83,76 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'Foo?', context_text: 'Short.', citations: [])
       out = agent.call
 
-      expect(out[:reply]).to include("I don't have enough docs context")
+      expect(out[:reply]).to include("I couldn't find this in the docs")
+      expect(out[:reply]).to include("Where to look next:")
       expect(out[:fallback_used]).to be true
       expect(client).not_to have_received(:chat)
     end
 
     it 'calls Groq when context is above threshold' do
-      client = instance_double(Ai::GroqClient, chat: { content: 'Refunds use POST.', model_used: 'test', fallback_used: false })
+      client = instance_double(Ai::GroqClient, chat: { content: 'Refunds use POST. See docs/REFUNDS_API.md.', model_used: 'test', fallback_used: false })
       allow(Ai::GroqClient).to receive(:new).and_return(client)
 
       agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
       agent.call
 
-      expect(client).to have_received(:chat)
+      expect(client).to have_received(:chat).once
+    end
+  end
+
+  describe 'empty retrieval guardrail' do
+    it 'returns safe fallback and suggests where to look when retriever returns no sections' do
+      client = instance_double(Ai::GroqClient, chat: { content: 'Never used', model_used: nil, fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      agent = agent_class.new(message: 'Something obscure', context_text: nil, citations: [])
+      out = agent.call
+
+      expect(out[:reply]).to include("I couldn't find this in the docs")
+      expect(out[:reply]).to include("Here's what I can say generally")
+      expect(out[:reply]).to include("Where to look next:")
+      expect(out[:reply]).to match(/Dashboard|docs\/.*\.md/)
+      expect(out[:citations]).to eq([])
+      expect(out[:fallback_used]).to be true
+      expect(client).not_to have_received(:chat)
+    end
+  end
+
+  describe 'citation enforcement' do
+    it 're-asks once with "Answer again and cite sources." when reply has no citation reference' do
+      first_reply = "Refunds are done via API. Use idempotency."
+      second_reply = "Refunds use POST. See docs/REFUNDS_API.md for details."
+      chat_messages_list = []
+      client = instance_double(Ai::GroqClient)
+      allow(client).to receive(:chat) do |messages:, **|
+        chat_messages_list << messages
+        if chat_messages_list.size == 1
+          { content: first_reply, model_used: 'llama', fallback_used: false }
+        else
+          { content: second_reply, model_used: 'llama', fallback_used: false }
+        end
+      end
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
+      out = agent.call
+
+      expect(out[:reply]).to include('REFUNDS_API')
+      expect(out[:reply]).not_to eq(first_reply)
+      expect(chat_messages_list.size).to eq(2)
+      expect(chat_messages_list.last.last[:content]).to eq('Answer again and cite sources.')
+    end
+
+    it 'does not re-ask when reply already references a citation' do
+      reply_with_cite = "Refunds use POST. See docs/REFUNDS_API.md."
+      client = instance_double(Ai::GroqClient, chat: { content: reply_with_cite, model_used: 'llama', fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
+      out = agent.call
+
+      expect(out[:reply]).to include('REFUNDS_API')
+      expect(client).to have_received(:chat).once
     end
   end
 

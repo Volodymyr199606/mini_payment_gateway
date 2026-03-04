@@ -41,19 +41,19 @@ module Api
 
           log_ai_chat(
             merchant_id: current_merchant.id,
-            agent: agent_key.to_s,
-            citations: out[:citations].map { |c| c.slice(:file, :heading) },
-            model_used: out[:model_used],
+            agent: out.agent_key,
+            citations: out.citations.map { |c| c.slice(:file, :heading) },
+            model_used: out.model_used,
             latency_ms: latency_ms,
-            fallback_used: out[:fallback_used]
+            fallback_used: out.fallback_used
           )
 
           payload = {
-            reply: out[:reply],
-            agent: agent_key.to_s,
-            citations: out[:citations]
+            reply: out.reply_text,
+            agent: out.agent_key,
+            citations: out.citations
           }
-          payload[:data] = out[:data] if out[:data].present?
+          payload[:data] = out.data if out.data.present?
           render json: payload
         end
 

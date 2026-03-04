@@ -57,7 +57,7 @@ export default class extends Controller {
         return
       }
 
-      this.appendToTranscript(message, data.reply, data.agent, data.model_used, data.citations || [])
+      this.appendToTranscript(message, data.reply, data.agent, data.model_used, data.citations || [], data.debug)
       this.inputTarget.value = ""
       this.inputTarget.focus()
       this.showSuccessAnimation()
@@ -115,7 +115,7 @@ export default class extends Controller {
     }
   }
 
-  appendToTranscript(userMsg, reply, agent, modelUsed, citations) {
+  appendToTranscript(userMsg, reply, agent, modelUsed, citations, debug) {
     const transcript = this.transcriptTarget
 
     const userWrap = document.createElement("div")
@@ -162,6 +162,29 @@ export default class extends Controller {
       }
       details.appendChild(ul)
       assistantBubble.appendChild(details)
+    }
+
+    if (debug && typeof debug === "object") {
+      const debugDetails = document.createElement("details")
+      debugDetails.className = "ai-debug-panel"
+      const debugSummary = document.createElement("summary")
+      debugSummary.textContent = "Debug (AI_DEBUG)"
+      debugDetails.appendChild(debugSummary)
+      const pre = document.createElement("pre")
+      pre.className = "ai-debug-content"
+      const lines = [
+        `retriever: ${debug.retriever ?? "—"}`,
+        `seed_section_ids: ${JSON.stringify(debug.seed_section_ids ?? [])}`,
+        `expanded_section_ids: ${JSON.stringify(debug.expanded_section_ids ?? [])}`,
+        debug.expanded_with_edges ? `expanded_with_edges: ${JSON.stringify(debug.expanded_with_edges)}` : null,
+        `final_included_section_ids: ${JSON.stringify(debug.final_included_section_ids ?? [])}`,
+        `context_budget_used: ${debug.context_budget_used ?? "—"} / ${debug.max_context_chars ?? "—"}`,
+        `context_truncated: ${!!debug.context_truncated}`,
+        `summary_used: ${!!debug.summary_used}`
+      ].filter(Boolean)
+      pre.textContent = lines.join("\n")
+      debugDetails.appendChild(pre)
+      assistantBubble.appendChild(debugDetails)
     }
 
     assistantWrap.appendChild(assistantBubble)

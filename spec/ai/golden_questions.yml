@@ -1,0 +1,44 @@
+# Golden questions for AI eval harness. 30 questions grouped by agent_key.
+# Runner: router + retrieval + agent (stubbed LLM for non-reporting). Assert AgentResult, citations when sections, reporting totals + net math, no secrets.
+
+support_faq:
+  - "What can you help me with?"
+  - "What is this assistant for?"
+  - "Who can I contact for help?"
+  - "What is the dashboard for?"
+  - "Where do I find general product info?"
+
+operational:
+  - "What is authorize vs capture?"
+  - "How does refund work?"
+  - "When do I use void?"
+  - "Explain payment intent lifecycle."
+  - "What happens after capture?"
+
+developer_onboarding:
+  - "How do I use idempotency?"
+  - "Which endpoint do I call for authorize?"
+  - "How do I integrate with the API?"
+  - "What is the webhook payload?"
+  - "How do I send a POST request?"
+
+security_compliance:
+  - "How do we handle PCI?"
+  - "Should I store the PAN?"
+  - "What about CVV?"
+  - "How are API keys secured?"
+  - "What is required for compliance?"
+
+reconciliation_analyst:
+  - "How does reconciliation work?"
+  - "Where do I see settlement data?"
+  - "How do I match payouts?"
+  - "Where is the statement?"
+  - "Explain payout matching."
+
+reporting_calculation:
+  - "How much last 7 days?"
+  - "Total charges this month."
+  - "What is my net balance?"
+  - "Total refunds last week."
+  - "How much did I spend yesterday?"

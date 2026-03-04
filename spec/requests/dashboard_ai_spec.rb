@@ -201,5 +201,55 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       assistant_msg = session.ai_chat_messages.find_by(role: 'assistant')
       expect(assistant_msg.content).to eq('Stubbed reply.')
     end
+
+    describe 'AI_DEBUG (dev-only debug panel)' do
+      it 'does not include debug in response when AI_DEBUG is not set' do
+        _m, key = create_merchant_with_api_key
+        post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+        follow_redirect! if response.redirect?
+
+        allow(Ai::GroqClient).to receive(:new).and_return(
+          instance_double(Ai::GroqClient, chat: { content: 'OK.', model_used: 'test', fallback_used: false })
+        )
+
+        orig = ENV['AI_DEBUG']
+        ENV.delete('AI_DEBUG')
+        post_chat('Hello')
+        ENV['AI_DEBUG'] = orig if orig
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).not_to have_key('debug')
+      end
+
+      it 'includes debug with expected keys when AI_DEBUG=true' do
+        _m, key = create_merchant_with_api_key
+        post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+        follow_redirect! if response.redirect?
+
+        allow(Ai::GroqClient).to receive(:new).and_return(
+          instance_double(Ai::GroqClient, chat: { content: 'OK.', model_used: 'test', fallback_used: false })
+        )
+
+        orig = ENV['AI_DEBUG']
+        ENV['AI_DEBUG'] = 'true'
+        post_chat('What is authorize?')
+        ENV['AI_DEBUG'] = orig if orig
+
+        expect(response).to have_http_status(:ok)
+        body = response.parsed_body
+        expect(body).to have_key('debug')
+        debug = body['debug']
+        expect(debug).to have_key('retriever')
+        expect(debug).to have_key('seed_section_ids')
+        expect(debug).to have_key('expanded_section_ids')
+        expect(debug).to have_key('final_included_section_ids')
+        expect(debug).to have_key('context_budget_used')
+        expect(debug).to have_key('max_context_chars')
+        expect(debug).to have_key('context_truncated')
+        expect(debug).to have_key('summary_used')
+        expect(debug['seed_section_ids']).to be_a(Array)
+        expect(debug['final_included_section_ids']).to be_a(Array)
+      end
+    end
   end
 end

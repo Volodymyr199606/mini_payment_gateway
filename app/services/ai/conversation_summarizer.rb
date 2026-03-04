@@ -2,13 +2,26 @@
 
 module Ai
   # Summarizes an AiChatSession conversation via Groq and persists summary_text / summary_updated_at.
-  # Only runs when message count since last summary exceeds threshold, or summary is blank with enough messages.
+  # Only runs when >= N new messages since last summary (N=10), or summary blank with enough messages.
+  # Summary is structured as facts + user preferences + open tasks, capped in length, deterministic format.
   # Sanitizes messages before sending to avoid storing secrets.
   class ConversationSummarizer
-    NEW_MESSAGES_THRESHOLD = 8
-    MIN_MESSAGES_FOR_FIRST_SUMMARY = 6
+    NEW_MESSAGES_THRESHOLD = 10
+    MIN_MESSAGES_FOR_FIRST_SUMMARY = 10
+    MAX_SUMMARY_LENGTH = 1200
+
+    # Deterministic section headings to reduce drift and allow stable parsing
+    SECTION_FACTS = '## Facts'
+    SECTION_USER_PREFERENCES = '## User preferences'
+    SECTION_OPEN_TASKS = '## Open tasks'
+
     SUMMARIZE_PROMPT = <<~TEXT
-      Summarize the conversation so far in 5-10 bullet points. Preserve user preferences and important facts. Omit secrets and credentials. Output only the bullet list, no preamble.
+      Summarize the conversation in exactly three sections. Use these headings on their own lines (no extra punctuation):
+      #{SECTION_FACTS}
+      #{SECTION_USER_PREFERENCES}
+      #{SECTION_OPEN_TASKS}
+
+      Under each heading write 2-5 short bullet points. Preserve important facts, user preferences, and any open or pending tasks. Omit secrets and credentials. Keep the entire reply under #{MAX_SUMMARY_LENGTH} characters. Output only the three sections, no preamble.
     TEXT
 
     def self.call(ai_chat_session)
@@ -28,8 +41,9 @@ module Ai
       summary = fetch_summary_from_groq(sanitized_messages)
       return current_summary if summary.blank?
 
-      persist_summary(summary)
-      summary
+      capped = cap_summary_length(summary)
+      persist_summary(capped)
+      capped
     end
 
     private
@@ -75,12 +89,19 @@ module Ai
         *conversation,
         { role: 'user', content: 'Provide the summary now.' }
       ]
-      result = groq_client.chat(messages: messages, temperature: 0.2, max_tokens: 512)
+      # Lower max_tokens to keep responses cheap and within cap
+      result = groq_client.chat(messages: messages, temperature: 0.2, max_tokens: 400)
       content = result[:content].to_s.strip
       # Never persist if response looks like it might contain secrets (basic guard)
       return '' if content.include?(MessageSanitizer::REDACT_PLACEHOLDER)
 
       content
+    end
+
+    def cap_summary_length(summary)
+      return summary if summary.length <= MAX_SUMMARY_LENGTH
+
+      summary.truncate(MAX_SUMMARY_LENGTH)
     end
 
     def persist_summary(summary)

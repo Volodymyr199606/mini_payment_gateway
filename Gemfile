@@ -12,6 +12,7 @@ gem 'dotenv-rails', '~> 3.1', groups: %i[development test]
 gem 'importmap-rails', '~> 2.0'
 gem 'kaminari', '~> 1.2'
 gem 'pg', '~> 1.5'
+gem 'pgvector', '~> 0.2'
 gem 'puma', '~> 6.0'
 gem 'rack-cors', '~> 2.0'
 gem 'rails', '~> 7.2'

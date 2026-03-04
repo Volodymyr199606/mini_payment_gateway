@@ -24,6 +24,8 @@ module Ai
         @agent_key = agent_key
       end
 
+      # Returns { sections:, seed_ids: } for RetrievalService to apply budget.
+      # Each section: { content_chunk:, citation:, id: }.
       def call
         index = DocsIndex.instance
         policy = AgentDocPolicy.for_agent(@agent_key) if @agent_key
@@ -39,41 +41,36 @@ module Ai
         graph = ContextGraph.instance
         expanded_ids = seed_ids.empty? ? [] : graph.expand(seed_ids, max_hops: 1, max_nodes: MAX_SECTIONS)
 
-        context_parts = []
-        citations = []
-        total_chars = 0
-
+        sections = []
         expanded_ids.each do |sid|
-          break if total_chars >= MAX_CONTEXT_CHARS
           node = graph.node(sid)
           next unless node
 
           content = node[:content].to_s.truncate(MAX_CHARS_PER_SECTION)
           header = "## #{node[:heading]} (#{node[:file]}##{node[:anchor]})"
-          chunk = "#{header}\n#{content}"
-          remaining = MAX_CONTEXT_CHARS - total_chars
-          if chunk.length > remaining
-            content = content.truncate([MAX_CHARS_PER_SECTION, remaining - header.length - 2].min)
-            chunk = "#{header}\n#{content}"
-          end
-          total_chars += chunk.length
-          context_parts << chunk
-          citations << build_citation_from_node(node)
+          sections << {
+            content_chunk: "#{header}\n#{content}",
+            citation: build_citation_from_node(node),
+            id: node[:id]
+          }
         end
 
         # Fallback: if graph yielded nothing (e.g. no docs), use initial index sections
-        if context_parts.empty? && initial_hits.any?
+        if sections.empty? && initial_hits.any?
           deduped = dedupe_by_file(initial_hits, MAX_SECTIONS)
+          seed_ids = deduped.map { |s| section_id(s[:file].to_s.gsub('\\', '/'), slugify(s[:heading].to_s)) }
           deduped.each do |s|
             content = s[:content].to_s.truncate(MAX_CHARS_PER_SECTION)
             header = "## #{s[:heading]} (#{s[:file].to_s.gsub('\\', '/')}##{slugify(s[:heading].to_s)})"
-            context_parts << "#{header}\n#{content}"
-            citations << build_citation(s)
+            sections << {
+              content_chunk: "#{header}\n#{content}",
+              citation: build_citation(s),
+              id: section_id(s[:file].to_s.gsub('\\', '/'), slugify(s[:heading].to_s))
+            }
           end
         end
 
-        context_text = context_parts.join("\n\n").presence || nil
-        { context_text: context_text, citations: citations }
+        { sections: sections, seed_ids: seed_ids }
       end
 
       private

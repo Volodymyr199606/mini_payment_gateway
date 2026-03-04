@@ -35,7 +35,7 @@ RSpec.describe Ai::Agents::OperationalAgent do
       agent = described_class.new(message: 'Explain authorize vs capture', context_text: context_text, citations: citations)
       out = agent.call
 
-      reply = out[:reply]
+      reply = out.reply_text
       expect(reply).to include('Authorize')
       expect(reply).to include('Capture')
       expect(reply).to include('ledger')

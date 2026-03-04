@@ -24,23 +24,26 @@ module Ai
       @graph = graph || default_graph
     end
 
-    # Returns { context_text:, citations:, seed_count:, expanded_count:, final_count: }
-    # (seed_count/expanded_count/final_count are for logging; consumers may ignore them.)
+    # Returns { sections:, seed_ids:, seed_count:, expanded_count: }. When AI_DEBUG adds expanded_with_edges.
+    # Each section: { content_chunk:, citation:, id: }.
     def call
       seed_ids = fetch_seed_ids
-      return empty_result_with_meta(0, 0, 0) if seed_ids.empty?
+      return empty_sections_result(seed_ids.size) if seed_ids.empty?
 
-      scored = expand_and_score(seed_ids)
+      scored, expanded_with_edges = expand_and_score_with_edges(seed_ids)
       ordered = dedupe_keep_best_score(scored)
       top_ids = ordered.first(FINAL_TOP_K).map { |_score, id| id }
       all_unique_ids = ordered.map { |_s, id| id.to_s }.uniq
       expanded_count = (all_unique_ids - seed_ids.map(&:to_s)).size
-      result = build_result(top_ids)
-      result.merge(
+      sections = build_sections(top_ids)
+      out = {
+        sections: sections,
+        seed_ids: seed_ids,
         seed_count: seed_ids.size,
-        expanded_count: expanded_count,
-        final_count: result[:citations].size
-      )
+        expanded_count: expanded_count
+      }
+      out[:expanded_with_edges] = expanded_with_edges if ai_debug? && expanded_with_edges.present?
+      out
     end
 
     private
@@ -59,24 +62,33 @@ module Ai
     end
 
     def expand_and_score(seed_ids)
-      # id => best score seen
+      expand_and_score_with_edges(seed_ids).first
+    end
+
+    # Returns [scored_list, expanded_with_edges]. expanded_with_edges is [[section_id, edge_type], ...] for debug.
+    def expand_and_score_with_edges(seed_ids)
       scores = {}
       seed_ids.each { |id| scores[id] = [SCORE_SEED, id] }
+      expanded_with_edges = [] if ai_debug?
 
       seed_ids.each do |sid|
         node = @graph.node(sid)
         next unless node
 
-        expanded = expand_one_seed(node)
-        expanded.each do |nid, edge_type|
+        expand_one_seed(node).each do |nid, edge_type|
+          expanded_with_edges << [nid.to_s, edge_type.to_s] if expanded_with_edges
           score = score_for_edge_type(edge_type, node, nid)
           existing = scores[nid]
-          # Keep higher score when de-duplicating
           scores[nid] = [score, nid] if existing.nil? || score > existing[0]
         end
       end
 
-      scores.values
+      [scores.values, expanded_with_edges || []]
+    end
+
+    def ai_debug?
+      v = ENV['AI_DEBUG'].to_s.strip.downcase
+      v == 'true' || v == '1'
     end
 
     # Returns array of [node_id, edge_type] with cap per seed.
@@ -138,31 +150,21 @@ module Ai
       by_id.values.sort_by { |score, _| -score }
     end
 
-    def build_result(ids)
-      context_parts = []
-      citations = []
-      total_chars = 0
-
-      ids.each do |sid|
-        break if total_chars >= MAX_CONTEXT_CHARS
+    # Returns array of { content_chunk:, citation:, id: } in ranked order (no budget applied).
+    def build_sections(ids)
+      ids.filter_map do |sid|
         node = @graph.node(sid)
         next unless node
 
         content = node[:content].to_s.truncate(MAX_CHARS_PER_SECTION)
         header = "## #{node[:heading]} (#{node[:file]}##{node[:anchor]})"
-        chunk = "#{header}\n#{content}"
-        remaining = MAX_CONTEXT_CHARS - total_chars
-        if chunk.length > remaining
-          content = content.truncate([MAX_CHARS_PER_SECTION, remaining - header.length - 2].min)
-          chunk = "#{header}\n#{content}"
-        end
-        total_chars += chunk.length
-        context_parts << chunk
-        citations << build_citation(node)
+        content_chunk = "#{header}\n#{content}"
+        {
+          content_chunk: content_chunk,
+          citation: build_citation(node),
+          id: node[:id]
+        }
       end
-
-      context_text = context_parts.join("\n\n").presence || nil
-      { context_text: context_text, citations: citations }
     end
 
     def build_citation(node)
@@ -178,8 +180,13 @@ module Ai
       { context_text: nil, citations: [] }
     end
 
-    def empty_result_with_meta(seed_count, expanded_count, final_count)
-      empty_result.merge(seed_count: seed_count, expanded_count: expanded_count, final_count: final_count)
+    def empty_sections_result(_seed_count = 0)
+      {
+        sections: [],
+        seed_ids: [],
+        seed_count: 0,
+        expanded_count: 0
+      }
     end
 
     def section_id(file, anchor)

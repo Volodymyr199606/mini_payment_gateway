@@ -15,7 +15,7 @@ RSpec.describe Ai::ConversationSummarizer do
   end
 
   describe 'threshold: when summarization runs' do
-    it 'does not summarize when summary is blank and message count < 6' do
+    it 'does not summarize when summary is blank and message count < 10' do
       2.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") } # 4 messages
       expect(Ai::GroqClient).not_to receive(:new)
 
@@ -24,8 +24,8 @@ RSpec.describe Ai::ConversationSummarizer do
       expect(session.reload.summary_text).to be_blank
     end
 
-    it 'summarizes when summary is blank and message count >= 6' do
-      6.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") }
+    it 'summarizes when summary is blank and message count >= 10' do
+      10.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") }
       client = instance_double(Ai::GroqClient, chat: { content: '- User asked about refunds.', model_used: 'test', fallback_used: false })
       allow(Ai::GroqClient).to receive(:new).and_return(client)
 
@@ -35,7 +35,7 @@ RSpec.describe Ai::ConversationSummarizer do
       expect(session.summary_updated_at).to be_present
     end
 
-    it 'does not summarize when messages since summary_updated_at are below threshold' do
+    it 'does not summarize when messages since summary_updated_at are below threshold (10)' do
       past = 2.hours.ago
       4.times do |i|
         add_message('user', "Q#{i}", created_at: past + i.minutes)
@@ -49,11 +49,11 @@ RSpec.describe Ai::ConversationSummarizer do
       expect(session.reload.summary_text).to eq('Prior summary.')
     end
 
-    it 'summarizes when messages since summary_updated_at >= 8' do
+    it 'summarizes when messages since summary_updated_at >= 10' do
       cutoff = 1.hour.ago
       session.update!(summary_text: 'Old summary.', summary_updated_at: cutoff)
-      # Add 8 messages with created_at after cutoff so they count as "new since summary"
-      8.times do |i|
+      # Add 10 messages with created_at after cutoff so they count as "new since summary"
+      10.times do |i|
         add_message('user', "Q#{i}", created_at: cutoff + (i + 1).minutes)
         add_message('assistant', "A#{i}", created_at: cutoff + (i + 1).minutes + 30.seconds)
       end
@@ -69,11 +69,43 @@ RSpec.describe Ai::ConversationSummarizer do
     end
   end
 
+  describe 'summary cap and format' do
+    it 'caps persisted summary at MAX_SUMMARY_LENGTH (1200 chars)' do
+      long_content = "## Facts\n- A\n\n## User preferences\n- B\n\n## Open tasks\n- C\n" + ('x' * 2000)
+      10.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") }
+      client = instance_double(Ai::GroqClient, chat: { content: long_content, model_used: 'test', fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      described_class.call(session)
+      expect(session.reload.summary_text.length).to be <= described_class::MAX_SUMMARY_LENGTH
+    end
+
+    it 'persisted summary includes the three section headings when model returns them' do
+      content = <<~TEXT
+        ## Facts
+        - User asked about refunds.
+        ## User preferences
+        - Prefers email.
+        ## Open tasks
+        - None.
+      TEXT
+      10.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") }
+      client = instance_double(Ai::GroqClient, chat: { content: content.strip, model_used: 'test', fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      described_class.call(session)
+      summary = session.reload.summary_text
+      expect(summary).to include(described_class::SECTION_FACTS)
+      expect(summary).to include(described_class::SECTION_USER_PREFERENCES)
+      expect(summary).to include(described_class::SECTION_OPEN_TASKS)
+    end
+  end
+
   describe 'sanitizer integration' do
     it 'does not send raw secrets to Groq' do
       add_message('user', 'My api_key=sk_live_abc123def456')
       add_message('assistant', 'OK')
-      5.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") }
+      9.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") } # 20 total so >= 10
 
       sent_messages = []
       client = instance_double(Ai::GroqClient)

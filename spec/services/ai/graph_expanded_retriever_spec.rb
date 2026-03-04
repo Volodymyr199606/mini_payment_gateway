@@ -18,14 +18,18 @@ RSpec.describe Ai::GraphExpandedRetriever do
   end
 
   describe '#call' do
-    it 'returns context_text and citations' do
+    it 'returns sections and seed_ids with citation shape' do
       kw = stub_keyword_retriever('Section One')
       retriever = described_class.new('query', keyword_retriever: kw, graph: graph)
       result = retriever.call
-      expect(result).to have_key(:context_text)
-      expect(result).to have_key(:citations)
-      expect(result[:citations]).to be_a(Array)
-      result[:citations].each do |c|
+      expect(result).to have_key(:sections)
+      expect(result).to have_key(:seed_ids)
+      expect(result[:sections]).to be_a(Array)
+      result[:sections].each do |s|
+        expect(s).to have_key(:content_chunk)
+        expect(s).to have_key(:citation)
+        expect(s).to have_key(:id)
+        c = s[:citation]
         expect(c).to have_key(:file)
         expect(c).to have_key(:heading)
         expect(c).to have_key(:anchor)
@@ -37,7 +41,8 @@ RSpec.describe Ai::GraphExpandedRetriever do
       kw = stub_keyword_retriever('Section One')
       retriever = described_class.new('query', keyword_retriever: kw, graph: graph)
       result = retriever.call
-      headings = result[:citations].map { |c| c[:heading] }
+      citations = result[:sections].map { |s| s[:citation] }
+      headings = citations.map { |c| c[:heading] }
       # Seed must be present
       expect(headings).to include('Section One')
       # Same-file parent and next must be included by expansion
@@ -51,31 +56,31 @@ RSpec.describe Ai::GraphExpandedRetriever do
         linked_headings = linked_ids.map { |id| graph.node(id)&.dig(:heading) }.compact
         linked_headings.each { |h| expect(headings).to include(h) } if linked_headings.any?
       end
-      expect(result[:context_text]).to match(/##\s+.+\([^)]+\.md#[a-z0-9-]+\)/)
+      context_text = result[:sections].map { |s| s[:content_chunk] }.join("\n\n")
+      expect(context_text).to match(/##\s+.+\([^)]+\.md#[a-z0-9-]+\)/)
     end
 
     it 'returns at most FINAL_TOP_K sections' do
       kw = stub_keyword_retriever('Section One', 'Section Two', 'Parent Doc', 'Main')
       retriever = described_class.new('query', keyword_retriever: kw, graph: graph)
       result = retriever.call
-      expect(result[:citations].size).to be <= described_class::FINAL_TOP_K
+      expect(result[:sections].size).to be <= described_class::FINAL_TOP_K
     end
 
     it 'respects final context size cap' do
       kw = stub_keyword_retriever('Section One')
       retriever = described_class.new('query', keyword_retriever: kw, graph: graph)
       result = retriever.call
-      next if result[:context_text].nil?
-      expect(result[:context_text].length).to be <= described_class::MAX_CONTEXT_CHARS + 100
+      next if result[:sections].empty?
+      context_text = result[:sections].map { |s| s[:content_chunk] }.join("\n\n")
+      expect(context_text.length).to be <= described_class::MAX_CONTEXT_CHARS + 100
     end
 
     it 'de-duplicates and keeps best score (seed over expanded)' do
-      # Section One is seed; it is also the "next" of Parent Doc. So Parent could be expanded.
-      # Seed "Section One" and "Section Two" -> Section One appears as seed only once.
       kw = stub_keyword_retriever('Section One', 'Section Two')
       retriever = described_class.new('query', keyword_retriever: kw, graph: graph)
       result = retriever.call
-      ids = result[:citations].map { |c| "#{c[:file]}##{c[:anchor]}" }
+      ids = result[:sections].map { |s| s[:citation] }.map { |c| "#{c[:file]}##{c[:anchor]}" }
       expect(ids).to eq(ids.uniq)
     end
   end
@@ -102,8 +107,8 @@ RSpec.describe Ai::GraphExpandedRetriever do
       result = retriever.call
 
       # Should return at most FINAL_TOP_K; expansion cap prevents 1 + 15 in pool
-      expect(result[:citations].size).to be <= described_class::FINAL_TOP_K
-      expect(result[:citations].map { |c| c[:heading] }.uniq.size).to eq(result[:citations].size)
+      expect(result[:sections].size).to be <= described_class::FINAL_TOP_K
+      expect(result[:sections].map { |s| s[:citation][:heading] }.uniq.size).to eq(result[:sections].size)
     ensure
       FileUtils.rm_rf(many_children_path) if many_children_path.exist?
     end
@@ -115,8 +120,8 @@ RSpec.describe Ai::GraphExpandedRetriever do
       allow(kw).to receive(:search).with(anything, top_k: anything).and_return([])
       retriever = described_class.new('query', keyword_retriever: kw, graph: graph)
       result = retriever.call
-      expect(result[:context_text]).to be_nil
-      expect(result[:citations]).to eq([])
+      expect(result[:sections]).to eq([])
+      expect(result[:seed_ids]).to eq([])
     end
   end
 end

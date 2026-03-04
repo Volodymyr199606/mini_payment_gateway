@@ -24,13 +24,13 @@ module Ai
         ).call
 
         reply = format_reply(summary, range_info)
-        {
-          reply: reply,
-          citations: @citations,
-          data: summary,
+        build_result(
+          reply_text: reply,
           model_used: nil,
-          fallback_used: false
-        }
+          fallback_used: false,
+          guardrail_reask: false,
+          data: summary
+        )
       end
 
       private

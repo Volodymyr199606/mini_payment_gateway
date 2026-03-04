@@ -18,9 +18,9 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
       out = agent.call
 
-      expect(out[:reply]).not_to match(/provided context/i)
-      expect(out[:reply]).not_to match(/based on context/i)
-      expect(out[:reply]).not_to match(/we can infer/i)
+      expect(out.reply_text).not_to match(/provided context/i)
+      expect(out.reply_text).not_to match(/based on context/i)
+      expect(out.reply_text).not_to match(/we can infer/i)
     end
 
     it 'does not contain inline [docs/...] citation strings' do
@@ -31,7 +31,7 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
       out = agent.call
 
-      expect(out[:reply]).not_to match(/\[docs?\/[^\]]*\]/i)
+      expect(out.reply_text).not_to match(/\[docs?\/[^\]]*\]/i)
     end
 
     it 'strips parenthetical citation refs like (docs/REFUNDS_API.md)' do
@@ -42,8 +42,8 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
       out = agent.call
 
-      expect(out[:reply]).not_to match(/\(docs?\/[^)]*\)/i)
-      expect(out[:reply]).to include('Refunds use POST')
+      expect(out.reply_text).not_to match(/\(docs?\/[^)]*\)/i)
+      expect(out.reply_text).to include('Refunds use POST')
     end
 
     it 'returns citations as structured array' do
@@ -53,9 +53,9 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
       out = agent.call
 
-      expect(out[:citations]).to eq(citations)
-      expect(out[:citations]).to be_a(Array)
-      expect(out[:citations].first).to include(file: 'docs/REFUNDS_API.md', heading: 'Refunds')
+      expect(out.citations).to eq(citations)
+      expect(out.citations).to be_a(Array)
+      expect(out.citations.first).to include(file: 'docs/REFUNDS_API.md', heading: 'Refunds')
     end
   end
 
@@ -67,12 +67,12 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'How do refunds work?', context_text: '', citations: [])
       out = agent.call
 
-      expect(out[:reply]).to include("I couldn't find this in the docs")
-      expect(out[:reply]).to include("Where to look next:")
-      expect(out[:reply]).to include("docs/REFUNDS_API.md")
-      expect(out[:fallback_used]).to be true
-      expect(out[:model_used]).to be_nil
-      expect(out[:citations]).to eq([])
+      expect(out.reply_text).to include("I couldn't find this in the docs")
+      expect(out.reply_text).to include("Where to look next:")
+      expect(out.reply_text).to include("docs/REFUNDS_API.md")
+      expect(out.fallback_used).to be true
+      expect(out.model_used).to be_nil
+      expect(out.citations).to eq([])
       expect(client).not_to have_received(:chat)
     end
 
@@ -83,9 +83,9 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'Foo?', context_text: 'Short.', citations: [])
       out = agent.call
 
-      expect(out[:reply]).to include("I couldn't find this in the docs")
-      expect(out[:reply]).to include("Where to look next:")
-      expect(out[:fallback_used]).to be true
+      expect(out.reply_text).to include("I couldn't find this in the docs")
+      expect(out.reply_text).to include("Where to look next:")
+      expect(out.fallback_used).to be true
       expect(client).not_to have_received(:chat)
     end
 
@@ -108,12 +108,12 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'Something obscure', context_text: nil, citations: [])
       out = agent.call
 
-      expect(out[:reply]).to include("I couldn't find this in the docs")
-      expect(out[:reply]).to include("Here's what I can say generally")
-      expect(out[:reply]).to include("Where to look next:")
-      expect(out[:reply]).to match(/Dashboard|docs\/.*\.md/)
-      expect(out[:citations]).to eq([])
-      expect(out[:fallback_used]).to be true
+      expect(out.reply_text).to include("I couldn't find this in the docs")
+      expect(out.reply_text).to include("Here's what I can say generally")
+      expect(out.reply_text).to include("Where to look next:")
+      expect(out.reply_text).to match(/Dashboard|docs\/.*\.md/)
+      expect(out.citations).to eq([])
+      expect(out.fallback_used).to be true
       expect(client).not_to have_received(:chat)
     end
   end
@@ -137,8 +137,8 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
       out = agent.call
 
-      expect(out[:reply]).to include('REFUNDS_API')
-      expect(out[:reply]).not_to eq(first_reply)
+      expect(out.reply_text).to include('REFUNDS_API')
+      expect(out.reply_text).not_to eq(first_reply)
       expect(chat_messages_list.size).to eq(2)
       expect(chat_messages_list.last.last[:content]).to eq('Answer again and cite sources.')
     end
@@ -151,8 +151,26 @@ RSpec.describe Ai::Agents::BaseAgent do
       agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
       out = agent.call
 
-      expect(out[:reply]).to include('REFUNDS_API')
+      expect(out.reply_text).to include('REFUNDS_API')
       expect(client).to have_received(:chat).once
+    end
+  end
+
+  describe 'AgentResult contract' do
+    it 'returns an Ai::AgentResult with reply_text, citations, agent_key, model_used, fallback_used, metadata' do
+      client = instance_double(Ai::GroqClient, chat: { content: 'Refunds use POST. See docs/REFUNDS_API.md.', model_used: 'llama', fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      agent = agent_class.new(message: 'How do refunds work?', context_text: context_text, citations: citations)
+      out = agent.call
+
+      expect(out).to be_a(Ai::AgentResult)
+      expect(out.reply_text).to be_a(String)
+      expect(out.citations).to eq(citations)
+      expect(out.agent_key).to eq('support_faq')
+      expect(out.model_used).to eq('llama')
+      expect(out.fallback_used).to eq(false)
+      expect(out.metadata).to include(docs_used_count: 1, summary_used: false, guardrail_reask: false)
     end
   end
 

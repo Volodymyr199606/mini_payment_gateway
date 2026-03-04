@@ -201,3 +201,33 @@
 .ai-sources-list li {
   margin-bottom: 0.25rem;
 }
+
+/* Debug panel (only when AI_DEBUG=true) */
+.ai-debug-panel {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+}
+
+.ai-debug-panel summary {
+  cursor: pointer;
+  padding: 0.375rem 0.5rem;
+  color: #6b7280;
+}
+
+.ai-debug-panel summary:hover {
+  color: #374151;
+}
+
+.ai-debug-content {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  overflow-x: auto;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: #374151;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

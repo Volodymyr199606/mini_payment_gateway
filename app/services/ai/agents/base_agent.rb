@@ -58,40 +58,35 @@ module Ai
       end
 
       def call
-        if detect_low_context?(@context_text)
-          return {
-            reply: low_context_fallback_message,
-            citations: @citations,
-            model_used: nil,
-            fallback_used: true
-          }
-        end
-
         messages = build_messages
-        result = groq_client.chat(messages: messages, temperature: 0.3, max_tokens: 1024)
-        content = result[:content].to_s.strip
-        content = "I couldn't generate a reply." if content.blank? && result[:error].present?
+        pipeline_context = { context_text: @context_text, citations: @citations }
+
+        # Pre-LLM: empty retrieval guard may short-circuit and skip LLM
+        pre = ::Ai::Guardrails::Pipeline.call(
+          input: { built_messages: messages },
+          result: nil,
+          context: pipeline_context
+        )
+        return build_result_from_pipeline(pre) if pre[:short_circuit]
+
+        # Single LLM call
+        raw = groq_client.chat(messages: messages, temperature: 0.3, max_tokens: 1024)
+        content = raw[:content].to_s.strip
+        content = "I couldn't generate a reply." if content.blank? && raw[:error].present?
         content = fallback_message if content.blank?
         content = strip_inline_citations(strip_filler_phrases(content))
 
-        # Citation enforcement: when we have sections, require the reply to reference at least one source.
-        if @citations.any? && !reply_references_citations?(content, @citations)
-          retry_messages = messages + [
-            { role: 'assistant', content: content },
-            { role: 'user', content: 'Answer again and cite sources.' }
-          ]
-          retry_result = groq_client.chat(messages: retry_messages, temperature: 0.3, max_tokens: 1024)
-          retry_content = retry_result[:content].to_s.strip
-          content = strip_inline_citations(strip_filler_phrases(retry_content)) if retry_content.present?
-          result = retry_result if retry_content.present?
-        end
+        llm_call = build_llm_call_for_pipeline
 
-        {
-          reply: content,
-          citations: @citations,
-          model_used: result[:model_used],
-          fallback_used: result[:fallback_used]
-        }
+        # Post-LLM: citation enforcement (may re-ask once) and secret leak guard
+        post = ::Ai::Guardrails::Pipeline.call(
+          input: { built_messages: messages },
+          result: { content: content, model_used: raw[:model_used], fallback_used: raw[:fallback_used] },
+          context: pipeline_context,
+          llm_call: llm_call
+        )
+
+        build_result_from_pipeline(post)
       end
 
       # True when context is empty or too small to answer from; agent should return deterministic fallback without calling LLM.
@@ -108,6 +103,41 @@ module Ai
 
       def agent_name
         self.class.name.demodulize.underscore.sub(/_agent$/, '')
+      end
+
+      # Build AgentResult for consistent contract. Subclasses may override or call with extra options.
+      def build_result(reply_text:, model_used: nil, fallback_used: false, guardrail_reask: false, data: nil)
+        ::Ai::AgentResult.new(
+          reply_text: reply_text,
+          citations: @citations,
+          agent_key: agent_name,
+          model_used: model_used,
+          fallback_used: fallback_used,
+          metadata: {
+            docs_used_count: @citations.size,
+            summary_used: @memory_text.present?,
+            guardrail_reask: guardrail_reask
+          },
+          data: data
+        )
+      end
+
+      def build_result_from_pipeline(pipeline_out)
+        build_result(
+          reply_text: pipeline_out[:reply_text].to_s,
+          model_used: pipeline_out[:model_used],
+          fallback_used: pipeline_out[:fallback_used],
+          guardrail_reask: pipeline_out[:guardrail_reask] || false
+        )
+      end
+
+      def build_llm_call_for_pipeline
+        ->(messages) {
+          r = groq_client.chat(messages: messages, temperature: 0.3, max_tokens: 1024)
+          content = r[:content].to_s.strip
+          content = strip_inline_citations(strip_filler_phrases(content)) if content.present?
+          { content: content, model_used: r[:model_used], fallback_used: r[:fallback_used] }
+        }
       end
 
       protected

@@ -60,20 +60,27 @@ module Dashboard
         ai_chat_session: chat_session,
         merchant_id: current_merchant.id,
         role: 'assistant',
-        content: out[:reply],
-        agent: agent_key.to_s
+        content: out.reply_text,
+        agent: out.agent_key
       )
 
       increment_ai_chat_count
 
       payload = {
-        reply: out[:reply],
-        agent: agent_key.to_s,
-        citations: out[:citations],
-        model_used: out[:model_used],
-        fallback_used: out[:fallback_used]
+        reply: out.reply_text,
+        agent: out.agent_key,
+        citations: out.citations,
+        model_used: out.model_used,
+        fallback_used: out.fallback_used
       }
-      payload[:data] = out[:data] if out[:data].present?
+      payload[:data] = out.data if out.data.present?
+
+      # Dev-only debug panel: only when AI_DEBUG=true (not exposed in production by default)
+      if ai_debug?
+        payload[:debug] = (retriever_result[:debug] || {}).merge(
+          summary_used: out.metadata[:summary_used]
+        )
+      end
 
       render json: payload
     end
@@ -137,6 +144,11 @@ module Dashboard
     def find_or_create_chat_session
       current_merchant.ai_chat_sessions.order(updated_at: :desc).first ||
         current_merchant.ai_chat_sessions.create!
+    end
+
+    def ai_debug?
+      v = ENV['AI_DEBUG'].to_s.strip.downcase
+      v == 'true' || v == '1'
     end
   end
 end

@@ -108,6 +108,41 @@ X-API-KEY: your_api_key
 
 **Model fallback:** If Groq returns a `model_decommissioned` error (or the message contains "decommissioned"), the client retries exactly once with the next model in the fallback list (e.g. `llama-3.1-8b-instant`). The default model is `llama-3.3-70b-versatile`; set `GROQ_MODEL` to use a different primary model.
 
+## AI Configuration
+
+| Variable | Description | Default |
+|---------|-------------|---------|
+| `AI_CONTEXT_GRAPH_ENABLED` | Use graph-expanded retrieval (seed sections + parent/next/linked sections). | off |
+| `AI_VECTOR_RAG_ENABLED` | Use hybrid retrieval (keyword + vector similarity). Requires pgvector and backfilled embeddings. | off |
+| `AI_DEBUG` | Include debug panel in AI chat response (retriever name, seed/expanded/included section ids, context budget, summary flags). Dev only. | off |
+| `EMBEDDING_API_KEY` | API key for embeddings (backfill and hybrid retrieval). OpenAI-compatible endpoint. | — |
+| `OPENAI_API_KEY` | Fallback if `EMBEDDING_API_KEY` not set; used for embedding backfill and hybrid retrieval. | — |
+
+**Copy-paste (development):**
+
+```bash
+export GROQ_API_KEY="your_groq_key"
+# Optional: graph retrieval
+export AI_CONTEXT_GRAPH_ENABLED=true
+# Optional: hybrid (keyword + vector) — requires pgvector + backfill
+export AI_VECTOR_RAG_ENABLED=true
+export EMBEDDING_API_KEY="your_openai_or_compatible_key"
+# Optional: debug panel in chat UI
+export AI_DEBUG=true
+```
+
+### pgvector and hybrid retrieval
+
+- **Requirement:** The [pgvector](https://github.com/pgvector/pgvector#installation) PostgreSQL extension must be installed before running the migration that creates `doc_section_embeddings`.
+- **Backfill:** Creates embeddings for all Markdown doc sections (from `docs/`), stores them in `doc_section_embeddings`. Run after setting `EMBEDDING_API_KEY` or `OPENAI_API_KEY`:
+
+  ```bash
+  rake ai:backfill_doc_embeddings
+  ```
+
+- **What it does:** Reads sections from the doc graph (file + heading + content), calls the embedding API per section, upserts into `doc_section_embeddings` (section_id, vector, updated_at). Used by hybrid retrieval for similarity search.
+- **Test hybrid retrieval:** Set `AI_VECTOR_RAG_ENABLED=true` (and leave `AI_CONTEXT_GRAPH_ENABLED` off to use hybrid instead of graph). Chat will merge keyword and vector results and rerank with RRF.
+
 ## Safety and constraints
 
 - **Read-only:** The AI must not trigger payment actions (authorize, capture, refund, void). It only explains and guides.

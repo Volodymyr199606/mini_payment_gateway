@@ -45,6 +45,18 @@ A Rails 7+ API learning project that models real payment-platform concepts (Brai
    ```
    Note: A default secret is used in development if not set.
 
+### AI Configuration
+
+| Variable | Purpose |
+|---------|---------|
+| `GROQ_API_KEY` | Required for AI chat replies (Groq API). |
+| `AI_CONTEXT_GRAPH_ENABLED` | Set to `true` or `1` to use graph-expanded retrieval (seed + parent/next/links). |
+| `AI_VECTOR_RAG_ENABLED` | Set to `true` or `1` to use hybrid retrieval (keyword + vector). Requires pgvector and backfilled embeddings. |
+| `AI_DEBUG` | Set to `true` or `1` to include debug panel in AI chat (retriever, section ids, budget, summary flags). Dev only. |
+| `EMBEDDING_API_KEY` or `OPENAI_API_KEY` | Used to backfill doc embeddings for vector retrieval (e.g. `rake ai:backfill_doc_embeddings`). |
+
+**Vector / hybrid retrieval:** Install the [pgvector](https://github.com/pgvector/pgvector#installation) Postgres extension, run `rails db:migrate`, set an embedding API key, then run `rake ai:backfill_doc_embeddings` to create embeddings for `docs/` sections. Enable with `AI_VECTOR_RAG_ENABLED=true`. See [docs/AI_AGENTS.md](docs/AI_AGENTS.md) for details.
+
 ## API Endpoints
 
 All endpoints are under `/api/v1` namespace. Most endpoints require `X-API-KEY` header.

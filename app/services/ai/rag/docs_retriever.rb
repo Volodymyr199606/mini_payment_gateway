@@ -10,7 +10,6 @@ module Ai
       MAX_SECTIONS = 6
       MAX_CHARS_PER_SECTION = 1000
       MAX_CONTEXT_CHARS = 5000
-      EXCERPT_LENGTH = 160
       SEED_SECTIONS = 3
       CORE_DOCS = %w[
         docs/PAYMENT_LIFECYCLE.md
@@ -50,7 +49,7 @@ module Ai
           header = "## #{node[:heading]} (#{node[:file]}##{node[:anchor]})"
           sections << {
             content_chunk: "#{header}\n#{content}",
-            citation: build_citation_from_node(node),
+            citation: Helpers.build_citation(node),
             id: node[:id]
           }
         end
@@ -58,14 +57,16 @@ module Ai
         # Fallback: if graph yielded nothing (e.g. no docs), use initial index sections
         if sections.empty? && initial_hits.any?
           deduped = dedupe_by_file(initial_hits, MAX_SECTIONS)
-          seed_ids = deduped.map { |s| section_id(s[:file].to_s.gsub('\\', '/'), slugify(s[:heading].to_s)) }
+          seed_ids = deduped.map { |s| Helpers.section_id(Helpers.normalize_file(s[:file]), Helpers.slugify_heading(s[:heading].to_s)) }
           deduped.each do |s|
             content = s[:content].to_s.truncate(MAX_CHARS_PER_SECTION)
-            header = "## #{s[:heading]} (#{s[:file].to_s.gsub('\\', '/')}##{slugify(s[:heading].to_s)})"
+            file = Helpers.normalize_file(s[:file])
+            anchor = Helpers.slugify_heading(s[:heading].to_s)
+            header = "## #{s[:heading]} (#{file}##{anchor})"
             sections << {
               content_chunk: "#{header}\n#{content}",
-              citation: build_citation(s),
-              id: section_id(s[:file].to_s.gsub('\\', '/'), slugify(s[:heading].to_s))
+              citation: Helpers.build_citation(s),
+              id: Helpers.section_id(file, anchor)
             }
           end
         end
@@ -78,37 +79,8 @@ module Ai
       def section_ids_from_deduped(sections, max)
         deduped = dedupe_by_file(sections, max)
         deduped.map do |s|
-          file = s[:file].to_s.gsub('\\', '/')
-          section_id(file, slugify(s[:heading].to_s))
+          Helpers.section_id(Helpers.normalize_file(s[:file]), Helpers.slugify_heading(s[:heading].to_s))
         end
-      end
-
-      def section_id(file, anchor)
-        "#{file}##{anchor}"
-      end
-
-      def build_citation_from_node(node)
-        content = node[:content].to_s
-        {
-          file: node[:file],
-          heading: node[:heading],
-          anchor: node[:anchor],
-          excerpt: content.truncate(EXCERPT_LENGTH)
-        }
-      end
-
-      def build_citation(section)
-        content = section[:content].to_s
-        {
-          file: section[:file],
-          heading: section[:heading],
-          anchor: slugify(section[:heading].to_s),
-          excerpt: content.truncate(EXCERPT_LENGTH)
-        }
-      end
-
-      def slugify(text)
-        text.to_s.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/\A-|-\z/, '')
       end
 
       def dedupe_by_file(sections, max)

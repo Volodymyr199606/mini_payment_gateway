@@ -30,7 +30,7 @@ module Api
           context_text = retriever_result[:context_text]
           citations = retriever_result[:citations]
 
-          agent_class = agent_class_for(agent_key)
+          agent_class = ::Ai::AgentRegistry.fetch(agent_key)
           agent = build_agent(agent_class, agent_key, message, context_text, citations)
 
           started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -69,18 +69,6 @@ module Api
 
         def chat_params
           params.permit(:message)
-        end
-
-        def agent_class_for(key)
-          case key
-          when :support_faq then ::Ai::Agents::SupportFaqAgent
-          when :security_compliance then ::Ai::Agents::SecurityAgent
-          when :developer_onboarding then ::Ai::Agents::OnboardingAgent
-          when :operational then ::Ai::Agents::OperationalAgent
-          when :reconciliation_analyst then ::Ai::Agents::ReconciliationAgent
-          when :reporting_calculation then ::Ai::Agents::ReportingCalculationAgent
-          else ::Ai::Agents::SupportFaqAgent
-          end
         end
 
         def ai_rate_limited?

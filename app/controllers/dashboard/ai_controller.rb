@@ -45,11 +45,12 @@ module Dashboard
                   else
                     ::Ai::Router.new(msg).call
                   end
+      agent_key = ::Ai::AgentRegistry.default_key unless ::Ai::AgentRegistry.all_keys.include?(agent_key)
       retriever_result = ::Ai::Rag::RetrievalService.call(msg, agent_key: agent_key)
       context_text = retriever_result[:context_text]
       citations = retriever_result[:citations]
 
-      agent_class = agent_class_for(agent_key)
+      agent_class = ::Ai::AgentRegistry.fetch(agent_key)
       agent = build_agent(agent_class, agent_key, msg, context_text, citations, conversation_history: conversation_history, memory_text: memory_text)
 
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -113,18 +114,6 @@ module Dashboard
           conversation_history: conversation_history,
           memory_text: memory_text
         )
-      end
-    end
-
-    def agent_class_for(key)
-      case key
-      when :support_faq then ::Ai::Agents::SupportFaqAgent
-      when :security_compliance then ::Ai::Agents::SecurityAgent
-      when :developer_onboarding then ::Ai::Agents::OnboardingAgent
-      when :operational then ::Ai::Agents::OperationalAgent
-      when :reconciliation_analyst then ::Ai::Agents::ReconciliationAgent
-      when :reporting_calculation then ::Ai::Agents::ReportingCalculationAgent
-      else ::Ai::Agents::SupportFaqAgent
       end
     end
 

@@ -8,15 +8,6 @@ module Ai
       GOLDEN_PATH = Rails.root.join('spec/ai/golden_questions.yml')
       STUB_REPLY = 'Eval stub reply. No secrets here.'
 
-      AGENT_CLASSES = {
-        support_faq: Agents::SupportFaqAgent,
-        security_compliance: Agents::SecurityAgent,
-        developer_onboarding: Agents::OnboardingAgent,
-        operational: Agents::OperationalAgent,
-        reconciliation_analyst: Agents::ReconciliationAgent,
-        reporting_calculation: Agents::ReportingCalculationAgent
-      }.freeze
-
       # Map agent_name (result.agent_key) to router key for golden eval comparison
       AGENT_NAME_TO_ROUTER_KEY = {
         'support_faq' => :support_faq,
@@ -61,7 +52,7 @@ module Ai
           citations = retriever_result[:citations] || []
           had_sections = citations.size >= 1
 
-          agent_class = AGENT_CLASSES[agent_key] || ::Ai::Agents::SupportFaqAgent
+          agent_class = ::Ai::AgentRegistry.fetch(agent_key)
           agent = build_agent(agent_class, agent_key, question, context_text, citations, merchant_id: merchant_id)
           result = agent.call
 

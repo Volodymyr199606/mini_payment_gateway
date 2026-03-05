@@ -10,7 +10,6 @@ module Ai
       FINAL_TOP_K = 6
       RRF_K = 60
       MAX_CHARS_PER_SECTION = 1000
-      EXCERPT_LENGTH = 160
 
       def initialize(message, agent_key: nil, keyword_retriever: nil, embedding_client: nil, graph: nil, vector_store: nil)
         @message = message.to_s
@@ -54,13 +53,7 @@ module Ai
       end
 
       def section_id_from_hit(hit)
-        file = hit[:file].to_s.gsub('\\', '/')
-        anchor = slugify(hit[:heading].to_s)
-        "#{file}##{anchor}"
-      end
-
-      def slugify(text)
-        text.to_s.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/\A-|-\z/, '')
+        Helpers.section_id(Helpers.normalize_file(hit[:file]), Helpers.slugify_heading(hit[:heading].to_s))
       end
 
       def fetch_vector_hits
@@ -104,12 +97,7 @@ module Ai
           header = "## #{node[:heading]} (#{node[:file]}##{node[:anchor]})"
           {
             content_chunk: "#{header}\n#{content}",
-            citation: {
-              file: node[:file],
-              heading: node[:heading],
-              anchor: node[:anchor],
-              excerpt: node[:content].to_s.truncate(EXCERPT_LENGTH)
-            },
+            citation: Helpers.build_citation(node),
             id: node[:id]
           }
         end

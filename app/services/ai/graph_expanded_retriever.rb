@@ -10,7 +10,6 @@ module Ai
     EXPANSION_CAP_PER_SEED = 10
     MAX_CONTEXT_CHARS = 5000
     MAX_CHARS_PER_SECTION = 1000
-    EXCERPT_LENGTH = 160
 
     # Score tiers (higher = better). Used for ordering after dedup.
     SCORE_SEED = 100
@@ -58,7 +57,7 @@ module Ai
 
     def fetch_seed_ids
       hits = @keyword_retriever.search(@query, top_k: SEED_K)
-      hits.map { |s| section_id(normalize_file(s[:file]), slugify(s[:heading].to_s)) }.uniq
+      hits.map { |s| Rag::Helpers.section_id(Rag::Helpers.normalize_file(s[:file]), Rag::Helpers.slugify_heading(s[:heading].to_s)) }.uniq
     end
 
     def expand_and_score(seed_ids)
@@ -161,19 +160,10 @@ module Ai
         content_chunk = "#{header}\n#{content}"
         {
           content_chunk: content_chunk,
-          citation: build_citation(node),
+          citation: Rag::Helpers.build_citation(node),
           id: node[:id]
         }
       end
-    end
-
-    def build_citation(node)
-      {
-        file: node[:file],
-        heading: node[:heading],
-        anchor: node[:anchor],
-        excerpt: node[:content].to_s.truncate(EXCERPT_LENGTH)
-      }
     end
 
     def empty_result
@@ -189,16 +179,5 @@ module Ai
       }
     end
 
-    def section_id(file, anchor)
-      "#{file}##{anchor}"
-    end
-
-    def normalize_file(file)
-      file.to_s.gsub('\\', '/')
-    end
-
-    def slugify(text)
-      text.to_s.downcase.gsub(/[^a-z0-9]+/, '-').gsub(/\A-|-\z/, '')
-    end
   end
 end

@@ -113,5 +113,42 @@ RSpec.describe Ai::Rag::HybridRetriever do
       end
       expect(result[:seed_ids]).to be_a(Array)
     end
+
+    it 'orders by RRF with keyword boost: keyword-only section outranks vector-only when ranks are close' do
+      parent_file = 'spec/fixtures/context_graph_docs/parent.md'
+      section_one_id = section_id(parent_file, 'Section One')
+      section_two_id = section_id(parent_file, 'Section Two')
+      parent_doc_id = section_id(parent_file, 'Parent Doc')
+
+      # Keyword: Section One (rank 0), Section Two (rank 1) — Section One is keyword-only at top
+      keyword_hits = [
+        { file: parent_file, heading: 'Section One', content: 'one' },
+        { file: parent_file, heading: 'Section Two', content: 'two' }
+      ]
+      kw = instance_double(Ai::Rag::DocsIndex)
+      allow(kw).to receive(:search).with(anything, anything).and_return(keyword_hits)
+
+      # Vector: Parent Doc (rank 0), Section Two (rank 1) — Parent Doc is vector-only at top
+      vector_store = instance_double('VectorStore', nearest: [[parent_doc_id, 0.05], [section_two_id, 0.1]])
+      embed_client = instance_double(Ai::Rag::EmbeddingClient)
+      allow(embed_client).to receive(:embed).and_return(Array.new(Ai::Rag::EmbeddingClient::DIMENSIONS, 0.0))
+
+      retriever = described_class.new(
+        'query',
+        keyword_retriever: kw,
+        embedding_client: embed_client,
+        graph: graph,
+        vector_store: vector_store
+      )
+      result = retriever.call
+
+      section_ids = result[:sections].map { |s| s[:id] }
+      # Section Two appears in both lists → highest RRF score → first
+      expect(section_ids.first).to eq(section_two_id)
+      # Keyword boost: Section One (keyword rank 0) should outrank Parent Doc (vector rank 0)
+      idx_one = section_ids.index(section_one_id)
+      idx_parent = section_ids.index(parent_doc_id)
+      expect(idx_one).to be < idx_parent, 'keyword-only (Section One) should rank above vector-only (Parent Doc) due to keyword boost'
+    end
   end
 end

@@ -2,9 +2,12 @@
 
 module Ai
   module Rag
+    # Canonical production context graph for RAG. Use this (not Ai::ContextGraph::Builder/Graph).
     # Context graph over doc sections: models document structure for RAG expansion.
     # Nodes = sections (file + heading + anchor). Edges = parent/child, prev/next, cross-links.
     # Section id format: "docs/PAYMENT_LIFECYCLE.md#authorize-in-this-project"
+    #
+    # API: .instance / .reset! ; #node(section_id) ; #expand(seed_ids, max_hops:, max_nodes:) ; #nodes
     class ContextGraph
       # Markdown link: [text](path) or [text](path#anchor)
       LINK_REGEXP = /\[([^\]]*)\]\(([^)]+)\)/.freeze

@@ -9,6 +9,8 @@ module Ai
       VECTOR_TOP_K = 4
       FINAL_TOP_K = 6
       RRF_K = 60
+      # Slight boost for keyword hits so keyword-only sections can outrank vector-only when ranks are close.
+      KEYWORD_RRF_BOOST = 1.2
       MAX_CHARS_PER_SECTION = 1000
 
       def initialize(message, agent_key: nil, keyword_retriever: nil, embedding_client: nil, graph: nil, vector_store: nil)
@@ -37,7 +39,7 @@ module Ai
         seed_ids = keyword_section_ids.first(3)
 
         sections = build_sections(top_ids)
-        { sections: sections, seed_ids: seed_ids }
+        { sections: sections, seed_ids: seed_ids, vector_hits_count: vector_section_ids.size }
       end
 
       private
@@ -73,13 +75,14 @@ module Ai
         (keyword_ids + vector_ids).uniq
       end
 
-      # RRF: score(id) = sum 1/(k + rank) over each list. Returns [[section_id, score], ...] sorted by score desc.
+      # RRF: score(id) = sum weight/(k + rank) over each list. Keyword list uses KEYWORD_RRF_BOOST.
+      # Returns [[section_id, score], ...] sorted by score desc.
       def rerank_rrf(keyword_section_ids:, vector_section_ids:)
         k = RRF_K
         scores = Hash.new(0.0)
 
         keyword_section_ids.each_with_index do |sid, idx|
-          scores[sid] += 1.0 / (k + idx + 1)
+          scores[sid] += KEYWORD_RRF_BOOST / (k + idx + 1)
         end
         vector_section_ids.each_with_index do |sid, idx|
           scores[sid] += 1.0 / (k + idx + 1)

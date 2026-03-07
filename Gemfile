@@ -36,5 +36,5 @@ group :development do
   gem 'wdm', '>= 0.1.0', platforms: [:windows]
   # Required by kamal/net-ssh on Ruby 4+ (fiddle removed from default gems)
   gem 'fiddle'
-  gem 'kamal', '~> 2.10'
+  gem 'kamal', '~> 2.10', require: false
 end

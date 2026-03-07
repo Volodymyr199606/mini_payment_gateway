@@ -16,10 +16,10 @@ module Ai
         # Retrievers (additive): graph when AI_CONTEXT_GRAPH_ENABLED; else vector hybrid when AI_VECTOR_RAG_ENABLED; else keyword DocsRetriever.
         def call(message, agent_key: nil, max_context_chars: DEFAULT_MAX_CONTEXT_CHARS)
           raw = if context_graph_enabled?
-            ::Ai::GraphExpandedRetriever.new(message).call
+            ::Ai::GraphExpandedRetriever.new(message, agent_key: agent_key).call
           elsif vector_rag_enabled?
             r = HybridRetriever.new(message, agent_key: agent_key).call
-            { sections: r[:sections], seed_ids: r[:seed_ids], seed_count: nil, expanded_count: nil }
+            { sections: r[:sections], seed_ids: r[:seed_ids], seed_count: nil, expanded_count: nil, vector_hits_count: r[:vector_hits_count] }
           else
             r = DocsRetriever.new(message, agent_key: agent_key).call
             { sections: r[:sections], seed_ids: r[:seed_ids], seed_count: nil, expanded_count: nil }
@@ -30,7 +30,9 @@ module Ai
             retriever: context_graph_enabled? ? 'GraphExpandedRetriever' : (vector_rag_enabled? ? 'HybridRetriever' : 'DocsRetriever'),
             seed_count: raw[:seed_count],
             expanded_count: raw[:expanded_count],
-            final_count: out[:citations]&.size
+            vector_hits_count: raw[:vector_hits_count],
+            final_count: out[:citations]&.size,
+            context_truncated: out[:context_truncated]
           )
 
           if ai_debug?
@@ -114,7 +116,7 @@ module Ai
 
         private
 
-        def log_retrieval(retriever:, seed_count:, expanded_count:, final_count:)
+        def log_retrieval(retriever:, seed_count:, expanded_count:, vector_hits_count: nil, final_count:, context_truncated: nil)
           payload = {
             event: 'ai_doc_retrieval',
             retriever: retriever,
@@ -122,6 +124,8 @@ module Ai
           }
           payload[:seed_sections_count] = seed_count if seed_count
           payload[:expanded_sections_count] = expanded_count if expanded_count
+          payload[:vector_hits_count] = vector_hits_count if vector_hits_count
+          payload[:context_truncated] = context_truncated unless context_truncated.nil?
           Rails.logger.info(payload.to_json)
         end
       end

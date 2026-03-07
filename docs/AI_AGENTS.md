@@ -142,6 +142,7 @@ export AI_DEBUG=true
 
 - **What it does:** Reads sections from the doc graph (file + heading + content), calls the embedding API per section, upserts into `doc_section_embeddings` (section_id, vector, updated_at). Used by hybrid retrieval for similarity search.
 - **Test hybrid retrieval:** Set `AI_VECTOR_RAG_ENABLED=true` (and leave `AI_CONTEXT_GRAPH_ENABLED` off to use hybrid instead of graph). Chat will merge keyword and vector results and rerank with RRF.
+- **Runbook:** See [docs/runbooks/AI_EMBEDDINGS_RUNBOOK.md](runbooks/AI_EMBEDDINGS_RUNBOOK.md) for prerequisites, backfill, smoke task (`rake ai:smoke_hybrid`), and troubleshooting.
 
 ## Safety and constraints
 
@@ -161,3 +162,12 @@ export AI_DEBUG=true
 - `app/helpers/ai_money_helper.rb` — Format cents as `"$12.34"`.
 - `app/services/ai/rag/` — Docs index, Markdown section extractor, retriever, **agent_doc_policy** (per-agent allowed/preferred docs).
 - `app/controllers/api/v1/ai/chat_controller.rb` — Single chat action: auth, rate limit, RAG, router, agent, JSON response (includes `data` for reporting agent).
+
+### Context graph (intended API)
+
+**Production:** Use **`Ai::Rag::ContextGraph`** as the single canonical graph for RAG. It reads from `docs/`, builds nodes (section id = `file#anchor`) with parent/child, prev/next, and cross-doc links, and is used by DocsRetriever, GraphExpandedRetriever, and HybridRetriever.
+
+- **Entry point:** `Ai::Rag::ContextGraph.instance` (singleton; reloads in development when docs change). In tests, call `Ai::Rag::ContextGraph.reset!` before examples that need a fresh graph.
+- **API:** `#node(section_id)` → node hash; `#expand(seed_ids, max_hops:, max_nodes:)` → expanded section id list; `#nodes` → array of nodes.
+
+**Test-only:** `Ai::ContextGraph::Builder` and `Ai::ContextGraph::Graph` (under `app/services/ai/context_graph/`) build a graph from in-memory sections for unit tests. They are not used in production. Production code should use only `Ai::Rag::ContextGraph`.

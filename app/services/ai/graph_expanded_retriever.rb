@@ -10,6 +10,12 @@ module Ai
     EXPANSION_CAP_PER_SEED = 10
     MAX_CONTEXT_CHARS = 5000
     MAX_CHARS_PER_SECTION = 1000
+    CORE_DOCS = %w[
+      docs/PAYMENT_LIFECYCLE.md
+      docs/ARCHITECTURE.md
+      docs/REFUNDS_API.md
+      docs/SECURITY.md
+    ].freeze
 
     # Score tiers (higher = better). Used for ordering after dedup.
     SCORE_SEED = 100
@@ -17,8 +23,9 @@ module Ai
     SCORE_LINKS_TO = 50
     SCORE_NEIGHBOR = 30
 
-    def initialize(query, keyword_retriever: nil, graph: nil)
+    def initialize(query, agent_key: nil, keyword_retriever: nil, graph: nil)
       @query = query.to_s
+      @agent_key = agent_key
       @keyword_retriever = keyword_retriever || default_keyword_retriever
       @graph = graph || default_graph
     end
@@ -56,7 +63,15 @@ module Ai
     end
 
     def fetch_seed_ids
-      hits = @keyword_retriever.search(@query, top_k: SEED_K)
+      search_opts = { top_k: SEED_K }
+      if @agent_key
+        policy = Rag::AgentDocPolicy.for_agent(@agent_key)
+        search_opts[:allowed_files] = policy[:allowed] if policy[:allowed].present?
+        preferred = (policy[:preferred].presence || []).dup
+        preferred.concat(CORE_DOCS)
+        search_opts[:preferred_files] = preferred.uniq
+      end
+      hits = @keyword_retriever.search(@query, **search_opts)
       hits.map { |s| Rag::Helpers.section_id(Rag::Helpers.normalize_file(s[:file]), Rag::Helpers.slugify_heading(s[:heading].to_s)) }.uniq
     end
 

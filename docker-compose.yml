@@ -1,10 +1,10 @@
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_DB: mini_payment_gateway_production
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: NewStrongPassword753!
+      POSTGRES_DB: mini_payment_gateway_development
     ports:
       - "5432:5432"
     volumes:
@@ -17,10 +17,9 @@ services:
     environment:
       RAILS_ENV: production
       SECRET_KEY_BASE: dummy
-      DATABASE_URL: postgres://postgres:postgres@db:5432/mini_payment_gateway_production
+      DATABASE_URL: postgres://postgres:NewStrongPassword753!@db:5432/mini_payment_gateway_production
     ports:
       - "3000:3000"
 
 volumes:
   pgdata:
-

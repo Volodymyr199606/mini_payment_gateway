@@ -2,6 +2,9 @@
 
 module Ai
   module ContextGraph
+    # Test-only: builds a Graph from in-memory sections for unit tests.
+    # Production RAG uses Ai::Rag::ContextGraph (singleton from docs/). Do not use this in production.
+    #
     # Builds a Graph from DocsIndex-style sections (file, heading, level, content).
     # Produces nodes with id "#{file}##{anchor}". Edges: parent/child (heading levels),
     # prev/next (same file), links_to (markdown links resolved to corpus).

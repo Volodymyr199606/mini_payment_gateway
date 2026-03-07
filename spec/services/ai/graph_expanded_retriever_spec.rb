@@ -7,13 +7,14 @@ RSpec.describe Ai::GraphExpandedRetriever do
   let(:graph) { Ai::Rag::ContextGraph.new(docs_path: fixtures_path).build }
 
   # Keyword retriever that returns sections with file and heading (matching graph's section ids).
+  # Accepts search(query, top_k:, and optionally allowed_files:, preferred_files:) when agent_key is set.
   def stub_keyword_retriever(*sections)
     sections_with_file = sections.map do |heading|
       file = graph.nodes.find { |n| n[:heading] == heading }&.dig(:file) || 'spec/fixtures/context_graph_docs/parent.md'
       { file: file, heading: heading, content: heading }
     end
     instance_double('KeywordRetriever', search: sections_with_file).tap do |dbl|
-      allow(dbl).to receive(:search).with(anything, top_k: anything).and_return(sections_with_file)
+      allow(dbl).to receive(:search).with(anything, hash_including(top_k: kind_of(Integer))).and_return(sections_with_file)
     end
   end
 

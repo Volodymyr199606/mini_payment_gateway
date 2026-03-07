@@ -2,6 +2,9 @@
 
 module Ai
   module ContextGraph
+    # Test-only: in-memory graph of doc sections for unit tests.
+    # Production RAG uses Ai::Rag::ContextGraph. Do not use this in production.
+    #
     # In-memory graph of doc sections. Nodes keyed by "#{file}##{anchor}".
     # Edges: parent_of, prev, next, links_to.
     class Graph

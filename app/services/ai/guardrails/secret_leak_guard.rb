@@ -15,6 +15,13 @@ module Ai
         redacted = Ai::MessageSanitizer.sanitize(text)
         return result if redacted == text
 
+        ::Ai::Observability::EventLogger.log_guardrail(
+          event: 'secret_redaction',
+          request_id: Thread.current[:ai_request_id],
+          citations_count: context[:citations].to_a.size,
+          context_length: context[:context_text].to_s.length
+        )
+
         reply_text = WARNING_PREFIX + redacted
         result.merge(reply_text: reply_text, secret_leak_detected: true)
       end

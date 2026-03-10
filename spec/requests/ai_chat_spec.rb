@@ -97,6 +97,55 @@ RSpec.describe 'AI chat API', type: :request do
       expect(citation_files).to include('docs/PAYMENT_LIFECYCLE.md')
     end
 
+    it 'omits debug payload when AI_DEBUG is not enabled' do
+      _m, api_key = create_merchant_with_api_key
+      stub_retrieval_service!
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'Stubbed reply.' })
+      )
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AI_DEBUG').and_return('false')
+
+      post '/api/v1/ai/chat',
+           params: { message: 'How do refunds work?' },
+           headers: api_headers(api_key),
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).not_to have_key('debug')
+    end
+
+    it 'includes debug payload when AI_DEBUG=true' do
+      _m, api_key = create_merchant_with_api_key
+      stub_retrieval_service!
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'Stubbed reply.', model_used: 'test', fallback_used: false })
+      )
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AI_DEBUG').and_return('true')
+      allow(ENV).to receive(:[]).with('AI_CONTEXT_GRAPH_ENABLED').and_return('')
+      allow(ENV).to receive(:[]).with('AI_VECTOR_RAG_ENABLED').and_return('')
+
+      post '/api/v1/ai/chat',
+           params: { message: 'How do refunds work?' },
+           headers: api_headers(api_key),
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body).to have_key('debug')
+      debug = body['debug']
+      expect(debug).to have_key('selected_agent')
+      expect(debug).to have_key('selected_retriever')
+      expect(debug).to have_key('graph_enabled')
+      expect(debug).to have_key('vector_enabled')
+      expect(debug).to have_key('citations_count')
+      expect(debug).to have_key('fallback_used')
+      expect(debug).to have_key('citation_reask_used')
+      expect(debug).to have_key('model_used')
+      expect(debug).to have_key('latency_ms')
+    end
+
     it 'passes stubbed context and citations to agent and returns them in response' do
       _m, api_key = create_merchant_with_api_key
       stub_retrieval_service!(

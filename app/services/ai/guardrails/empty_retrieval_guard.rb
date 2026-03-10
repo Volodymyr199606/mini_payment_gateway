@@ -31,6 +31,13 @@ module Ai
         reply_text = FALLBACK_MESSAGE + "\n\nWhere to look next:\n" +
           WHERE_TO_LOOK.map { |s| "• #{s}" }.join("\n")
 
+        ::Ai::Observability::EventLogger.log_guardrail(
+          event: 'empty_retrieval_fallback',
+          request_id: Thread.current[:ai_request_id],
+          citations_count: context[:citations].to_a.size,
+          context_length: context_text.length
+        )
+
         {
           short_circuit: true,
           reply_text: reply_text,

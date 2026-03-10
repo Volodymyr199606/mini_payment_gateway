@@ -87,6 +87,53 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       expect(body['citations']).to be_a(Array)
     end
 
+    it 'omits debug payload when AI_DEBUG is not enabled' do
+      _m, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+      stub_retrieval_service!
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'Stubbed.', model_used: 'test', fallback_used: false })
+      )
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AI_DEBUG').and_return('false')
+
+      post_chat('What is authorize?')
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).not_to have_key('debug')
+    end
+
+    it 'includes debug payload when AI_DEBUG=true' do
+      _m, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+      stub_retrieval_service!
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'Stubbed.', model_used: 'test', fallback_used: false })
+      )
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AI_DEBUG').and_return('true')
+      allow(ENV).to receive(:[]).with('AI_CONTEXT_GRAPH_ENABLED').and_return('')
+      allow(ENV).to receive(:[]).with('AI_VECTOR_RAG_ENABLED').and_return('')
+
+      post_chat('What is authorize?')
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body).to have_key('debug')
+      debug = body['debug']
+      expect(debug).to have_key('selected_agent')
+      expect(debug).to have_key('selected_retriever')
+      expect(debug).to have_key('graph_enabled')
+      expect(debug).to have_key('vector_enabled')
+      expect(debug).to have_key('citations_count')
+      expect(debug).to have_key('fallback_used')
+      expect(debug).to have_key('citation_reask_used')
+      expect(debug).to have_key('model_used')
+      expect(debug).to have_key('memory_used')
+      expect(debug).to have_key('summary_used')
+      expect(debug).to have_key('latency_ms')
+    end
+
     it 'accepts form-encoded message and returns JSON' do
       _m, key = create_merchant_with_api_key
       post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }

@@ -73,7 +73,15 @@ module Ai
         raw = groq_client.chat(messages: messages, temperature: 0.3, max_tokens: 1024)
         content = raw[:content].to_s.strip
         content = "I couldn't generate a reply." if content.blank? && raw[:error].present?
-        content = fallback_message if content.blank?
+        if content.blank?
+          ::Ai::Observability::EventLogger.log_guardrail(
+            event: 'safe_fallback',
+            request_id: Thread.current[:ai_request_id],
+            citations_count: @citations.size,
+            context_length: @context_text.to_s.length
+          )
+          content = fallback_message
+        end
         content = strip_inline_citations(strip_filler_phrases(content))
 
         llm_call = build_llm_call_for_pipeline

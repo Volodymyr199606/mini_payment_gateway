@@ -29,6 +29,13 @@ module Ai
         next_model = retry_content.present? ? retry_result[:model_used] : result[:model_used]
         next_fallback = retry_content.present? ? retry_result[:fallback_used] : result[:fallback_used]
 
+        ::Ai::Observability::EventLogger.log_guardrail(
+          event: 'citation_reask',
+          request_id: Thread.current[:ai_request_id],
+          citations_count: context[:citations].to_a.size,
+          context_length: context[:context_text].to_s.length
+        )
+
         result.merge(
           content: next_content,
           reply_text: next_content,

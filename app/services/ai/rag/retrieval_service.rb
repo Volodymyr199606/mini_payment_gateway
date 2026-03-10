@@ -15,6 +15,7 @@ module Ai
         # Returns { context_text:, citations:, context_truncated: }. When AI_DEBUG=true adds :debug.
         # Retrievers (additive): graph when AI_CONTEXT_GRAPH_ENABLED; else vector hybrid when AI_VECTOR_RAG_ENABLED; else keyword DocsRetriever.
         def call(message, agent_key: nil, max_context_chars: DEFAULT_MAX_CONTEXT_CHARS)
+          retriever_name = context_graph_enabled? ? 'GraphExpandedRetriever' : (vector_rag_enabled? ? 'HybridRetriever' : 'DocsRetriever')
           raw = if context_graph_enabled?
             ::Ai::GraphExpandedRetriever.new(message, agent_key: agent_key).call
           elsif vector_rag_enabled?
@@ -26,19 +27,25 @@ module Ai
           end
 
           out = apply_context_budget(raw[:sections], raw[:seed_ids], max_context_chars)
-          log_retrieval(
-            retriever: context_graph_enabled? ? 'GraphExpandedRetriever' : (vector_rag_enabled? ? 'HybridRetriever' : 'DocsRetriever'),
-            seed_count: raw[:seed_count],
-            expanded_count: raw[:expanded_count],
+          citations_count = out[:citations]&.size || 0
+          context_len = out[:context_text].to_s.length
+          ::Ai::Observability::EventLogger.log_retrieval(
+            retriever: retriever_name,
+            query: message,
+            agent_key: agent_key,
+            seed_sections_count: raw[:seed_count],
+            expanded_sections_count: raw[:expanded_count],
             vector_hits_count: raw[:vector_hits_count],
-            final_count: out[:citations]&.size,
-            context_truncated: out[:context_truncated]
+            final_sections_count: citations_count,
+            context_text_length: context_len,
+            context_truncated: out[:context_truncated],
+            citations_count: citations_count,
+            request_id: Thread.current[:ai_request_id]
           )
 
           if ai_debug?
             all_section_ids = raw[:sections].to_a.map { |s| s[:id] }.compact.map(&:to_s)
             seed_ids = (raw[:seed_ids] || []).map(&:to_s)
-            retriever_name = context_graph_enabled? ? 'GraphExpandedRetriever' : (vector_rag_enabled? ? 'HybridRetriever' : 'DocsRetriever')
             debug = {
               retriever: retriever_name,
               seed_section_ids: raw[:seed_ids].to_a,
@@ -114,20 +121,6 @@ module Ai
           }
         end
 
-        private
-
-        def log_retrieval(retriever:, seed_count:, expanded_count:, vector_hits_count: nil, final_count:, context_truncated: nil)
-          payload = {
-            event: 'ai_doc_retrieval',
-            retriever: retriever,
-            final_sections_count: final_count
-          }
-          payload[:seed_sections_count] = seed_count if seed_count
-          payload[:expanded_sections_count] = expanded_count if expanded_count
-          payload[:vector_hits_count] = vector_hits_count if vector_hits_count
-          payload[:context_truncated] = context_truncated unless context_truncated.nil?
-          Rails.logger.info(payload.to_json)
-        end
       end
     end
   end

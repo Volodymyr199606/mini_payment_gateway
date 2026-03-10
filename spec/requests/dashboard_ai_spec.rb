@@ -11,6 +11,9 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       citations: [
         { file: 'docs/REFUNDS.md', heading: 'Endpoint', anchor: 'endpoint', excerpt: 'Stubbed excerpt.' }
       ],
+      context_truncated: false,
+      final_context_chars: 150,
+      final_sections_count: 1,
       metadata: {}
     }
     result = default.merge(overrides)
@@ -135,6 +138,19 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       expect(debug).to have_key('retrieved_sections_count')
       expect(debug).to have_key('context_truncated')
       expect(debug).to have_key('memory_truncated')
+    end
+
+    it 'invokes tool and returns tool-backed reply when intent matches' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+
+      post_chat('Show my account info')
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body['reply']).to include(merchant.name)
+      expect(body['agent']).to start_with('tool:')
+      expect(body['citations']).to eq([])
     end
 
     it 'accepts form-encoded message and returns JSON' do

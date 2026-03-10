@@ -44,6 +44,38 @@ module Dashboard
         content: msg
       )
 
+      # At most one tool call per request; skip agent when tool handles the intent
+      tool_out = ::Ai::Tools::Orchestrator.invoke_if_applicable(
+        message: msg,
+        merchant_id: current_merchant.id,
+        request_id: request.request_id
+      )
+      if tool_out[:invoked]
+        latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+        composed = ::Ai::ResponseComposer.call(
+          reply_text: tool_out[:reply_text],
+          citations: [],
+          agent_key: "tool:#{tool_out[:tool_name]}",
+          model_used: nil,
+          fallback_used: false,
+          data: tool_out[:result],
+          tool_name: tool_out[:tool_name],
+          tool_result: tool_out[:result],
+          memory_used: false
+        )
+        AiChatMessage.create!(
+          ai_chat_session: chat_session,
+          merchant_id: current_merchant.id,
+          role: 'assistant',
+          content: composed[:reply],
+          agent: composed[:agent_key]
+        )
+        increment_ai_chat_count
+        payload = build_response_payload(composed)
+        payload[:debug] = build_debug_payload_for_tool(composed, tool_out[:tool_name], latency_ms) if ai_debug?
+        return render json: payload
+      end
+
       ctx = ::Ai::ConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
       memory_result = ::Ai::Conversation::MemoryBudgeter.call(
         summary_text: ctx[:summary_text],
@@ -75,27 +107,30 @@ module Dashboard
       out = agent.call
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
 
+      composed = ::Ai::ResponseComposer.call(
+        reply_text: out.reply_text,
+        citations: out.citations,
+        agent_key: out.agent_key,
+        model_used: out.model_used,
+        fallback_used: out.fallback_used,
+        data: out.data,
+        memory_used: memory_result&.dig(:memory_used)
+      )
+
       AiChatMessage.create!(
         ai_chat_session: chat_session,
         merchant_id: current_merchant.id,
         role: 'assistant',
-        content: out.reply_text,
-        agent: out.agent_key
+        content: composed[:reply],
+        agent: composed[:agent_key]
       )
 
       increment_ai_chat_count
 
       log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_result, recent_count)
 
-      payload = {
-        reply: out.reply_text,
-        agent: out.agent_key,
-        citations: out.citations,
-        model_used: out.model_used,
-        fallback_used: out.fallback_used
-      }
-      payload[:data] = out.data if out.data.present?
-      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result) if ai_debug?
+      payload = build_response_payload(composed)
+      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed) if ai_debug?
 
       render json: payload
     rescue StandardError => e
@@ -211,7 +246,40 @@ module Dashboard
       )
     end
 
-    def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result)
+    def build_response_payload(composed)
+      payload = {
+        reply: composed[:reply],
+        agent: composed[:agent_key],
+        citations: composed[:citations],
+        model_used: composed[:model_used],
+        fallback_used: composed[:fallback_used]
+      }
+      payload[:data] = composed[:data] if composed[:data].present?
+      payload
+    end
+
+    def build_debug_payload_for_tool(composed, tool_name, latency_ms)
+      merge_composition_debug(
+        { tool_used: tool_name, latency_ms: latency_ms },
+        composed[:composition]
+      )
+    end
+
+    def merge_composition_debug(debug, composition)
+      return debug unless composition.is_a?(Hash)
+
+      extra = {
+        composition_mode: composition[:composition_mode],
+        used_tool_data: composition[:used_tool_data],
+        used_doc_context: composition[:used_doc_context],
+        used_memory_context: composition[:used_memory_context],
+        citations_count: composition[:citations_count],
+        deterministic_fields_used: composition[:deterministic_fields_used]
+      }.compact
+      debug.merge(extra)
+    end
+
+    def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed = nil)
       debug = ::Ai::Observability::EventLogger.build_debug_payload(
         selected_agent: out.agent_key,
         selected_retriever: selected_retriever,
@@ -229,17 +297,18 @@ module Dashboard
       )
       retriever_debug = retriever_result&.dig(:debug)
       debug.merge!(retriever_debug.symbolize_keys) if retriever_debug.is_a?(Hash) && retriever_debug.present?
-      debug[:context_truncated] = retriever_result[:context_truncated] if retriever_result
-      debug[:final_context_chars] = retriever_result[:final_context_chars] if retriever_result
-      debug[:final_sections_count] = retriever_result[:final_sections_count] if retriever_result
-      debug[:memory_truncated] = memory_result[:memory_truncated] if memory_result
+      # Prefer top-level retrieval fields; retriever_debug (merged above) supplies when stubbed
+      debug[:context_truncated] = retriever_result[:context_truncated] if retriever_result&.key?(:context_truncated)
+      debug[:final_context_chars] = retriever_result[:final_context_chars] if retriever_result&.key?(:final_context_chars)
+      debug[:final_sections_count] = retriever_result[:final_sections_count] if retriever_result&.key?(:final_sections_count)
+      debug[:memory_truncated] = memory_result[:memory_truncated] if memory_result&.key?(:memory_truncated)
       debug[:final_memory_chars] = memory_result[:final_memory_chars] if memory_result
       debug[:recent_messages_count] = memory_result[:recent_messages_count] if memory_result
       debug[:summary_updated] = memory_result[:summary_updated] if memory_result
       debug[:summary_chars] = memory_result[:summary_chars] if memory_result
       debug[:current_topic] = memory_result[:current_topic] if memory_result
       debug[:sanitization_applied] = memory_result[:sanitization_applied] if memory_result
-      debug
+      merge_composition_debug(debug, composed&.dig(:composition))
     end
   end
 end

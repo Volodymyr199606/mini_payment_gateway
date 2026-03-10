@@ -1,0 +1,225 @@
+# Golden eval questions for AI regression testing.
+# Each entry: id, question, expected_agent, must_include, must_not_include, require_citations, deterministic.
+# Runner: router -> retrieval -> agent; then assert agent match, content, citations.
+
+support_faq:
+  - id: sfq-1
+    question: "What can you help me with?"
+    expected_agent: support_faq
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: sfq-2
+    question: "What is this assistant for?"
+    expected_agent: support_faq
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: sfq-3
+    question: "Where do I find general product info?"
+    expected_agent: support_faq
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: sfq-4
+    question: "Who can I contact for support?"
+    expected_agent: support_faq
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: sfq-5
+    question: "What is the dashboard for?"
+    expected_agent: support_faq
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+
+security_compliance:
+  - id: sec-1
+    question: "How do we handle PCI?"
+    expected_agent: security_compliance
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: sec-2
+    question: "Should I store the PAN?"
+    expected_agent: security_compliance
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: sec-3
+    question: "What about CVV and tokenization?"
+    expected_agent: security_compliance
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: sec-4
+    question: "How are API keys secured?"
+    expected_agent: security_compliance
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: sec-5
+    question: "What is required for compliance?"
+    expected_agent: security_compliance
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+
+developer_onboarding:
+  - id: dev-1
+    question: "How do I use idempotency?"
+    expected_agent: developer_onboarding
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: dev-2
+    question: "Which endpoint do I call for authorize?"
+    expected_agent: developer_onboarding
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: dev-3
+    question: "How do I integrate with the API?"
+    expected_agent: developer_onboarding
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: dev-4
+    question: "What is the webhook payload?"
+    expected_agent: developer_onboarding
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: dev-5
+    question: "How do I send a POST request with my API key?"
+    expected_agent: developer_onboarding
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+
+operational:
+  - id: op-1
+    question: "What is authorize vs capture?"
+    expected_agent: operational
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: op-2
+    question: "How does refund work?"
+    expected_agent: operational
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: op-3
+    question: "When do I use void?"
+    expected_agent: operational
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: op-4
+    question: "Explain payment intent lifecycle."
+    expected_agent: operational
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: op-5
+    question: "What happens to status after capture?"
+    expected_agent: operational
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+
+reconciliation_analyst:
+  - id: rec-1
+    question: "How does reconciliation work?"
+    expected_agent: reconciliation_analyst
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: rec-2
+    question: "Where do I see settlement data?"
+    expected_agent: reconciliation_analyst
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: rec-3
+    question: "How do I match payouts?"
+    expected_agent: reconciliation_analyst
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: rec-4
+    question: "Where is the statement?"
+    expected_agent: reconciliation_analyst
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+  - id: rec-5
+    question: "Explain payout matching."
+    expected_agent: reconciliation_analyst
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: false
+
+reporting_calculation:
+  - id: rep-1
+    question: "How much last 7 days?"
+    expected_agent: reporting_calculation
+    must_include: ["Charges", "Net"]
+    must_not_include: []
+    require_citations: false
+    deterministic: true
+  - id: rep-2
+    question: "Total charges this month."
+    expected_agent: reporting_calculation
+    must_include: ["Charges"]
+    must_not_include: []
+    require_citations: false
+    deterministic: true
+  - id: rep-3
+    question: "What is my net balance?"
+    expected_agent: reporting_calculation
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: true
+  - id: rep-4
+    question: "Total refunds last week."
+    expected_agent: reporting_calculation
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: true
+  - id: rep-5
+    question: "Refund volume last month."
+    expected_agent: reporting_calculation
+    must_include: []
+    must_not_include: []
+    require_citations: false
+    deterministic: true

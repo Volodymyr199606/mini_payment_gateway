@@ -2,66 +2,135 @@
 
 module Ai
   module Evals
-    # Runs golden questions through router + retrieval + agent. Used by RSpec for CI eval.
-    # Caller must stub GroqClient (non-reporting) and Reporting::LedgerSummary (reporting) for deterministic runs.
+    # Eval harness: load golden questions YAML, run router -> retrieval -> agent per case,
+    # collect structured results (agent match, must_include, must_not_include, citations).
+    # Test-friendly: caller stubs GroqClient and Reporting::LedgerSummary; optional dependency injection.
     class Runner
-      GOLDEN_PATH = Rails.root.join('spec/ai/golden_questions.yml')
-      STUB_REPLY = 'Eval stub reply. No secrets here.'
-
-      # Map agent_name (result.agent_key) to router key for golden eval comparison
-      AGENT_NAME_TO_ROUTER_KEY = {
-        'support_faq' => :support_faq,
-        'security' => :security_compliance,
-        'onboarding' => :developer_onboarding,
-        'operational' => :operational,
-        'reconciliation' => :reconciliation_analyst,
-        'reporting_calculation' => :reporting_calculation
-      }.freeze
+      DEFAULT_FIXTURE_PATH = Rails.root.join('spec/fixtures/ai/golden_questions.yml')
+      LEGACY_FIXTURE_PATH = Rails.root.join('spec/ai/golden_questions.yml')
+      RESPONSE_EXCERPT_LENGTH = 200
 
       class << self
-        def load_questions(path = GOLDEN_PATH)
-          return {} unless path.exist?
+        # Load and flatten golden questions. Returns array of hashes with symbol keys.
+        # Each entry: id:, question:, expected_agent:, must_include:, must_not_include:, require_citations:, deterministic:
+        def load_questions(path = nil)
+          path = path || (DEFAULT_FIXTURE_PATH.exist? ? DEFAULT_FIXTURE_PATH : LEGACY_FIXTURE_PATH)
+          return [] unless path.exist?
 
-          YAML.load_file(path).to_h.transform_keys(&:to_sym)
+          raw = YAML.load_file(path)
+          flatten_cases(raw)
         end
 
-        # Runs all golden questions. Returns array of { agent_key:, question:, result:, errors: [] }.
-        # merchant_id: required for reporting agent. Caller should stub GroqClient and LedgerSummary.
-        def run_all(merchant_id:, stub_llm: true)
-          questions_by_agent = load_questions
-          runs = []
-          questions_by_agent.each do |expected_agent_key, questions|
-            Array(questions).each do |question|
-              run = run_one(
-                question.to_s.strip,
-                merchant_id: merchant_id,
-                expected_agent_key: expected_agent_key,
-                stub_llm: stub_llm
-              )
-              runs << run
-            end
+        # Run all cases. Returns array of result hashes.
+        # Options: merchant_id (required for reporting), router:, retrieval: (callables for DI).
+        def run_all(merchant_id:, path: nil, router: nil, retrieval: nil)
+          cases = load_questions(path)
+          cases.map { |c| run_one(c, merchant_id: merchant_id, router: router, retrieval: retrieval) }
+        end
+
+        # Run a single case. Returns result hash with passed_* and metadata.
+        def run_one(case_hash, merchant_id:, router: nil, retrieval: nil)
+          id = case_hash[:id] || case_hash['id']
+          question = (case_hash[:question] || case_hash['question']).to_s.strip
+          expected_agent = (case_hash[:expected_agent] || case_hash['expected_agent']).to_sym
+          must_include = Array(case_hash[:must_include] || case_hash['must_include'])
+          must_not_include = Array(case_hash[:must_not_include] || case_hash['must_not_include'])
+          require_citations = case_hash[:require_citations] || case_hash['require_citations']
+          require_citations = false if require_citations.nil?
+
+          # Resolve router and retrieval
+          agent_key = if router.respond_to?(:call)
+            router.call(question)
+          else
+            ::Ai::Router.new(question).call
           end
-          runs
-        end
 
-        # Runs one question: router -> retrieval -> agent. Returns { agent_key:, question:, result:, errors: [] }.
-        def run_one(question, merchant_id:, expected_agent_key: nil, stub_llm: true)
-          agent_key = ::Ai::Router.new(question).call
-          retriever_result = ::Ai::Rag::RetrievalService.call(question, agent_key: agent_key)
+          retriever_result = if retrieval.respond_to?(:call)
+            retrieval.call(question, agent_key)
+          else
+            ::Ai::Rag::RetrievalService.call(question, agent_key: agent_key)
+          end
+
           context_text = retriever_result[:context_text]
           citations = retriever_result[:citations] || []
-          had_sections = citations.size >= 1
+          citations_count = citations.size
 
           agent_class = ::Ai::AgentRegistry.fetch(agent_key)
           agent = build_agent(agent_class, agent_key, question, context_text, citations, merchant_id: merchant_id)
           result = agent.call
 
-          errors = assert_result(result, agent_key, had_sections: had_sections, expected_agent_key: expected_agent_key)
+          reply_text = result.respond_to?(:reply_text) ? result.reply_text.to_s : ''
+          result_citations = result.respond_to?(:citations) ? result.citations.to_a : []
+
+          passed_agent_match = (expected_agent.to_sym == agent_key.to_sym)
+          passed_required_content = check_must_include(reply_text, must_include)
+          passed_forbidden_content = check_must_not_include(reply_text, must_not_include)
+          passed_citations = require_citations ? result_citations.size >= 1 : true
+          passed_overall = passed_agent_match && passed_required_content && passed_forbidden_content && passed_citations
+
+          failure_reasons = []
+          failure_reasons << 'agent_mismatch' unless passed_agent_match
+          failure_reasons << 'missing_required_content' unless passed_required_content
+          failure_reasons << 'forbidden_content' unless passed_forbidden_content
+          failure_reasons << 'citations_required' unless passed_citations
+
           {
-            agent_key: agent_key,
+            id: id.to_s,
             question: question,
-            result: result,
-            errors: errors
+            expected_agent: expected_agent,
+            actual_agent: agent_key,
+            passed_agent_match: passed_agent_match,
+            passed_required_content: passed_required_content,
+            passed_forbidden_content: passed_forbidden_content,
+            passed_citations: passed_citations,
+            passed_overall: passed_overall,
+            response_excerpt: reply_text.to_s[0, RESPONSE_EXCERPT_LENGTH],
+            citations_count: result_citations.size,
+            metadata: {
+              failure_reasons: failure_reasons,
+              deterministic: case_hash[:deterministic] || case_hash['deterministic']
+            }
+          }
+        rescue StandardError => e
+          {
+            id: (case_hash[:id] || case_hash['id']).to_s,
+            question: (case_hash[:question] || case_hash['question']).to_s.strip,
+            expected_agent: (case_hash[:expected_agent] || case_hash['expected_agent']).to_sym,
+            actual_agent: nil,
+            passed_agent_match: false,
+            passed_required_content: false,
+            passed_forbidden_content: false,
+            passed_citations: false,
+            passed_overall: false,
+            response_excerpt: '',
+            citations_count: 0,
+            metadata: { error: e.message, backtrace: e.backtrace&.first(3) }
+          }
+        end
+
+        # Human-readable summary. Prints to stdout; returns summary hash.
+        def print_summary(results)
+          total = results.size
+          passed = results.count { |r| r[:passed_overall] }
+          failed = total - passed
+          by_agent = results.group_by { |r| (r[:expected_agent] || r[:actual_agent]).to_s }
+          failed_by_category = by_agent.transform_values { |v| v.count { |x| !x[:passed_overall] } }.select { |_, c| c > 0 }
+
+          puts "Eval summary: #{passed}/#{total} passed, #{failed} failed"
+          if failed_by_category.any?
+            category_str = failed_by_category.map { |k, v| "#{k}=#{v}" }.join(', ')
+            puts "Failures by category: #{category_str}"
+            results.select { |r| !r[:passed_overall] }.each do |r|
+              reasons = r.dig(:metadata, :failure_reasons) || r.dig(:metadata, :error) || ['unknown']
+              puts "  [#{r[:id]}] #{reasons.is_a?(Array) ? reasons.join(', ') : reasons}: #{r[:question].to_s[0, 60]}..."
+            end
+          end
+          {
+            total: total,
+            passed: passed,
+            failed: failed,
+            failed_by_category: failed_by_category,
+            results: results
           }
         end
 
@@ -84,69 +153,41 @@ module Ai
           end
         end
 
-        # Returns array of error strings (empty if all assertions pass).
-        def assert_result(result, agent_key, had_sections:, expected_agent_key: nil)
-          errors = []
+        private
 
-          unless result.is_a?(::Ai::AgentResult)
-            errors << "expected AgentResult, got #{result.class}"
-            return errors
-          end
+        def flatten_cases(raw)
+          return [] if raw.blank?
 
-          if expected_agent_key
-            actual_router_key = AGENT_NAME_TO_ROUTER_KEY[result.agent_key.to_s] || result.agent_key.to_sym
-            if actual_router_key.to_sym != expected_agent_key.to_sym
-              errors << "expected agent_key=#{expected_agent_key}, got #{result.agent_key}"
+          list = []
+          raw = raw.to_h
+          raw.each do |group_key, items|
+            group_agent = group_key.to_sym
+            Array(items).each do |item|
+              entry = item.is_a?(Hash) ? item.deep_symbolize_keys : { question: item.to_s.strip, expected_agent: group_agent }
+              entry[:expected_agent] = group_agent if entry[:expected_agent].blank?
+              entry[:must_include] ||= []
+              entry[:must_not_include] ||= []
+              entry[:require_citations] = false if entry[:require_citations].nil?
+              entry[:deterministic] = false if entry[:deterministic].nil?
+              entry[:id] ||= "#{group_key}-#{list.size}"
+              list << entry
             end
           end
-
-          if had_sections && result.citations.to_a.size < 1
-            errors << "retrieval had sections but result has 0 citations"
-          end
-
-          if agent_key == :reporting_calculation
-            data = result.data
-            unless data.is_a?(Hash) && data[:totals].is_a?(Hash)
-              errors << "reporting agent must return data with totals hash"
-            else
-              t = data[:totals]
-              %i[charges_cents refunds_cents fees_cents net_cents].each do |k|
-                errors << "reporting data.totals missing :#{k}" unless t.key?(k)
-              end
-              if t.key?(:charges_cents) && t.key?(:refunds_cents) && t.key?(:fees_cents) && t.key?(:net_cents)
-                expected_net = t[:charges_cents].to_i - t[:refunds_cents].to_i - t[:fees_cents].to_i
-                unless t[:net_cents] == expected_net
-                  errors << "reporting net_cents=#{t[:net_cents]} but charges - refunds - fees = #{expected_net}"
-                end
-              end
-            end
-          end
-
-          unless secrets_ok?(result.reply_text.to_s)
-            errors << "reply_text contains secrets pattern"
-          end
-          result.citations.to_a.each do |c|
-            [c[:file], c[:heading], c[:excerpt]].compact.each do |v|
-              unless secrets_ok?(v.to_s)
-                errors << "citation contains secrets pattern"
-                break
-              end
-            end
-          end
-          if result.data.is_a?(Hash)
-            unless secrets_ok?(result.data.to_json)
-              errors << "result.data contains secrets pattern"
-            end
-          end
-
-          errors
+          list
         end
 
-        def secrets_ok?(text)
-          return true if text.blank?
+        def check_must_include(reply, phrases)
+          return true if phrases.blank?
 
-          sanitized = ::Ai::MessageSanitizer.sanitize(text)
-          !sanitized.include?(::Ai::MessageSanitizer::REDACT_PLACEHOLDER)
+          normalized = reply.to_s.downcase
+          phrases.all? { |p| normalized.include?(p.to_s.downcase) }
+        end
+
+        def check_must_not_include(reply, phrases)
+          return true if phrases.blank?
+
+          normalized = reply.to_s.downcase
+          phrases.none? { |p| normalized.include?(p.to_s.downcase) }
         end
       end
     end

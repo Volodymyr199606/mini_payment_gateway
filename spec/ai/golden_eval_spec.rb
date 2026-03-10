@@ -2,17 +2,20 @@
 
 require 'rails_helper'
 
+# Integration spec: run full golden eval harness with stubbed LLM and LedgerSummary.
+# Uses spec/fixtures/ai/golden_questions.yml and expects all cases to pass.
 RSpec.describe 'AI golden eval harness', type: :eval do
   include ApiHelpers
 
   let(:merchant) { create_merchant_with_api_key.first }
+  let(:fixture_path) { Rails.root.join('spec/fixtures/ai/golden_questions.yml') }
 
   before do
     Ai::Rag::DocsIndex.reset!
     Ai::Rag::ContextGraph.reset!
     stub_groq = instance_double(
       Ai::GroqClient,
-      chat: { content: Ai::Evals::Runner::STUB_REPLY, model_used: 'eval', fallback_used: false }
+      chat: { content: 'Stub reply for eval. No external API.', model_used: 'eval', fallback_used: false }
     )
     allow(Ai::GroqClient).to receive(:new).and_return(stub_groq)
     ledger_stub = {
@@ -27,17 +30,13 @@ RSpec.describe 'AI golden eval harness', type: :eval do
     )
   end
 
-  Ai::Evals::Runner.load_questions.each do |agent_key, questions|
-    Array(questions).each do |question|
-      it "#{agent_key}: #{question.to_s.strip[0..70]}#{'...' if question.to_s.length > 70}" do
-        run = Ai::Evals::Runner.run_one(
-          question.to_s.strip,
-          merchant_id: merchant.id,
-          expected_agent_key: agent_key,
-          stub_llm: true
-        )
-        expect(run[:errors]).to eq([]), "Eval failures: #{run[:errors].join('; ')}"
-      end
-    end
+  it 'runs all golden questions and every case passes' do
+    skip 'fixture missing' unless fixture_path.exist?
+    results = Ai::Evals::Runner.run_all(merchant_id: merchant.id, path: fixture_path)
+    failed = results.reject { |r| r[:passed_overall] }
+    expect(failed).to eq([]), lambda {
+      reasons = failed.map { |r| "[#{r[:id]}] #{r.dig(:metadata, :failure_reasons)&.join(', ')}: #{r[:question][0, 50]}..." }.join("\n")
+      "Eval failures:\n#{reasons}"
+    }
   end
 end

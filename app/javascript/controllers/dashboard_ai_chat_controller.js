@@ -82,7 +82,7 @@ export default class extends Controller {
         return
       }
 
-      this.appendAssistantBubble(data.reply, data.agent, data.model_used, data.citations || [])
+      this.appendAssistantBubble(data.reply, data.agent, data.model_used, data.citations || [], data.debug)
       this.scrollTranscriptToBottom()
       this.showSuccessAnimation()
       setTimeout(() => this.setIdle(), this.SUCCESS_MS)
@@ -105,7 +105,7 @@ export default class extends Controller {
     transcript.appendChild(wrap)
   }
 
-  appendAssistantBubble(reply, agent, modelUsed, citations) {
+  appendAssistantBubble(reply, agent, modelUsed, citations, debug) {
     const transcript = this.transcriptTarget
     const assistantWrap = document.createElement("div")
     assistantWrap.className = "ai-bubble-row ai-bubble-row-assistant"
@@ -152,6 +152,10 @@ export default class extends Controller {
       }
       details.appendChild(ul)
       assistantBubble.appendChild(details)
+    }
+
+    if (debug && typeof debug === "object") {
+      assistantBubble.appendChild(this.buildDebugPanel(debug))
     }
 
     assistantWrap.appendChild(assistantBubble)
@@ -251,6 +255,69 @@ export default class extends Controller {
     } catch {
       // Silently fail
     }
+  }
+
+  buildDebugPanel(debug) {
+    const details = document.createElement("details")
+    details.className = "ai-debug-panel"
+    const summary = document.createElement("summary")
+    summary.textContent = "Debug"
+    details.appendChild(summary)
+    const content = document.createElement("div")
+    content.className = "ai-debug-content"
+    const fmt = (v) => (v == null || v === "") ? "—" : String(v)
+    const bool = (v) => (v === true || v === "true") ? "yes" : "no"
+    const sections = [
+      { title: "Routing", rows: [
+        ["agent", debug.selected_agent],
+        ["retriever", debug.selected_retriever ?? debug.retriever],
+        ["graph", bool(debug.graph_enabled)],
+        ["vector", bool(debug.vector_enabled)]
+      ]},
+      { title: "Retrieval", rows: [
+        ["sections", fmt(debug.retrieved_sections_count ?? debug.final_sections_count)],
+        ["citations", fmt(debug.citations_count)],
+        ["context_truncated", bool(debug.context_truncated)],
+        ["context_chars", fmt(debug.final_context_chars) ? `${debug.final_context_chars} chars` : null]
+      ].filter(r => r[1] != null)},
+      { title: "Memory", rows: [
+        ["memory_used", bool(debug.memory_used)],
+        ["summary_used", bool(debug.summary_used)],
+        ["recent_msgs", fmt(debug.recent_messages_count)],
+        ["current_topic", fmt(debug.current_topic)],
+        ["memory_truncated", bool(debug.memory_truncated)],
+        ["memory_chars", fmt(debug.final_memory_chars) ? `${debug.final_memory_chars} chars` : null]
+      ].filter(r => r[1] != null)},
+      { title: "Guardrails", rows: [
+        ["fallback_used", bool(debug.fallback_used)],
+        ["citation_reask", bool(debug.citation_reask_used)]
+      ]},
+      { title: "Model / timing", rows: [
+        ["model", fmt(debug.model_used)],
+        ["latency", fmt(debug.latency_ms) != "—" ? `${debug.latency_ms} ms` : "—"]
+      ]}
+    ]
+    for (const sec of sections) {
+      const block = document.createElement("div")
+      block.className = "ai-debug-section"
+      const h = document.createElement("div")
+      h.className = "ai-debug-section-title"
+      h.textContent = sec.title
+      block.appendChild(h)
+      const grid = document.createElement("div")
+      grid.className = "ai-debug-rows"
+      for (const [label, val] of sec.rows) {
+        if (val == null) continue
+        const row = document.createElement("div")
+        row.className = "ai-debug-row"
+        row.innerHTML = `<span class="ai-debug-label">${label}</span><span class="ai-debug-val">${val}</span>`
+        grid.appendChild(row)
+      }
+      block.appendChild(grid)
+      content.appendChild(block)
+    }
+    details.appendChild(content)
+    return details
   }
 
   showCopyToast(buttonEl) {

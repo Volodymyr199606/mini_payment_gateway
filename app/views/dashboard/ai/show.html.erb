@@ -50,6 +50,47 @@
   <%# Fallback handler: ensures Send works if Stimulus controller does not connect %>
   <script>
     (function() {
+      function buildDebugPanel(debug) {
+        var fmt = function(v) { return (v == null || v === '') ? '—' : String(v); };
+        var bool = function(v) { return (v === true || v === 'true') ? 'yes' : 'no'; };
+        var details = document.createElement('details');
+        details.className = 'ai-debug-panel';
+        var summary = document.createElement('summary');
+        summary.textContent = 'Debug';
+        details.appendChild(summary);
+        var content = document.createElement('div');
+        content.className = 'ai-debug-content';
+        var sections = [
+          { title: 'Routing', rows: [['agent', debug.selected_agent], ['retriever', debug.selected_retriever || debug.retriever], ['graph', bool(debug.graph_enabled)], ['vector', bool(debug.vector_enabled)]] },
+          { title: 'Retrieval', rows: [['sections', fmt(debug.retrieved_sections_count || debug.final_sections_count)], ['citations', fmt(debug.citations_count)], ['context_truncated', bool(debug.context_truncated)], ['context_chars', debug.final_context_chars ? debug.final_context_chars + ' chars' : null]].filter(function(r) { return r[1] != null; }) },
+          { title: 'Memory', rows: [['memory_used', bool(debug.memory_used)], ['summary_used', bool(debug.summary_used)], ['recent_msgs', fmt(debug.recent_messages_count)], ['current_topic', fmt(debug.current_topic)], ['memory_truncated', bool(debug.memory_truncated)], ['memory_chars', debug.final_memory_chars ? debug.final_memory_chars + ' chars' : null]].filter(function(r) { return r[1] != null; }) },
+          { title: 'Guardrails', rows: [['fallback_used', bool(debug.fallback_used)], ['citation_reask', bool(debug.citation_reask_used)]] },
+          { title: 'Model / timing', rows: [['model', fmt(debug.model_used)], ['latency', fmt(debug.latency_ms) !== '—' ? debug.latency_ms + ' ms' : '—']] }
+        ];
+        for (var s = 0; s < sections.length; s++) {
+          var sec = sections[s];
+          var block = document.createElement('div');
+          block.className = 'ai-debug-section';
+          var h = document.createElement('div');
+          h.className = 'ai-debug-section-title';
+          h.textContent = sec.title;
+          block.appendChild(h);
+          var grid = document.createElement('div');
+          grid.className = 'ai-debug-rows';
+          for (var r = 0; r < sec.rows.length; r++) {
+            var row = sec.rows[r];
+            if (row[1] == null) continue;
+            var rowEl = document.createElement('div');
+            rowEl.className = 'ai-debug-row';
+            rowEl.innerHTML = '<span class="ai-debug-label">' + row[0] + '</span><span class="ai-debug-val">' + row[1] + '</span>';
+            grid.appendChild(rowEl);
+          }
+          block.appendChild(grid);
+          content.appendChild(block);
+        }
+        details.appendChild(content);
+        return details;
+      }
       var form = document.getElementById('ai-chat-form');
       var btn = document.getElementById('ai-chat-send-btn');
       var input = document.getElementById('ai-chat-message');
@@ -103,6 +144,7 @@
               var agent = result.data.agent || 'agent';
               var modelUsed = result.data.model_used || '—';
               var citations = result.data.citations || [];
+              var debug = result.data.debug;
               if (transcript) {
                 var aw = document.createElement('div');
                 aw.className = 'ai-bubble-row ai-bubble-row-assistant';
@@ -136,6 +178,9 @@
                 meta.className = 'ai-bubble-meta';
                 meta.textContent = 'agent: ' + agent + ' · model: ' + modelUsed;
                 ab.appendChild(meta);
+                if (debug && typeof debug === 'object') {
+                  ab.appendChild(buildDebugPanel(debug));
+                }
                 aw.appendChild(ab);
                 transcript.appendChild(aw);
                 var sc = transcript.closest('.ai-chat-transcript') || transcript;

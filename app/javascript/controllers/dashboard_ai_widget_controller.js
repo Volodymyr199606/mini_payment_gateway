@@ -104,6 +104,70 @@ export default class extends Controller {
     }
   }
 
+  buildDebugPanel(debug) {
+    const details = document.createElement("details")
+    details.className = "ai-debug-panel"
+    const summary = document.createElement("summary")
+    summary.textContent = "Debug"
+    summary.setAttribute("title", "AI_DEBUG mode")
+    details.appendChild(summary)
+    const content = document.createElement("div")
+    content.className = "ai-debug-content"
+    const fmt = (v) => (v == null || v === "") ? "—" : String(v)
+    const bool = (v) => (v === true || v === "true") ? "yes" : "no"
+    const sections = [
+      { title: "Routing", rows: [
+        ["agent", debug.selected_agent],
+        ["retriever", debug.selected_retriever ?? debug.retriever],
+        ["graph", bool(debug.graph_enabled)],
+        ["vector", bool(debug.vector_enabled)]
+      ]},
+      { title: "Retrieval", rows: [
+        ["sections", fmt(debug.retrieved_sections_count ?? debug.final_sections_count)],
+        ["citations", fmt(debug.citations_count)],
+        ["context_truncated", bool(debug.context_truncated)],
+        ["context_chars", fmt(debug.final_context_chars) ? `${debug.final_context_chars} chars` : null]
+      ].filter(r => r[1] != null)},
+      { title: "Memory", rows: [
+        ["memory_used", bool(debug.memory_used)],
+        ["summary_used", bool(debug.summary_used)],
+        ["recent_msgs", fmt(debug.recent_messages_count)],
+        ["current_topic", fmt(debug.current_topic)],
+        ["memory_truncated", bool(debug.memory_truncated)],
+        ["memory_chars", fmt(debug.final_memory_chars) ? `${debug.final_memory_chars} chars` : null]
+      ].filter(r => r[1] != null)},
+      { title: "Guardrails", rows: [
+        ["fallback_used", bool(debug.fallback_used)],
+        ["citation_reask", bool(debug.citation_reask_used)]
+      ]},
+      { title: "Model / timing", rows: [
+        ["model", fmt(debug.model_used)],
+        ["latency", fmt(debug.latency_ms) != "—" ? `${debug.latency_ms} ms` : "—"]
+      ]}
+    ]
+    for (const sec of sections) {
+      const block = document.createElement("div")
+      block.className = "ai-debug-section"
+      const h = document.createElement("div")
+      h.className = "ai-debug-section-title"
+      h.textContent = sec.title
+      block.appendChild(h)
+      const grid = document.createElement("div")
+      grid.className = "ai-debug-rows"
+      for (const [label, val] of sec.rows) {
+        if (val == null) continue
+        const row = document.createElement("div")
+        row.className = "ai-debug-row"
+        row.innerHTML = `<span class="ai-debug-label">${label}</span><span class="ai-debug-val">${val}</span>`
+        grid.appendChild(row)
+      }
+      block.appendChild(grid)
+      content.appendChild(block)
+    }
+    details.appendChild(content)
+    return details
+  }
+
   showErrorState() {
     if (this.hasBtnErrorTarget) {
       this.btnErrorTarget.hidden = false
@@ -165,26 +229,7 @@ export default class extends Controller {
     }
 
     if (debug && typeof debug === "object") {
-      const debugDetails = document.createElement("details")
-      debugDetails.className = "ai-debug-panel"
-      const debugSummary = document.createElement("summary")
-      debugSummary.textContent = "Debug (AI_DEBUG)"
-      debugDetails.appendChild(debugSummary)
-      const pre = document.createElement("pre")
-      pre.className = "ai-debug-content"
-      const lines = [
-        `retriever: ${debug.retriever ?? "—"}`,
-        `seed_section_ids: ${JSON.stringify(debug.seed_section_ids ?? [])}`,
-        `expanded_section_ids: ${JSON.stringify(debug.expanded_section_ids ?? [])}`,
-        debug.expanded_with_edges ? `expanded_with_edges: ${JSON.stringify(debug.expanded_with_edges)}` : null,
-        `final_included_section_ids: ${JSON.stringify(debug.final_included_section_ids ?? [])}`,
-        `context_budget_used: ${debug.context_budget_used ?? "—"} / ${debug.max_context_chars ?? "—"}`,
-        `context_truncated: ${!!debug.context_truncated}`,
-        `summary_used: ${!!debug.summary_used}`
-      ].filter(Boolean)
-      pre.textContent = lines.join("\n")
-      debugDetails.appendChild(pre)
-      assistantBubble.appendChild(debugDetails)
+      assistantBubble.appendChild(this.buildDebugPanel(debug))
     }
 
     assistantWrap.appendChild(assistantBubble)

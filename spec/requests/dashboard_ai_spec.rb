@@ -132,6 +132,9 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       expect(debug).to have_key('memory_used')
       expect(debug).to have_key('summary_used')
       expect(debug).to have_key('latency_ms')
+      expect(debug).to have_key('retrieved_sections_count')
+      expect(debug).to have_key('context_truncated')
+      expect(debug).to have_key('memory_truncated')
     end
 
     it 'accepts form-encoded message and returns JSON' do

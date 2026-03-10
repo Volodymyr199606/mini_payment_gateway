@@ -2,7 +2,8 @@
 
 module Ai
   # Builds conversation context from an AiChatSession for use with agents/GroqClient.
-  # Output: summary_text (from session) + last N user/assistant messages in chronological order.
+  # Returns structured memory: summary_text, recent_messages, user_preferences, open_tasks, current_topic.
+  # Does not invent data; returns nil/empty for unavailable sections.
   class ConversationContextBuilder
     ALLOWED_ROLES = %w[user assistant].freeze
 
@@ -16,28 +17,21 @@ module Ai
     end
 
     def call
+      summary = summary_text
+      extracted = extracted_memory(summary)
+      recent = recent_messages
+
       {
-        summary_text: summary_text,
-        recent_messages: recent_messages,
-        memory_text: format_for_memory(exclude_last: true)
+        summary_text: summary,
+        recent_messages: recent,
+        user_preferences: extracted[:user_preferences],
+        open_tasks_or_followups: extracted[:open_tasks],
+        current_topic: resolve_current_topic(summary, recent, extracted)
       }
     end
 
-    # Returns array of { role:, content: } suitable for GroqClient (e.g. conversation_history).
     def to_groq_messages
       recent_messages.map { |m| { role: m[:role], content: m[:content].to_s } }
-    end
-
-    # Returns a single string suitable for Memory section (summary + recent messages formatted).
-    def format_for_memory(exclude_last: false)
-      parts = []
-      parts << summary_text if summary_text.present?
-      msgs = exclude_last && recent_messages.size > 1 ? recent_messages[0..-2] : recent_messages
-      msgs.each do |m|
-        label = m[:role] == 'user' ? 'User' : 'Assistant'
-        parts << "#{label}: #{m[:content].to_s.strip}"
-      end
-      parts.join("\n\n")
     end
 
     private
@@ -46,6 +40,22 @@ module Ai
       return '' unless @session.respond_to?(:summary_text)
 
       @session.summary_text.to_s
+    end
+
+    def extracted_memory(summary)
+      return { user_preferences: nil, open_tasks: nil, current_topic: nil, facts: nil } if summary.blank?
+
+      Ai::Conversation::MemoryExtractor.call(summary)
+    end
+
+    def resolve_current_topic(summary, recent, extracted)
+      extracted[:current_topic].presence ||
+        stored_session_topic ||
+        Ai::Conversation::CurrentTopicDetector.call(recent)
+    end
+
+    def stored_session_topic
+      @session.respond_to?(:current_topic) ? @session.current_topic.to_s.strip.presence : nil
     end
 
     def recent_messages

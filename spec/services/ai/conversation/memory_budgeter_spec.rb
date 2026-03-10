@@ -67,5 +67,32 @@ RSpec.describe Ai::Conversation::MemoryBudgeter do
       expect(result[:final_memory_chars]).to eq(result[:memory_text].length)
       expect(result[:recent_messages_count]).to eq(1)
     end
+
+    it 'includes current_topic, user_preferences, open_tasks when summary blank' do
+      result = described_class.call(
+        summary_text: nil,
+        recent_messages: [{ role: 'user', content: 'Hi' }],
+        current_topic: 'webhooks',
+        user_preferences: 'Prefers email',
+        open_tasks_or_followups: 'Verify webhook',
+        max_memory_chars: 2000
+      )
+      expect(result[:memory_text]).to include('Current topic: webhooks')
+      expect(result[:memory_text]).to include('User preferences: Prefers email')
+      expect(result[:memory_text]).to include('Open tasks: Verify webhook')
+      expect(result[:current_topic]).to eq('webhooks')
+    end
+
+    it 'returns metadata: summary_chars, current_topic, sanitization_applied' do
+      result = described_class.call(
+        summary_text: 'Summary here.',
+        recent_messages: [{ role: 'user', content: 'Hi' }],
+        current_topic: 'refunds',
+        sanitization_applied: true
+      )
+      expect(result[:summary_chars]).to eq(13) # "Summary here."
+      expect(result[:current_topic]).to eq('refunds')
+      expect(result[:sanitization_applied]).to be(true)
+    end
   end
 end

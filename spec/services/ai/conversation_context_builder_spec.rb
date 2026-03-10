@@ -13,10 +13,13 @@ RSpec.describe Ai::ConversationContextBuilder do
   end
 
   describe '.call' do
-    it 'returns summary_text and recent_messages' do
+    it 'returns summary_text, recent_messages, user_preferences, open_tasks_or_followups, current_topic' do
       result = described_class.call(session, max_turns: 8)
       expect(result).to have_key(:summary_text)
       expect(result).to have_key(:recent_messages)
+      expect(result).to have_key(:user_preferences)
+      expect(result).to have_key(:open_tasks_or_followups)
+      expect(result).to have_key(:current_topic)
       expect(result[:summary_text]).to eq('')
       expect(result[:recent_messages]).to eq([])
     end
@@ -25,6 +28,32 @@ RSpec.describe Ai::ConversationContextBuilder do
       session.update!(summary_text: 'User asked about refunds.')
       result = described_class.call(session, max_turns: 8)
       expect(result[:summary_text]).to eq('User asked about refunds.')
+    end
+
+    it 'extracts user_preferences and open_tasks from structured summary' do
+      summary = <<~TEXT
+        ## Current topic
+        - Refunds
+        ## Facts
+        - User asked about refunds.
+        ## User preferences
+        - Prefers email.
+        ## Open tasks
+        - Verify webhook.
+      TEXT
+      session.update!(summary_text: summary)
+      add_message('user', 'Follow up')
+      result = described_class.call(session, max_turns: 8)
+      expect(result[:user_preferences]).to include('Prefers email')
+      expect(result[:open_tasks_or_followups]).to include('Verify webhook')
+      expect(result[:current_topic]).to include('Refunds')
+    end
+
+    it 'detects current_topic from recent messages when not in summary' do
+      add_message('user', 'How do I configure webhooks for event notifications?')
+      add_message('assistant', 'You can set up a webhook URL...')
+      result = described_class.call(session, max_turns: 8)
+      expect(result[:current_topic]).to eq('webhooks')
     end
   end
 

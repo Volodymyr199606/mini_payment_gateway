@@ -20,7 +20,7 @@ RSpec.describe Ai::ConversationSummarizer do
       expect(Ai::GroqClient).not_to receive(:new)
 
       result = described_class.call(session)
-      expect(result).to eq('')
+      expect(result).to eq({ summary: '', updated: false })
       expect(session.reload.summary_text).to be_blank
     end
 
@@ -30,7 +30,8 @@ RSpec.describe Ai::ConversationSummarizer do
       allow(Ai::GroqClient).to receive(:new).and_return(client)
 
       result = described_class.call(session)
-      expect(result).to include('User asked about refunds')
+      expect(result[:summary]).to include('User asked about refunds')
+      expect(result[:updated]).to be true
       expect(session.reload.summary_text).to be_present
       expect(session.summary_updated_at).to be_present
     end
@@ -45,14 +46,14 @@ RSpec.describe Ai::ConversationSummarizer do
 
       expect(Ai::GroqClient).not_to receive(:new)
       result = described_class.call(session)
-      expect(result).to eq('Prior summary.')
+      expect(result[:summary]).to eq('Prior summary.')
+      expect(result[:updated]).to be false
       expect(session.reload.summary_text).to eq('Prior summary.')
     end
 
     it 'summarizes when messages since summary_updated_at >= 10' do
       cutoff = 1.hour.ago
       session.update!(summary_text: 'Old summary.', summary_updated_at: cutoff)
-      # Add 10 messages with created_at after cutoff so they count as "new since summary"
       10.times do |i|
         add_message('user', "Q#{i}", created_at: cutoff + (i + 1).minutes)
         add_message('assistant', "A#{i}", created_at: cutoff + (i + 1).minutes + 30.seconds)
@@ -62,7 +63,8 @@ RSpec.describe Ai::ConversationSummarizer do
       allow(Ai::GroqClient).to receive(:new).and_return(client)
 
       result = described_class.call(session)
-      expect(result).to be_present
+      expect(result[:summary]).to be_present
+      expect(result[:updated]).to be true
       session.reload
       expect(session.summary_text).to include('Refunds and capture')
       expect(session.summary_updated_at).to be >= cutoff
@@ -71,7 +73,7 @@ RSpec.describe Ai::ConversationSummarizer do
 
   describe 'summary cap and format' do
     it 'caps persisted summary at MAX_SUMMARY_LENGTH (1200 chars)' do
-      long_content = "## Facts\n- A\n\n## User preferences\n- B\n\n## Open tasks\n- C\n" + ('x' * 2000)
+      long_content = "## Current topic\n- X\n\n## Facts\n- A\n\n## User preferences\n- B\n\n## Open tasks\n- C\n" + ('x' * 2000)
       10.times { |i| add_message('user', "Q#{i}"); add_message('assistant', "A#{i}") }
       client = instance_double(Ai::GroqClient, chat: { content: long_content, model_used: 'test', fallback_used: false })
       allow(Ai::GroqClient).to receive(:new).and_return(client)
@@ -80,8 +82,10 @@ RSpec.describe Ai::ConversationSummarizer do
       expect(session.reload.summary_text.length).to be <= described_class::MAX_SUMMARY_LENGTH
     end
 
-    it 'persisted summary includes the three section headings when model returns them' do
+    it 'persisted summary includes the four section headings when model returns them' do
       content = <<~TEXT
+        ## Current topic
+        - Refunds.
         ## Facts
         - User asked about refunds.
         ## User preferences
@@ -95,6 +99,7 @@ RSpec.describe Ai::ConversationSummarizer do
 
       described_class.call(session)
       summary = session.reload.summary_text
+      expect(summary).to include(described_class::SECTION_CURRENT_TOPIC)
       expect(summary).to include(described_class::SECTION_FACTS)
       expect(summary).to include(described_class::SECTION_USER_PREFERENCES)
       expect(summary).to include(described_class::SECTION_OPEN_TASKS)
@@ -119,6 +124,29 @@ RSpec.describe Ai::ConversationSummarizer do
       flat = sent_messages.map { |m| m[:content] }.join(' ')
       expect(flat).to include('[REDACTED]')
       expect(flat).not_to include('sk_live_abc123def456')
+    end
+  end
+
+  describe 'topic change trigger' do
+    it 're-summarizes when current topic clearly changed' do
+      skip 'Requires current_topic column' unless session.respond_to?(:current_topic=)
+      cutoff = 2.hours.ago
+      session.update!(
+        summary_text: 'Old summary.',
+        summary_updated_at: cutoff,
+        current_topic: 'refund flow'
+      )
+      4.times do |i|
+        add_message('user', "webhook setup step #{i}", created_at: cutoff + (i + 1).minutes)
+        add_message('assistant', "webhook configuration response #{i}", created_at: cutoff + (i + 1).minutes + 30.seconds)
+      end
+      session.reload
+      client = instance_double(Ai::GroqClient, chat: { content: '- Webhooks discussed.', model_used: 'test', fallback_used: false })
+      allow(Ai::GroqClient).to receive(:new).and_return(client)
+
+      result = described_class.call(session)
+      expect(result[:updated]).to be true
+      expect(session.reload.summary_text).to include('Webhooks')
     end
   end
 end

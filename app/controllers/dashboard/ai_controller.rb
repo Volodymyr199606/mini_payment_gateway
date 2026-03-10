@@ -45,7 +45,14 @@ module Dashboard
       )
 
       ctx = ::Ai::ConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
-      memory_result = ::Ai::Conversation::MemoryBudgeter.call(summary_text: ctx[:summary_text], recent_messages: ctx[:recent_messages])
+      memory_result = ::Ai::Conversation::MemoryBudgeter.call(
+        summary_text: ctx[:summary_text],
+        recent_messages: ctx[:recent_messages],
+        user_preferences: ctx[:user_preferences],
+        open_tasks_or_followups: ctx[:open_tasks_or_followups],
+        current_topic: ctx[:current_topic],
+        sanitization_applied: ctx[:summary_text].present?
+      )
       memory_text = memory_result[:memory_text].to_s
       conversation_history = memory_text.present? ? [] : chat_session.ai_chat_messages.chronological.limit(10).map { |m| { role: m.role, content: m.content } }[0..-2] || []
       recent_count = memory_result[:recent_messages_count]
@@ -220,12 +227,18 @@ module Dashboard
         latency_ms: latency_ms,
         retriever_debug: retriever_result&.dig(:debug)
       )
+      retriever_debug = retriever_result&.dig(:debug)
+      debug.merge!(retriever_debug.symbolize_keys) if retriever_debug.is_a?(Hash) && retriever_debug.present?
       debug[:context_truncated] = retriever_result[:context_truncated] if retriever_result
       debug[:final_context_chars] = retriever_result[:final_context_chars] if retriever_result
       debug[:final_sections_count] = retriever_result[:final_sections_count] if retriever_result
       debug[:memory_truncated] = memory_result[:memory_truncated] if memory_result
       debug[:final_memory_chars] = memory_result[:final_memory_chars] if memory_result
       debug[:recent_messages_count] = memory_result[:recent_messages_count] if memory_result
+      debug[:summary_updated] = memory_result[:summary_updated] if memory_result
+      debug[:summary_chars] = memory_result[:summary_chars] if memory_result
+      debug[:current_topic] = memory_result[:current_topic] if memory_result
+      debug[:sanitization_applied] = memory_result[:sanitization_applied] if memory_result
       debug
     end
   end

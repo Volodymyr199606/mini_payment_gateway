@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_04_100000) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_04_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -35,6 +35,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_04_100000) do
     t.datetime "summary_updated_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "current_topic"
     t.index ["merchant_id"], name: "index_ai_chat_sessions_on_merchant_id"
   end
 
@@ -76,10 +77,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_04_100000) do
     t.index ["merchant_id", "email"], name: "index_customers_on_merchant_id_and_email"
     t.index ["merchant_id"], name: "index_customers_on_merchant_id"
   end
-
-# Could not dump table "doc_section_embeddings" because of following StandardError
-#   Unknown type 'vector(1536)' for column 'embedding'
-
 
   create_table "idempotency_records", force: :cascade do |t|
     t.bigint "merchant_id", null: false

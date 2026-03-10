@@ -9,12 +9,14 @@ module Ai
       ENV_KEY = 'AI_CONTEXT_GRAPH_ENABLED'
       VECTOR_RAG_ENV_KEY = 'AI_VECTOR_RAG_ENABLED'
       DEBUG_ENV_KEY = 'AI_DEBUG'
-      DEFAULT_MAX_CONTEXT_CHARS = 5000
 
       class << self
-        # Returns { context_text:, citations:, context_truncated: }. When AI_DEBUG=true adds :debug.
-        # Retrievers (additive): graph when AI_CONTEXT_GRAPH_ENABLED; else vector hybrid when AI_VECTOR_RAG_ENABLED; else keyword DocsRetriever.
-        def call(message, agent_key: nil, max_context_chars: DEFAULT_MAX_CONTEXT_CHARS)
+        # Returns { context_text:, citations:, context_truncated:, final_context_chars:, final_sections_count:, dropped_section_ids_count: }. When AI_DEBUG=true adds :debug.
+        def call(message, agent_key: nil, max_context_chars: nil, max_sections: nil, max_citations: nil)
+          max_context_chars ||= ContextBudgeter.max_context_chars
+          max_sections ||= ContextBudgeter.max_sections
+          max_citations ||= ContextBudgeter.max_citations
+
           retriever_name = context_graph_enabled? ? 'GraphExpandedRetriever' : (vector_rag_enabled? ? 'HybridRetriever' : 'DocsRetriever')
           raw = if context_graph_enabled?
             ::Ai::GraphExpandedRetriever.new(message, agent_key: agent_key).call
@@ -26,9 +28,13 @@ module Ai
             { sections: r[:sections], seed_ids: r[:seed_ids], seed_count: nil, expanded_count: nil }
           end
 
-          out = apply_context_budget(raw[:sections], raw[:seed_ids], max_context_chars)
-          citations_count = out[:citations]&.size || 0
-          context_len = out[:context_text].to_s.length
+          out = ContextBudgeter.call(
+            raw[:sections],
+            max_context_chars: max_context_chars,
+            max_sections: max_sections,
+            max_citations: max_citations
+          )
+
           ::Ai::Observability::EventLogger.log_retrieval(
             retriever: retriever_name,
             query: message,
@@ -36,10 +42,10 @@ module Ai
             seed_sections_count: raw[:seed_count],
             expanded_sections_count: raw[:expanded_count],
             vector_hits_count: raw[:vector_hits_count],
-            final_sections_count: citations_count,
-            context_text_length: context_len,
+            final_sections_count: out[:final_sections_count],
+            context_text_length: out[:final_context_chars],
             context_truncated: out[:context_truncated],
-            citations_count: citations_count,
+            citations_count: out[:citations]&.size || 0,
             request_id: Thread.current[:ai_request_id]
           )
 
@@ -51,14 +57,15 @@ module Ai
               seed_section_ids: raw[:seed_ids].to_a,
               expanded_section_ids: all_section_ids - seed_ids,
               final_included_section_ids: out[:included_section_ids].to_a,
-              context_budget_used: out[:context_text].to_s.length,
+              context_budget_used: out[:final_context_chars],
               max_context_chars: max_context_chars,
-              context_truncated: out[:context_truncated]
+              context_truncated: out[:context_truncated],
+              final_sections_count: out[:final_sections_count],
+              dropped_section_ids_count: out[:dropped_section_ids_count]
             }
             debug[:expanded_with_edges] = raw[:expanded_with_edges] if raw[:expanded_with_edges].present?
             out[:debug] = debug
           end
-          out.delete(:included_section_ids)
           out
         end
 
@@ -76,51 +83,6 @@ module Ai
           v = ENV[VECTOR_RAG_ENV_KEY].to_s.strip.downcase
           v == 'true' || v == '1'
         end
-
-        # Include sections in ranked order until budget; always include top seed. Truncate rest.
-        # Returns { context_text:, citations:, context_truncated: }.
-        def apply_context_budget(sections, seed_ids, max_context_chars)
-          sections = sections.to_a
-          return { context_text: nil, citations: [], context_truncated: false } if sections.empty?
-
-          seed_set = (seed_ids || []).to_set
-          included = []
-          budget_remaining = max_context_chars
-          context_truncated = false
-
-          # Always include first section (top-ranked / top seed); truncate if over budget
-          first = sections.first.dup
-          first_chunk = first[:content_chunk].to_s
-          if first_chunk.length > max_context_chars
-            first[:content_chunk] = first_chunk.truncate(max_context_chars)
-            context_truncated = true
-          end
-          included << first
-          budget_remaining -= first[:content_chunk].length
-
-          sections.drop(1).each do |sec|
-            chunk = sec[:content_chunk].to_s
-            len = chunk.length
-            if len <= budget_remaining
-              included << sec
-              budget_remaining -= len
-            else
-              context_truncated = true
-              break
-            end
-          end
-
-          context_text = included.map { |s| s[:content_chunk] }.join("\n\n").presence
-          citations = included.map { |s| s[:citation] }
-          included_section_ids = included.map { |s| s[:id] }
-          {
-            context_text: context_text,
-            citations: citations,
-            context_truncated: context_truncated,
-            included_section_ids: included_section_ids
-          }
-        end
-
       end
     end
   end

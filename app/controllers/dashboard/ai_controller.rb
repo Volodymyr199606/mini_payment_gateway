@@ -44,10 +44,11 @@ module Dashboard
         content: msg
       )
 
-      ctx = ::Ai::ConversationContextBuilder.call(chat_session, max_turns: 8)
-      memory_text = ctx[:memory_text].to_s
+      ctx = ::Ai::ConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
+      memory_result = ::Ai::Conversation::MemoryBudgeter.call(summary_text: ctx[:summary_text], recent_messages: ctx[:recent_messages])
+      memory_text = memory_result[:memory_text].to_s
       conversation_history = memory_text.present? ? [] : chat_session.ai_chat_messages.chronological.limit(10).map { |m| { role: m.role, content: m.content } }[0..-2] || []
-      recent_count = conversation_history.size
+      recent_count = memory_result[:recent_messages_count]
 
       agent_param = chat_params[:agent].to_s.strip
       agent_key = if agent_param.present? && agent_param != "auto"
@@ -77,7 +78,7 @@ module Dashboard
 
       increment_ai_chat_count
 
-      log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_text, recent_count)
+      log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_result, recent_count)
 
       payload = {
         reply: out.reply_text,
@@ -87,7 +88,7 @@ module Dashboard
         fallback_used: out.fallback_used
       }
       payload[:data] = out.data if out.data.present?
-      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_text) if ai_debug?
+      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result) if ai_debug?
 
       render json: payload
     rescue StandardError => e
@@ -155,7 +156,7 @@ module Dashboard
       graph ? 'GraphExpandedRetriever' : (vector ? 'HybridRetriever' : 'DocsRetriever')
     end
 
-    def log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_text, recent_count)
+    def log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_result, recent_count)
       ::Ai::Observability::EventLogger.log_ai_request(
         request_id: request.request_id,
         endpoint: 'dashboard',
@@ -165,8 +166,8 @@ module Dashboard
         selected_retriever: selected_retriever,
         graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
         vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-        memory_used: memory_text.present?,
-        summary_used: out.metadata[:summary_used],
+        memory_used: memory_result&.dig(:memory_used),
+        summary_used: memory_result&.dig(:summary_used),
         recent_messages_count: recent_count,
         retrieved_sections_count: out.citations.size,
         citations_count: out.citations.size,
@@ -203,22 +204,29 @@ module Dashboard
       )
     end
 
-    def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_text)
-      ::Ai::Observability::EventLogger.build_debug_payload(
+    def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result)
+      debug = ::Ai::Observability::EventLogger.build_debug_payload(
         selected_agent: out.agent_key,
         selected_retriever: selected_retriever,
         graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
         vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-        retrieved_sections_count: retriever_result&.dig(:citations)&.size,
+        retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
         citations_count: out.citations.size,
         fallback_used: out.fallback_used,
         citation_reask_used: out.metadata[:guardrail_reask],
         model_used: out.model_used,
-        memory_used: memory_text.present?,
-        summary_used: out.metadata[:summary_used],
+        memory_used: memory_result&.dig(:memory_used),
+        summary_used: memory_result&.dig(:summary_used),
         latency_ms: latency_ms,
         retriever_debug: retriever_result&.dig(:debug)
       )
+      debug[:context_truncated] = retriever_result[:context_truncated] if retriever_result
+      debug[:final_context_chars] = retriever_result[:final_context_chars] if retriever_result
+      debug[:final_sections_count] = retriever_result[:final_sections_count] if retriever_result
+      debug[:memory_truncated] = memory_result[:memory_truncated] if memory_result
+      debug[:final_memory_chars] = memory_result[:final_memory_chars] if memory_result
+      debug[:recent_messages_count] = memory_result[:recent_messages_count] if memory_result
+      debug
     end
   end
 end

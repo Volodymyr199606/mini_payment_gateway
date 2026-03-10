@@ -5,7 +5,6 @@ module Ai
     class BaseAgent
       # Minimum context length (chars) to consider calling the LLM; below this we return a deterministic fallback.
       LOW_CONTEXT_THRESHOLD = 80
-      MAX_MEMORY_CHARS = 2000
 
       # Shown when retriever returns no sections; suggests where to look next.
       EMPTY_RETRIEVAL_FALLBACK = "I couldn't find this in the docs. Here's what I can say generally: " \
@@ -161,10 +160,9 @@ module Ai
       def build_messages
         system_content = system_instructions
 
-        # Memory (summary + recent messages) before RAG context; capped to keep token budget sane.
+        # Memory (summary + recent messages) before RAG context; already budgeted by MemoryBudgeter when present.
         if @memory_text.present?
-          memory_block = @memory_text.length > MAX_MEMORY_CHARS ? @memory_text.truncate(MAX_MEMORY_CHARS) : @memory_text
-          system_content += "\n\nMemory:\n#{memory_block}"
+          system_content += "\n\nMemory:\n#{@memory_text}"
         end
 
         system_content += "\n\nContext (use only this):\n#{@context_text || 'No context retrieved.'}"

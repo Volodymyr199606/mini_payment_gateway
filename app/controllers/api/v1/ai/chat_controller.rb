@@ -119,12 +119,12 @@ module Api
         end
 
         def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms)
-          ::Ai::Observability::EventLogger.build_debug_payload(
+          debug = ::Ai::Observability::EventLogger.build_debug_payload(
             selected_agent: out.agent_key,
             selected_retriever: selected_retriever,
             graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
             vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-            retrieved_sections_count: retriever_result&.dig(:citations)&.size,
+            retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
             citations_count: out.citations.size,
             fallback_used: out.fallback_used,
             citation_reask_used: out.metadata[:guardrail_reask],
@@ -134,6 +134,10 @@ module Api
             latency_ms: latency_ms,
             retriever_debug: retriever_result&.dig(:debug)
           )
+          debug[:context_truncated] = retriever_result[:context_truncated] if retriever_result
+          debug[:final_context_chars] = retriever_result[:final_context_chars] if retriever_result
+          debug[:final_sections_count] = retriever_result[:final_sections_count] if retriever_result
+          debug
         end
 
         def ai_debug?

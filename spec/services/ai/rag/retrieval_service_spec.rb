@@ -62,7 +62,7 @@ RSpec.describe Ai::Rag::RetrievalService do
           expect(result).to have_key(:citations)
           expect(result[:citations]).to be_a(Array)
           parsed = JSON.parse(logged)
-          expect(parsed['event']).to eq('ai_doc_retrieval')
+          expect(parsed['event']).to eq('ai_retrieval')
           expect(parsed['retriever']).to eq('DocsRetriever')
           expect(parsed['final_sections_count']).to be_a(Integer)
         end
@@ -87,7 +87,7 @@ RSpec.describe Ai::Rag::RetrievalService do
       end
     end
 
-    it 'logs and returns GraphExpandedRetriever result (context_text + citations only) when enabled' do
+    it 'logs and returns GraphExpandedRetriever result (context_text + citations + budget metadata) when enabled' do
       with_env(described_class::VECTOR_RAG_ENV_KEY, 'false') do
       with_env(described_class::ENV_KEY, 'true') do
         logged = nil
@@ -95,9 +95,11 @@ RSpec.describe Ai::Rag::RetrievalService do
         result = described_class.call('refund')
         expect(result).to have_key(:context_text)
         expect(result).to have_key(:citations)
-        expect(result.keys).to contain_exactly(:context_text, :citations, :context_truncated)
+        expect(result).to have_key(:context_truncated)
+        expect(result).to have_key(:final_context_chars)
+        expect(result).to have_key(:final_sections_count)
         parsed = JSON.parse(logged)
-        expect(parsed['event']).to eq('ai_doc_retrieval')
+        expect(parsed['event']).to eq('ai_retrieval')
         expect(parsed['retriever']).to eq('GraphExpandedRetriever')
         expect(parsed['seed_sections_count']).to be_a(Integer)
         expect(parsed['expanded_sections_count']).to be_a(Integer)
@@ -228,36 +230,32 @@ RSpec.describe Ai::Rag::RetrievalService do
       Ai::Rag::ContextGraph.reset!
     end
 
-    it 'with small budget still includes top seed section' do
+    it 'with small budget still includes top seed section (whole section, no partial truncation)' do
       with_env(described_class::ENV_KEY, 'false') do
-        # Use a tiny budget: only the first section should fit (and may be truncated)
+        # Top-ranked section is always included whole; others dropped when over budget
         result = described_class.call('refund', agent_key: :operational, max_context_chars: 50)
         expect(result).to have_key(:context_text)
         expect(result).to have_key(:citations)
-        expect(result[:context_text].to_s.length).to be <= 50
-        # Top seed must still be included: at least one citation and non-empty context
+        expect(result).to have_key(:final_context_chars)
         expect(result[:citations].size).to be >= 1
         expect(result[:context_text]).to be_present
+        expect(result[:final_sections_count]).to eq(result[:citations].size)
       end
     end
 
     it 'citations match included sections only when budget truncates' do
-      # Unit test: apply_context_budget returns citations only for included sections
       sections = [
         { content_chunk: 'aaa', citation: { file: 'a.md', heading: 'A', anchor: 'a', excerpt: 'a' }, id: 'a.md#a' },
         { content_chunk: 'bb', citation: { file: 'b.md', heading: 'B', anchor: 'b', excerpt: 'b' }, id: 'b.md#b' },
         { content_chunk: 'ccc', citation: { file: 'c.md', heading: 'C', anchor: 'c', excerpt: 'c' }, id: 'c.md#c' }
       ]
-      seed_ids = %w[a.md#a b.md#b c.md#c]
-      # Budget fits first section only (aaa = 3 chars); first is always included
-      out = described_class.apply_context_budget(sections, seed_ids, 3)
+      out = Ai::Rag::ContextBudgeter.call(sections, max_context_chars: 3)
       expect(out[:context_text]).to eq('aaa')
       expect(out[:citations].size).to eq(1)
       expect(out[:citations].first[:heading]).to eq('A')
       expect(out[:context_truncated]).to be true
 
-      # Budget fits first two sections (3 + 2 + 2 separator = 7)
-      out2 = described_class.apply_context_budget(sections, seed_ids, 7)
+      out2 = Ai::Rag::ContextBudgeter.call(sections, max_context_chars: 7)
       expect(out2[:context_text]).to eq("aaa\n\nbb")
       expect(out2[:citations].size).to eq(2)
       expect(out2[:citations].map { |c| c[:heading] }).to eq(%w[A B])

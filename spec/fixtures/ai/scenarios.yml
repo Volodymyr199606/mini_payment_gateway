@@ -1,0 +1,159 @@
+# End-to-end AI scenario fixtures for full-stack workflow validation.
+# Each scenario: user_message, expected path, agent/tools, content assertions.
+# Runner: orchestration (if applicable) -> else router/retrieval/agent. Groq stubbed.
+# Use {{entity_id}} placeholders when entity_refs specified; runner substitutes after creating records.
+
+scenarios:
+  # --- Tool-only: single deterministic tool ---
+  - id: scenario-tool-account
+    description: "Merchant asks for account info"
+    user_message: "Show my account info"
+    expected_path: tool_only
+    expected_agent: "tool:get_merchant_account"
+    expected_tool_names: [get_merchant_account]
+    require_citations: false
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    expected_audit_fields: [tool_used, tool_names]
+    expected_debug_fields: [tool_used, orchestration_used]
+
+  - id: scenario-tool-ledger
+    description: "Merchant asks for last 7 days totals"
+    user_message: "What is my net volume for the last 7 days?"
+    expected_path: tool_only
+    expected_agent: "tool:get_ledger_summary"
+    expected_tool_names: [get_ledger_summary]
+    require_citations: false
+    expected_response_must_include: [Charges, Net]
+    expected_response_must_not_include: []
+    expected_audit_fields: [tool_used, tool_names]
+
+  - id: scenario-tool-pi
+    description: "Merchant asks about payment intent by id"
+    user_message: "What is payment intent {{payment_intent_id}}?"
+    entity_refs: [payment_intent]
+    expected_path: tool_only
+    expected_agent: "tool:get_payment_intent"
+    expected_tool_names: [get_payment_intent]
+    require_citations: false
+    expected_response_must_include: [Payment Intent]
+    expected_response_must_not_include: []
+    expected_audit_fields: [tool_used]
+
+  - id: scenario-tool-txn
+    description: "Transaction lookup (triggers 2-step: txn then PI when linked)"
+    user_message: "transaction id {{transaction_id}}"
+    entity_refs: [payment_intent, transaction]
+    expected_path: orchestration
+    expected_agent: orchestration
+    expected_tool_names: [get_transaction, get_payment_intent]
+    require_citations: false
+    expected_response_must_include: [Transaction, Payment Intent]
+    expected_response_must_not_include: []
+    expected_audit_fields: [tool_used, tool_names]
+
+  - id: scenario-tool-webhook
+    description: "Merchant asks about webhook event"
+    user_message: "What happened to webhook event {{webhook_event_id}}?"
+    entity_refs: [webhook_event]
+    expected_path: tool_only
+    expected_agent: "tool:get_webhook_event"
+    expected_tool_names: [get_webhook_event]
+    require_citations: false
+    expected_response_must_include: [Webhook]
+    expected_response_must_not_include: []
+    expected_audit_fields: [tool_used]
+
+  # --- Orchestration: 2-step transaction -> payment intent ---
+  - id: scenario-orchestration-txn-pi
+    description: "Transaction lookup triggers payment intent follow-up"
+    user_message: "transaction id {{transaction_id}}"
+    entity_refs: [payment_intent, transaction]
+    expected_path: orchestration
+    expected_agent: orchestration
+    expected_tool_names: [get_transaction, get_payment_intent]
+    require_citations: false
+    expected_response_must_include: [Transaction, Payment Intent]
+    expected_response_must_not_include: []
+    expected_audit_fields: [tool_used, tool_names]
+    expected_debug_fields: [orchestration_used, orchestration_step_count]
+
+  # --- Docs-only: agent path with retrieval, no tool ---
+  # Avoid LEDGER_PHRASES (how, refunds, total, charges, balance, etc.) so IntentDetector doesn't route to get_ledger_summary.
+  - id: scenario-docs-refunds
+    description: "Conceptual question about refunds (refund keyword -> operational)"
+    user_message: "Explain refund and void"
+    expected_path: docs_only
+    expected_agent: operational
+    expected_tool_names: []
+    require_citations: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    expected_audit_fields: [agent_key, citations_count]
+
+  - id: scenario-docs-auth-capture
+    description: "Auth vs capture explanation"
+    user_message: "Explain authorize versus capture"
+    expected_path: docs_only
+    expected_agent: operational
+    expected_tool_names: []
+    require_citations: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    expected_audit_fields: [agent_key]
+
+  - id: scenario-docs-requires-capture
+    description: "What requires_capture means"
+    user_message: "What does requires_capture mean for my payment intent?"
+    expected_path: docs_only
+    expected_agent: operational
+    expected_tool_names: []
+    require_citations: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    expected_audit_fields: [agent_key]
+
+  - id: scenario-docs-idempotency
+    description: "Idempotency usage (agent_key from class name: onboarding)"
+    user_message: "Describe idempotency for API requests"
+    expected_path: docs_only
+    expected_agent: onboarding
+    expected_tool_names: []
+    require_citations: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    expected_audit_fields: [agent_key]
+
+  - id: scenario-docs-pci
+    description: "PCI handling (agent_key from class name: security)"
+    user_message: "Explain PCI and tokenization"
+    expected_path: docs_only
+    expected_agent: security
+    expected_tool_names: []
+    require_citations: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    expected_audit_fields: [agent_key]
+
+  - id: scenario-docs-support
+    description: "General support question"
+    user_message: "What can you help me with?"
+    expected_path: docs_only
+    expected_agent: support_faq
+    expected_tool_names: []
+    require_citations: false
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    expected_audit_fields: [agent_key]
+
+  # --- Reporting: ledger phrase triggers get_ledger_summary via orchestration ---
+  - id: scenario-tool-reporting-phrase
+    description: "Reporting phrase triggers ledger tool"
+    user_message: "Total charges last week"
+    expected_path: tool_only
+    expected_agent: "tool:get_ledger_summary"
+    expected_tool_names: [get_ledger_summary]
+    require_citations: false
+    expected_response_must_include: [Charges]
+    expected_response_must_not_include: []
+    expected_audit_fields: [tool_used]

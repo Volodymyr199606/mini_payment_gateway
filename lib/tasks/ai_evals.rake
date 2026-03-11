@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 namespace :ai do
+  desc 'Run AI scenario evals (end-to-end). Exit non-zero if any failures. Runs via RSpec with stubs.'
+  task scenario_evals: :environment do
+    require 'rspec/core'
+    exit RSpec::Core::Runner.run(
+      ['spec/ai/end_to_end_scenarios_spec.rb', '--format', 'progress']
+    )
+  end
+
   desc 'Run AI eval harness (golden questions). Exit non-zero if any failures. Stub Groq/Ledger in tests.'
   task evals: :environment do
     merchant_id = ENV['EVAL_MERCHANT_ID'].presence

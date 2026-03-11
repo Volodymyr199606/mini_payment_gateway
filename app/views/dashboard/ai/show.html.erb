@@ -1,7 +1,9 @@
 <div
   class="ai-chat-page"
   data-controller="dashboard-ai-chat"
+  data-dashboard-ai-chat-chat-url-value="<%= dashboard_ai_chat_path %>"
   data-dashboard-ai-chat-reset-url-value="<%= dashboard_reset_ai_chat_session_path %>"
+  data-dashboard-ai-chat-streaming-enabled-value="<%= ENV['AI_STREAMING_ENABLED'].to_s.strip.downcase.in?(%w[true 1]) %>"
 >
   <div class="page-header page-header-with-action">
     <div>
@@ -37,10 +39,11 @@
             placeholder="Type your question..."
             rows="3"
             class="ai-chat-input"
+            data-dashboard-ai-chat-target="input"
           ></textarea>
           <div class="ai-chat-send-wrap">
-            <span class="ai-status-icon ai-hidden" aria-hidden="true"></span>
-            <button type="button" id="ai-chat-send-btn" class="btn btn-primary">Send</button>
+            <span class="ai-status-icon ai-hidden" aria-hidden="true" data-dashboard-ai-chat-target="statusIcon"></span>
+            <button type="button" id="ai-chat-send-btn" class="btn btn-primary" data-dashboard-ai-chat-target="sendButton" data-action="click->dashboard-ai-chat#send">Send</button>
           </div>
         </div>
       </div>

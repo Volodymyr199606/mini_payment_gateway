@@ -146,6 +146,26 @@ RSpec.describe Ai::Observability::EventLogger do
     end
   end
 
+  describe '.log_tool_call' do
+    it 'logs ai_tool_call event with metadata' do
+      expect(Rails.logger).to receive(:info) do |json_str|
+        payload = JSON.parse(json_str)
+        expect(payload['event']).to eq('ai_tool_call')
+        expect(payload['tool_name']).to eq('get_merchant_account')
+        expect(payload['success']).to be(true)
+        expect(payload['latency_ms']).to eq(10)
+      end
+      described_class.log_tool_call(
+        request_id: 'req-1',
+        merchant_id: 1,
+        tool_name: 'get_merchant_account',
+        args: { merchant_id: 1 },
+        success: true,
+        latency_ms: 10
+      )
+    end
+  end
+
   describe '.ai_debug_enabled?' do
     it 'returns true when AI_DEBUG=true' do
       allow(ENV).to receive(:[]).and_call_original

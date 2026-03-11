@@ -47,12 +47,43 @@ module Api
 
           log_ai_request_success(out, message, agent_key, retriever_result, selected_retriever, latency_ms)
 
+          write_ai_audit(
+            request_id: request.request_id,
+            endpoint: 'api',
+            merchant_id: current_merchant&.id,
+            agent_key: out.agent_key,
+            retriever_key: selected_retriever,
+            tool_used: false,
+            fallback_used: out.fallback_used,
+            citation_reask_used: out.metadata[:guardrail_reask],
+            memory_used: false,
+            summary_used: out.metadata[:summary_used],
+            citations_count: out.citations.size,
+            retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+            latency_ms: latency_ms,
+            model_used: out.model_used,
+            success: true
+          )
+
           payload = build_chat_payload(out)
           payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms) if ai_debug?
           render json: payload
         rescue StandardError => e
           latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
           log_ai_request_error(e, message, agent_key, retriever_result, selected_retriever, latency_ms)
+          write_ai_audit(
+            request_id: request.request_id,
+            endpoint: 'api',
+            merchant_id: current_merchant&.id,
+            agent_key: agent_key&.to_s,
+            retriever_key: selected_retriever,
+            citations_count: retriever_result&.dig(:citations)&.size,
+            retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+            latency_ms: latency_ms,
+            success: false,
+            error_class: e.class.name,
+            error_message: e.message
+          )
           raise
         end
 
@@ -150,6 +181,11 @@ module Api
           else
             agent_class.new(message: message, context_text: context_text, citations: citations)
           end
+        end
+
+        def write_ai_audit(**attrs)
+          record = ::Ai::AuditTrail::RecordBuilder.call(**attrs)
+          ::Ai::AuditTrail::Writer.write(record)
         end
 
         def chat_params

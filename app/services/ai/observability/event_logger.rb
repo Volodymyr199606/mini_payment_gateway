@@ -90,6 +90,50 @@ module Ai
           log_info(payload)
         end
 
+        # Log deterministic tool calls. Safe args only (no secrets).
+        def log_tool_call(
+          request_id: nil,
+          merchant_id: nil,
+          tool_name: nil,
+          args: nil,
+          success: nil,
+          latency_ms: nil
+        )
+          payload = build_base_payload.merge(
+            event: 'ai_tool_call',
+            request_id: request_id,
+            merchant_id: merchant_id,
+            tool_name: tool_name,
+            args: args,
+            success: success,
+            latency_ms: latency_ms
+          )
+          log_info(payload)
+        end
+
+        # Log constrained orchestration run (step count, tool names, success, halted_reason).
+        def log_orchestration_run(
+          request_id: nil,
+          merchant_id: nil,
+          step_count: nil,
+          tool_names: nil,
+          success: nil,
+          halted_reason: nil,
+          latency_ms: nil
+        )
+          payload = build_base_payload.merge(
+            event: 'ai_orchestration_run',
+            request_id: request_id,
+            merchant_id: merchant_id,
+            step_count: step_count,
+            tool_names: tool_names,
+            success: success,
+            halted_reason: halted_reason,
+            latency_ms: latency_ms
+          )
+          log_info(payload)
+        end
+
         # Log guardrail events: empty_retrieval_fallback, citation_reask, secret_redaction, safe_fallback.
         def log_guardrail(
           event: nil,

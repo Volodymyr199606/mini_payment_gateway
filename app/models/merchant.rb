@@ -13,6 +13,7 @@ class Merchant < ApplicationRecord
   has_many :api_request_stats, dependent: :destroy
   has_many :ai_chat_sessions, dependent: :destroy
   has_many :ai_chat_messages, dependent: :destroy
+  has_many :ai_request_audits, dependent: :destroy
 
   validates :name, presence: true
   validates :status, inclusion: { in: %w[active inactive] }

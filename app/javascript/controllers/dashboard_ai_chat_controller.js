@@ -8,7 +8,7 @@ import { Controller } from "@hotwired/stimulus"
  */
 export default class extends Controller {
   static targets = ["transcript", "input", "sendButton", "statusIcon", "error"]
-  static values = { chatUrl: String, resetUrl: String }
+  static values = { chatUrl: String, resetUrl: String, streamingEnabled: Boolean }
 
   SUCCESS_MS = 700
   ERROR_MS = 700
@@ -59,38 +59,146 @@ export default class extends Controller {
     this.inputTarget.value = ""
     this.setStateSending()
 
+    const streaming = this.streamingEnabledValue
     const url = this.chatUrlValue || "/dashboard/ai/chat"
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
 
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "X-CSRF-Token": csrfToken || ""
-        },
-        body: JSON.stringify({ message, agent: "auto" })
-      })
-
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        this.showErrorAnimation()
-        this.showErrorInUITarget(data.message || data.error || `Request failed (${res.status})`)
-        setTimeout(() => this.setIdle(), this.ERROR_MS)
-        return
+      if (streaming) {
+        await this.sendStreaming(url, message, csrfToken)
+      } else {
+        await this.sendJson(url, message, csrfToken)
       }
-
-      this.appendAssistantBubble(data.reply, data.agent, data.model_used, data.citations || [], data.debug)
-      this.scrollTranscriptToBottom()
-      this.showSuccessAnimation()
-      setTimeout(() => this.setIdle(), this.SUCCESS_MS)
     } catch (err) {
       this.showErrorAnimation()
       this.showErrorInUITarget(err.message || "Network error")
       setTimeout(() => this.setIdle(), this.ERROR_MS)
     }
+  }
+
+  async sendJson(url, message, csrfToken) {
+    const res = await fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-CSRF-Token": csrfToken || ""
+      },
+      body: JSON.stringify({ message, agent: "auto" })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      this.showErrorAnimation()
+      this.showErrorInUITarget(data.message || data.error || `Request failed (${res.status})`)
+      setTimeout(() => this.setIdle(), this.ERROR_MS)
+      return
+    }
+    this.appendAssistantBubble(data.reply, data.agent, data.model_used, data.citations || [], data.debug)
+    this.scrollTranscriptToBottom()
+    this.showSuccessAnimation()
+    setTimeout(() => this.setIdle(), this.SUCCESS_MS)
+  }
+
+  async sendStreaming(url, message, csrfToken) {
+    const res = await fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+        "X-CSRF-Token": csrfToken || ""
+      },
+      body: JSON.stringify({ message, agent: "auto", stream: true })
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      this.showErrorAnimation()
+      this.showErrorInUITarget(data.message || data.error || `Request failed (${res.status})`)
+      setTimeout(() => this.setIdle(), this.ERROR_MS)
+      return
+    }
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ""
+    let currentEvent = null
+    let replyEl = null
+
+    const transcript = this.transcriptTarget
+    if (transcript.querySelector(".text-muted")) transcript.innerHTML = ""
+    const wrap = document.createElement("div")
+    wrap.className = "ai-bubble-row ai-bubble-row-assistant"
+    const bubble = document.createElement("div")
+    bubble.className = "ai-bubble ai-bubble-assistant"
+    const replyText = document.createElement("div")
+    replyText.className = "ai-bubble-content"
+    bubble.appendChild(replyText)
+    wrap.appendChild(bubble)
+    transcript.appendChild(wrap)
+    replyEl = replyText
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split("\n")
+      buffer = lines.pop() || ""
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          currentEvent = line.slice(7).trim()
+        } else if (line.startsWith("data: ") && currentEvent === "chunk") {
+          try {
+            const json = JSON.parse(line.slice(6))
+            const delta = json.delta || ""
+            if (delta && replyEl) {
+              replyEl.textContent += delta
+              this.scrollTranscriptToBottom()
+            }
+          } catch (_) {}
+        } else if (line.startsWith("data: ") && (currentEvent === "done" || currentEvent === "error")) {
+          try {
+            const json = JSON.parse(line.slice(6))
+            if (currentEvent === "done" && json.reply !== undefined) {
+              replyEl.textContent = json.reply
+              const meta = document.createElement("div")
+              meta.className = "ai-bubble-meta"
+              meta.textContent = `agent: ${json.agent || "agent"} · model: ${json.model_used || "—"}`
+              bubble.appendChild(meta)
+              const actions = document.createElement("div")
+              actions.className = "ai-bubble-actions"
+              const copyBtn = document.createElement("button")
+              copyBtn.type = "button"
+              copyBtn.className = "ai-copy-btn"
+              copyBtn.textContent = "Copy"
+              copyBtn.addEventListener("click", () => this.copyReply(json.reply || "", copyBtn))
+              actions.appendChild(copyBtn)
+              bubble.appendChild(actions)
+              const citations = json.citations || []
+              if (citations.length > 0) {
+                const details = document.createElement("details")
+                details.className = "ai-sources"
+                details.innerHTML = "<summary>Sources</summary><ul class='ai-sources-list'></ul>"
+                const ul = details.querySelector("ul")
+                for (const c of citations) {
+                  const li = document.createElement("li")
+                  li.textContent = `${c.file || ""} :: ${c.heading || ""}${(c.excerpt || "") ? " — " + (c.excerpt.length > 160 ? c.excerpt.slice(0, 160) + "…" : c.excerpt) : ""}`
+                  ul.appendChild(li)
+                }
+                bubble.appendChild(details)
+              }
+              if (json.debug && typeof json.debug === "object") {
+                bubble.appendChild(this.buildDebugPanel(json.debug))
+              }
+            } else if (currentEvent === "error" && json.error) {
+              this.showErrorInUITarget(json.error)
+            }
+          } catch (_) {}
+        }
+      }
+    }
+    this.scrollTranscriptToBottom()
+    this.showSuccessAnimation()
+    setTimeout(() => this.setIdle(), this.SUCCESS_MS)
   }
 
   appendUserBubble(text) {

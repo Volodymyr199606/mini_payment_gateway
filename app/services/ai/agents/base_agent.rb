@@ -112,6 +112,11 @@ module Ai
         self.class.name.demodulize.underscore.sub(/_agent$/, '')
       end
 
+      # Messages for LLM; used by streaming path. Subclasses inherit build_messages.
+      def messages_for_llm
+        build_messages
+      end
+
       # Build AgentResult for consistent contract. Subclasses may override or call with extra options.
       def build_result(reply_text:, model_used: nil, fallback_used: false, guardrail_reask: false, data: nil)
         ::Ai::AgentResult.new(

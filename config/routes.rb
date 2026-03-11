@@ -29,6 +29,7 @@ Rails.application.routes.draw do
     get 'ai', to: 'ai#show', as: :ai
     post 'ai/chat', to: 'ai#chat', as: :ai_chat
     post 'ai/chat_sessions/reset', to: 'ai#reset_chat_session', as: :reset_ai_chat_session
+    get 'ai/audit', to: 'ai_audit#index', as: :ai_audit
 
     root to: 'overview#index'
   end

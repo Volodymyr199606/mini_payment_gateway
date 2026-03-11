@@ -1,0 +1,45 @@
+<div class="page-header">
+  <h1 class="page-title">AI Request Audit</h1>
+  <p class="page-description">Recent AI request records (dev/debug). Last 100 for your account.</p>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <% if @audits.any? %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Request ID</th>
+            <th>Endpoint</th>
+            <th>Agent</th>
+            <th>Retriever</th>
+            <th>Mode</th>
+            <th>Tool</th>
+            <th>Success</th>
+            <th>Latency</th>
+            <th>Citations</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @audits.each do |audit| %>
+            <tr>
+              <td><%= audit.created_at.strftime('%Y-%m-%d %H:%M:%S') %></td>
+              <td><code><%= truncate(audit.request_id, length: 20) %></code></td>
+              <td><%= audit.endpoint %></td>
+              <td><%= audit.agent_key %></td>
+              <td><%= audit.retriever_key %></td>
+              <td><%= audit.composition_mode %></td>
+              <td><%= audit.tool_used ? audit.tool_names.join(', ') : '—' %></td>
+              <td><%= audit.success ? 'Yes' : 'No' %></td>
+              <td><%= audit.latency_ms %> ms</td>
+              <td><%= audit.citations_count %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p>No AI audit records yet. Use the AI chat to generate traffic.</p>
+    <% end %>
+  </div>
+</div>

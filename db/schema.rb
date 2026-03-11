@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_04_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_10_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -37,6 +37,36 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_04_120000) do
     t.datetime "updated_at", null: false
     t.string "current_topic"
     t.index ["merchant_id"], name: "index_ai_chat_sessions_on_merchant_id"
+  end
+
+  create_table "ai_request_audits", force: :cascade do |t|
+    t.string "request_id", null: false
+    t.string "endpoint", null: false
+    t.bigint "merchant_id"
+    t.string "agent_key", null: false
+    t.string "retriever_key"
+    t.string "composition_mode"
+    t.boolean "tool_used", default: false, null: false
+    t.jsonb "tool_names", default: []
+    t.boolean "fallback_used", default: false, null: false
+    t.boolean "citation_reask_used", default: false, null: false
+    t.boolean "memory_used", default: false, null: false
+    t.boolean "summary_used", default: false, null: false
+    t.jsonb "parsed_entities", default: {}
+    t.jsonb "parsed_intent_hints", default: {}
+    t.integer "citations_count", default: 0
+    t.integer "retrieved_sections_count"
+    t.integer "latency_ms"
+    t.string "model_used"
+    t.boolean "success", default: true, null: false
+    t.string "error_class"
+    t.string "error_message"
+    t.datetime "created_at", null: false
+    t.index ["agent_key"], name: "index_ai_request_audits_on_agent_key"
+    t.index ["created_at"], name: "index_ai_request_audits_on_created_at"
+    t.index ["merchant_id"], name: "index_ai_request_audits_on_merchant_id"
+    t.index ["request_id"], name: "index_ai_request_audits_on_request_id"
+    t.index ["success"], name: "index_ai_request_audits_on_success"
   end
 
   create_table "api_request_stats", force: :cascade do |t|
@@ -184,6 +214,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_04_120000) do
   add_foreign_key "ai_chat_messages", "ai_chat_sessions"
   add_foreign_key "ai_chat_messages", "merchants"
   add_foreign_key "ai_chat_sessions", "merchants"
+  add_foreign_key "ai_request_audits", "merchants"
   add_foreign_key "api_request_stats", "merchants"
   add_foreign_key "audit_logs", "merchants"
   add_foreign_key "customers", "merchants"

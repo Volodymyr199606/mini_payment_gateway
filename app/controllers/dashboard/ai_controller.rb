@@ -2,6 +2,8 @@
 
 module Dashboard
   class AiController < Dashboard::BaseController
+    include ActionController::Live
+
     AI_RATE_LIMIT = 20
     AI_RATE_WINDOW = 60
 
@@ -44,23 +46,24 @@ module Dashboard
         content: msg
       )
 
-      # At most one tool call per request; skip agent when tool handles the intent
-      tool_out = ::Ai::Tools::Orchestrator.invoke_if_applicable(
+      # Constrained orchestration: up to 2 deterministic tool steps when clearly applicable
+      run_result = ::Ai::Orchestration::ConstrainedRunner.call(
         message: msg,
         merchant_id: current_merchant.id,
         request_id: request.request_id
       )
-      if tool_out[:invoked]
-        latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+      if run_result.orchestration_used?
+        latency_ms = run_result.metadata[:latency_ms] || ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+        agent_key = run_result.step_count > 1 ? 'orchestration' : "tool:#{run_result.tool_names.first}"
         composed = ::Ai::ResponseComposer.call(
-          reply_text: tool_out[:reply_text],
+          reply_text: run_result.reply_text,
           citations: [],
-          agent_key: "tool:#{tool_out[:tool_name]}",
+          agent_key: agent_key,
           model_used: nil,
           fallback_used: false,
-          data: tool_out[:result],
-          tool_name: tool_out[:tool_name],
-          tool_result: tool_out[:result],
+          data: run_result.deterministic_data,
+          tool_name: run_result.tool_names.first,
+          tool_result: run_result.deterministic_data,
           memory_used: false
         )
         AiChatMessage.create!(
@@ -71,8 +74,23 @@ module Dashboard
           agent: composed[:agent_key]
         )
         increment_ai_chat_count
+        write_ai_audit(
+          request_id: request.request_id,
+          endpoint: 'dashboard',
+          merchant_id: current_merchant.id,
+          agent_key: composed[:agent_key],
+          composition: composed[:composition],
+          tool_used: true,
+          tool_names: run_result.tool_names.to_a,
+          citations_count: 0,
+          latency_ms: latency_ms,
+          success: run_result.success?,
+          orchestration_used: true,
+          orchestration_step_count: run_result.step_count,
+          orchestration_halted_reason: run_result.halted_reason
+        )
         payload = build_response_payload(composed)
-        payload[:debug] = build_debug_payload_for_tool(composed, tool_out[:tool_name], latency_ms) if ai_debug?
+        payload[:debug] = build_debug_payload_for_orchestration(composed, run_result, latency_ms) if ai_debug?
         return render json: payload
       end
 
@@ -104,6 +122,20 @@ module Dashboard
       agent_class = ::Ai::AgentRegistry.fetch(agent_key)
       agent = build_agent(agent_class, agent_key, msg, context_text, citations, conversation_history: conversation_history, memory_text: memory_text)
 
+      if streaming_requested?
+        return perform_streaming_chat(
+          agent: agent,
+          msg: msg,
+          agent_key: agent_key,
+          retriever_result: retriever_result,
+          selected_retriever: selected_retriever,
+          memory_result: memory_result,
+          recent_count: recent_count,
+          chat_session: chat_session,
+          started_at: started_at
+        )
+      end
+
       out = agent.call
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
 
@@ -129,6 +161,26 @@ module Dashboard
 
       log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_result, recent_count)
 
+      write_ai_audit(
+        request_id: request.request_id,
+        endpoint: 'dashboard',
+        merchant_id: current_merchant&.id,
+        agent_key: out.agent_key,
+        retriever_key: selected_retriever,
+        composition: composed[:composition],
+        tool_used: composed.dig(:composition, :used_tool_data),
+        tool_names: [],
+        fallback_used: out.fallback_used,
+        citation_reask_used: out.metadata[:guardrail_reask],
+        memory_used: memory_result&.dig(:memory_used),
+        summary_used: memory_result&.dig(:summary_used),
+        citations_count: out.citations.size,
+        retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+        latency_ms: latency_ms,
+        model_used: out.model_used,
+        success: true
+      )
+
       payload = build_response_payload(composed)
       payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed) if ai_debug?
 
@@ -136,13 +188,211 @@ module Dashboard
     rescue StandardError => e
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
       log_ai_request_error(e, msg, agent_key, retriever_result, selected_retriever, latency_ms)
+      write_ai_audit(
+        request_id: request.request_id,
+        endpoint: 'dashboard',
+        merchant_id: current_merchant&.id,
+        agent_key: agent_key&.to_s,
+        retriever_key: selected_retriever,
+        citations_count: retriever_result&.dig(:citations)&.size,
+        retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+        latency_ms: latency_ms,
+        success: false,
+        error_class: e.class.name,
+        error_message: e.message
+      )
       raise
     end
 
     private
 
     def chat_params
-      params.permit(:message, :agent)
+      params.permit(:message, :agent, :stream)
+    end
+
+    def streaming_requested?
+      return false unless streaming_enabled?
+      stream_val = chat_params[:stream]
+      stream_val = parse_stream_from_body if stream_val.blank? && request.content_type.to_s.include?('application/json')
+      ActiveModel::Type::Boolean.new.cast(stream_val)
+    end
+
+    def streaming_enabled?
+      ENV['AI_STREAMING_ENABLED'].to_s.strip.downcase.in?(%w[true 1])
+    end
+
+    def parse_stream_from_body
+      return nil unless request.content_type.to_s.include?('application/json')
+      parsed = JSON.parse(request.raw_post) rescue {}
+      parsed['stream'] || parsed[:stream]
+    end
+
+    def perform_streaming_chat(agent:, msg:, agent_key:, retriever_result:, selected_retriever:, memory_result:, recent_count:, chat_session:, started_at:)
+      response.headers['Content-Type'] = 'text/event-stream'
+      response.headers['Cache-Control'] = 'no-cache'
+      response.headers['X-Accel-Buffering'] = 'no'
+
+      pipeline_context = { context_text: retriever_result[:context_text], citations: retriever_result[:citations] }
+      messages = agent.messages_for_llm
+
+      pre = ::Ai::Guardrails::Pipeline.call(
+        input: { built_messages: messages },
+        result: nil,
+        context: pipeline_context
+      )
+
+      if pre[:short_circuit]
+        latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+        out = agent.build_result_from_pipeline(pre)
+        composed = ::Ai::ResponseComposer.call(
+          reply_text: out.reply_text,
+          citations: out.citations,
+          agent_key: out.agent_key,
+          model_used: out.model_used,
+          fallback_used: out.fallback_used,
+          memory_used: memory_result&.dig(:memory_used)
+        )
+        write_sse_chunk(response.stream, composed[:reply]) if composed[:reply].present?
+        finalize_streaming(chat_session, composed, out, agent_key, retriever_result, selected_retriever, memory_result, recent_count, latency_ms, msg)
+        return
+      end
+
+      streamer = ::Ai::Streaming::ResponseStreamer.new
+      client = ::Ai::Generation::StreamingClient.new
+
+      raw = client.stream(messages: messages, temperature: 0.3, max_tokens: 1024) do |chunk|
+        streamer << chunk
+        write_sse_chunk(response.stream, chunk)
+      end
+
+      content = raw[:content].to_s.strip
+
+      if content.blank? && raw[:error].present?
+        raw = agent.send(:groq_client).chat(messages: messages, temperature: 0.3, max_tokens: 1024)
+        content = raw[:content].to_s.strip
+        content = "I couldn't generate a reply." if content.blank?
+        write_sse_chunk(response.stream, content)
+      elsif content.blank?
+        content = agent.fallback_message
+        write_sse_chunk(response.stream, content)
+      end
+
+      content = agent.send(:strip_inline_citations, agent.send(:strip_filler_phrases, content))
+      post = ::Ai::Guardrails::Pipeline.call(
+        input: { built_messages: messages },
+        result: { content: content, model_used: raw[:model_used], fallback_used: raw[:fallback_used] },
+        context: pipeline_context
+      )
+
+      latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+      out = agent.build_result_from_pipeline(post)
+      composed = ::Ai::ResponseComposer.call(
+        reply_text: out.reply_text,
+        citations: out.citations,
+        agent_key: out.agent_key,
+        model_used: out.model_used,
+        fallback_used: out.fallback_used,
+        memory_used: memory_result&.dig(:memory_used)
+      )
+
+      AiChatMessage.create!(
+        ai_chat_session: chat_session,
+        merchant_id: current_merchant.id,
+        role: 'assistant',
+        content: composed[:reply],
+        agent: composed[:agent_key]
+      )
+      increment_ai_chat_count
+      log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_result, recent_count)
+      write_ai_audit(
+        request_id: request.request_id,
+        endpoint: 'dashboard',
+        merchant_id: current_merchant&.id,
+        agent_key: out.agent_key,
+        retriever_key: selected_retriever,
+        composition: composed[:composition],
+        tool_used: false,
+        tool_names: [],
+        fallback_used: out.fallback_used,
+        citation_reask_used: out.metadata[:guardrail_reask],
+        memory_used: memory_result&.dig(:memory_used),
+        summary_used: memory_result&.dig(:summary_used),
+        citations_count: out.citations.size,
+        retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+        latency_ms: latency_ms,
+        model_used: out.model_used,
+        success: true
+      )
+
+      payload = build_response_payload(composed)
+      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed) if ai_debug?
+      write_sse_done(response.stream, payload)
+    rescue StandardError => e
+      latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+      log_ai_request_error(e, msg, agent_key, retriever_result, selected_retriever, latency_ms)
+      write_ai_audit(
+        request_id: request.request_id,
+        endpoint: 'dashboard',
+        merchant_id: current_merchant&.id,
+        agent_key: agent_key&.to_s,
+        retriever_key: selected_retriever,
+        citations_count: retriever_result&.dig(:citations)&.size,
+        retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+        latency_ms: latency_ms,
+        success: false,
+        error_class: e.class.name,
+        error_message: e.message
+      )
+      write_sse_error(response.stream, e.message)
+    ensure
+      response.stream.close
+    end
+
+    def finalize_streaming(chat_session, composed, out, agent_key, retriever_result, selected_retriever, memory_result, recent_count, latency_ms, msg)
+      AiChatMessage.create!(
+        ai_chat_session: chat_session,
+        merchant_id: current_merchant.id,
+        role: 'assistant',
+        content: composed[:reply],
+        agent: composed[:agent_key]
+      )
+      increment_ai_chat_count
+      log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_result, recent_count)
+      write_ai_audit(
+        request_id: request.request_id,
+        endpoint: 'dashboard',
+        merchant_id: current_merchant&.id,
+        agent_key: out.agent_key,
+        retriever_key: selected_retriever,
+        composition: composed[:composition],
+        tool_used: false,
+        tool_names: [],
+        fallback_used: out.fallback_used,
+        citation_reask_used: out.metadata[:guardrail_reask],
+        memory_used: memory_result&.dig(:memory_used),
+        summary_used: memory_result&.dig(:summary_used),
+        citations_count: out.citations.size,
+        retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+        latency_ms: latency_ms,
+        model_used: out.model_used,
+        success: true
+      )
+      payload = build_response_payload(composed)
+      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed) if ai_debug?
+      write_sse_done(response.stream, payload)
+    end
+
+    def write_sse_chunk(stream, text)
+      return if text.to_s.empty?
+      stream.write("event: chunk\ndata: {\"delta\":#{text.to_json}}\n\n")
+    end
+
+    def write_sse_done(stream, payload)
+      stream.write("event: done\ndata: #{payload.to_json}\n\n")
+    end
+
+    def write_sse_error(stream, message)
+      stream.write("event: error\ndata: {\"error\":#{message.to_json}}\n\n")
     end
 
     # Accept JSON body { message: "..." } or form-encoded message param.
@@ -263,6 +513,27 @@ module Dashboard
         { tool_used: tool_name, latency_ms: latency_ms },
         composed[:composition]
       )
+    end
+
+    def build_debug_payload_for_orchestration(composed, run_result, latency_ms)
+      debug = merge_composition_debug(
+        {
+          tool_used: run_result.tool_names.join(','),
+          latency_ms: latency_ms,
+          orchestration_used: true,
+          orchestration_step_count: run_result.step_count,
+          orchestration_tool_names: run_result.tool_names.to_a,
+          orchestration_halted_reason: run_result.halted_reason,
+          orchestration_step_summaries: run_result.step_summaries_for_debug
+        }.compact,
+        composed[:composition]
+      )
+      debug
+    end
+
+    def write_ai_audit(**attrs)
+      record = ::Ai::AuditTrail::RecordBuilder.call(**attrs)
+      ::Ai::AuditTrail::Writer.write(record)
     end
 
     def merge_composition_debug(debug, composition)

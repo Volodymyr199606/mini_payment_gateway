@@ -153,6 +153,46 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       expect(body['citations']).to eq([])
     end
 
+    it 'runs constrained orchestration (transaction then payment intent) and returns combined reply' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+
+      pi = merchant.payment_intents.create!(
+        customer_id: merchant.customers.create!(email: 'c@x.com', merchant_id: merchant.id).id,
+        amount_cents: 1000,
+        currency: 'USD'
+      )
+      txn = pi.transactions.create!(kind: 'capture', status: 'succeeded', amount_cents: 1000, processor_ref: 'txn_spec123')
+
+      post_chat("transaction id #{txn.id}")
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body['reply']).to include('Transaction')
+      expect(body['reply']).to include('Payment Intent')
+      expect(body['agent']).to eq('orchestration')
+      expect(body['data']).to be_present
+      expect(body['data']['transaction']).to be_present
+      expect(body['data']['payment_intent']).to be_present
+    end
+
+    it 'records orchestration in audit and debug when AI_DEBUG=true' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('AI_DEBUG').and_return('true')
+
+      post_chat('Show my account info')
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body).to have_key('debug')
+      expect(body['debug']['orchestration_used']).to be true
+      expect(body['debug']['orchestration_step_count']).to eq(1)
+      expect(body['debug']['orchestration_tool_names']).to eq(['get_merchant_account'])
+    end
+
     it 'accepts form-encoded message and returns JSON' do
       _m, key = create_merchant_with_api_key
       post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }

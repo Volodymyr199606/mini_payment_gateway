@@ -1,0 +1,185 @@
+/* Dev AI Playground: compact, scannable debug layout */
+
+body.dev-playground {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f8f9fa;
+  color: #1f2937;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.dev-playground-header {
+  padding: 1rem 1.5rem;
+  background: #1f2937;
+  color: #f9fafb;
+}
+
+.dev-playground-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.dev-playground-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.dev-playground-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.dev-playground-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.dev-playground-form label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.dev-playground-form textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+.dev-playground-form textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.dev-playground-form select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+.dev-playground-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.dev-playground-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.dev-playground-presets .preset-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  color: #374151;
+}
+
+.dev-playground-presets .preset-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.dev-playground-results {
+  margin-top: 1.5rem;
+}
+
+.dev-playground-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.dev-playground-section summary {
+  padding: 0.6rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: #f9fafb;
+  font-size: 0.9rem;
+}
+
+.dev-playground-section summary:hover {
+  background: #f3f4f6;
+}
+
+.dev-playground-section[open] summary {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dev-playground-section .section-content {
+  padding: 1rem;
+  font-size: 0.85rem;
+  font-family: ui-monospace, monospace;
+}
+
+.dev-playground-section pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.8rem;
+}
+
+.dev-playground-section .section-content .key-val {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.dev-playground-section .section-content .key-val .k {
+  min-width: 120px;
+  color: #6b7280;
+}
+
+.dev-playground-section .section-content .key-val .v {
+  flex: 1;
+}
+
+.dev-playground-response-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  border-left: 3px solid #3b82f6;
+}
+
+.dev-playground-loading {
+  color: #6b7280;
+  padding: 1rem;
+}
+
+.dev-playground-error {
+  color: #dc2626;
+  padding: 1rem;
+  background: #fef2f2;
+  border-radius: 6px;
+}
+
+.dev-playground-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}

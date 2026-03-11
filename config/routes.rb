@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  # Dev-only AI playground (development/test only; blocked in production)
+  constraints(DevRoutesConstraint) do
+    namespace :dev do
+      get 'ai_playground', to: 'ai_playground#show', as: :ai_playground
+      post 'ai_playground/run', to: 'ai_playground#run', as: :ai_playground_run
+    end
+  end
+
   # Dashboard routes
   namespace :dashboard do
     get 'sign_in', to: 'sessions#new'

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Dev - AI Playground</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "dashboard", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "dev_ai_playground", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body class="dev-playground">
+    <header class="dev-playground-header">
+      <h1>AI Playground</h1>
+      <p class="dev-playground-subtitle">Internal dev tool — inspect AI pipeline end-to-end</p>
+    </header>
+    <main class="dev-playground-main">
+      <%= yield %>
+    </main>
+  </body>
+</html>

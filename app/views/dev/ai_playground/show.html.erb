@@ -1,0 +1,54 @@
+<div
+  class="dev-playground-card"
+  data-controller="dev-ai-playground"
+  data-dev-ai-playground-run-url-value="<%= dev_ai_playground_run_path %>"
+>
+  <form class="dev-playground-form" data-action="submit->dev-ai-playground#run">
+    <div class="form-group">
+      <label for="ai-playground-message">Message</label>
+      <textarea
+        id="ai-playground-message"
+        name="message"
+        placeholder="Type a test question..."
+        data-dev-ai-playground-target="message"
+      ></textarea>
+      <% if @presets.present? %>
+        <div class="dev-playground-presets">
+          <% @presets.each do |preset| %>
+            <button
+              type="button"
+              class="preset-btn"
+              data-action="click->dev-ai-playground#usePreset"
+              data-preset="<%= preset %>"
+            ><%= preset %></button>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <div class="form-group">
+      <label for="ai-playground-merchant">Merchant</label>
+      <select id="ai-playground-merchant" name="merchant_id" data-dev-ai-playground-target="merchantId">
+        <% if @merchants.present? %>
+          <% @merchants.each do |m| %>
+            <option value="<%= m.id %>"><%= m.name %> (id: <%= m.id %>)</option>
+          <% end %>
+        <% else %>
+          <option value="">— No merchants —</option>
+        <% end %>
+      </select>
+    </div>
+    <div class="dev-playground-actions">
+      <button type="submit" class="btn btn-primary" data-dev-ai-playground-target="submitBtn">Run</button>
+    </div>
+  </form>
+</div>
+
+<div
+  class="dev-playground-results"
+  data-dev-ai-playground-target="results"
+  hidden
+>
+  <div data-dev-ai-playground-target="loading" class="dev-playground-loading" hidden>Running...</div>
+  <div data-dev-ai-playground-target="error" class="dev-playground-error" hidden></div>
+  <div data-dev-ai-playground-target="sections"></div>
+</div>

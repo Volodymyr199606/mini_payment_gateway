@@ -68,7 +68,7 @@ module Ai
         .limit(@max_turns)
         .to_a
         .reverse
-        .map { |m| { role: m.role, content: m.content } }
+        .map { |m| h = { role: m.role, content: m.content }; h[:agent] = m.agent if m.respond_to?(:agent); h }
     end
   end
 end

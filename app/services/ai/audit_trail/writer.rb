@@ -65,6 +65,8 @@ module Ai
             success: !!record[:success],
             error_class: record[:error_class].to_s.truncate(ERROR_CLASS_MAX_LEN).presence,
             error_message: err_msg.presence,
+            followup_detected: !!record[:followup_detected],
+            followup_type: record[:followup_type].to_s.strip.truncate(64).presence,
             created_at: Time.current
           }
         end

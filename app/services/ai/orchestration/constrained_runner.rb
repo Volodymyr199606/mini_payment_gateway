@@ -13,21 +13,22 @@ module Ai
         'get_transaction' => { next_tool: 'get_payment_intent', arg_from: 'payment_intent_id' }
       }.freeze
 
-      def self.call(message:, merchant_id: nil, request_id: nil)
-        new(message: message, merchant_id: merchant_id, request_id: request_id).call
+      def self.call(message:, merchant_id: nil, request_id: nil, resolved_intent: nil)
+        new(message: message, merchant_id: merchant_id, request_id: request_id, resolved_intent: resolved_intent).call
       end
 
-      def initialize(message:, merchant_id: nil, request_id: nil)
+      def initialize(message:, merchant_id: nil, request_id: nil, resolved_intent: nil)
         @message = message.to_s.strip
         @merchant_id = merchant_id
         @request_id = request_id.to_s.strip.presence
+        @resolved_intent = resolved_intent
       end
 
       def call
         return RunResult.no_orchestration if @message.blank?
         return RunResult.no_orchestration unless @merchant_id.present?
 
-        intent = ::Ai::Tools::IntentDetector.detect(@message)
+        intent = @resolved_intent || ::Ai::Tools::IntentDetector.detect(@message)
         return RunResult.no_orchestration unless intent
 
         started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)

@@ -47,13 +47,14 @@ module Ai
         - Do not instruct users to run real payment actions (authorize, capture, refund, void) or to store card numbers (PAN). You only explain and guide.
       TEXT
 
-      def initialize(merchant_context: nil, message:, context_text:, citations: [], conversation_history: [], memory_text: '')
+      def initialize(merchant_context: nil, message:, context_text:, citations: [], conversation_history: [], memory_text: '', response_style: nil)
         @merchant_context = merchant_context
         @message = message.to_s
         @context_text = context_text
         @citations = citations
         @conversation_history = conversation_history.to_a
         @memory_text = memory_text.to_s.strip
+        @response_style = Array(response_style).compact
       end
 
       def call
@@ -170,6 +171,7 @@ module Ai
           system_content += "\n\nMemory:\n#{@memory_text}"
         end
 
+        system_content += response_style_hint if @response_style.any?
         system_content += "\n\nContext (use only this):\n#{@context_text || 'No context retrieved.'}"
         user_content = @message
         user_content += "\n\n[Context ends. Answer using only the context above. Do NOT embed citation strings in your reply; citations are passed separately.]" if @context_text.present?
@@ -179,6 +181,23 @@ module Ai
         @conversation_history.each { |h| messages << { role: h[:role].to_s, content: h[:content].to_s } } if @memory_text.blank?
         messages << { role: 'user', content: user_content }
         messages
+      end
+
+      def response_style_hint
+        return '' if @response_style.empty?
+
+        hints = @response_style.map do |s|
+          case s.to_sym
+          when :simpler then 'use simpler language'
+          when :shorter then 'be brief and concise'
+          when :more_detailed then 'include more detail'
+          when :more_technical then 'use more technical terms'
+          when :bullet_points then 'use bullet points'
+          when :only_important then 'focus only on the most important points'
+          else s.to_s
+          end
+        end
+        "\n\nResponse style (user request): #{hints.join('; ')}."
       end
 
       def fallback_message

@@ -176,7 +176,8 @@ module Ai
           authorization_denied: nil,
           tool_blocked_by_policy: nil,
           followup_inheritance_blocked: nil,
-          policy_reason_code: nil
+          policy_reason_code: nil,
+          policy_decision_types: nil
         )
           debug = {
             selected_agent: selected_agent,
@@ -198,6 +199,7 @@ module Ai
           debug[:tool_blocked_by_policy] = tool_blocked_by_policy if tool_blocked_by_policy.present?
           debug[:followup_inheritance_blocked] = followup_inheritance_blocked if followup_inheritance_blocked.present?
           debug[:policy_reason_code] = policy_reason_code if policy_reason_code.present?
+          debug[:policy_decision_types] = policy_decision_types if policy_decision_types.is_a?(Array) && policy_decision_types.any?
           debug
         end
 

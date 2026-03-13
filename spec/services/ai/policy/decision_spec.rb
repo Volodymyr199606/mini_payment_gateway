@@ -40,4 +40,18 @@ RSpec.describe Ai::Policy::Decision do
       expect(d.metadata).to eq({ entity_type: 'payment_intent' })
     end
   end
+
+  describe 'decision_type' do
+    it '.allow accepts optional decision_type' do
+      d = described_class.allow(decision_type: :tool, metadata: {})
+      expect(d.allowed?).to be true
+      expect(d.decision_type).to eq(:tool)
+    end
+
+    it '.deny accepts optional decision_type' do
+      d = described_class.deny(reason_code: 'no_intent', decision_type: :orchestration)
+      expect(d.denied?).to be true
+      expect(d.decision_type).to eq(:orchestration)
+    end
+  end
 end

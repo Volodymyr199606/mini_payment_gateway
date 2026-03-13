@@ -102,7 +102,7 @@ module Dashboard
           policy_metadata: policy_metadata_from_run(run_result, followup_result)
         )
         payload = build_response_payload(composed)
-        payload[:debug] = build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup_result) if ai_debug?
+        payload[:debug] = apply_debug_policy(build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup_result)) if ai_debug?
         return render json: payload
       end
 
@@ -200,7 +200,7 @@ module Dashboard
       )
 
       payload = build_response_payload(composed)
-      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result) if ai_debug?
+      payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result)) if ai_debug?
 
       render json: payload
     rescue StandardError => e
@@ -344,7 +344,7 @@ module Dashboard
       )
 
       payload = build_response_payload(composed)
-      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result) if ai_debug?
+      payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result)) if ai_debug?
       write_sse_done(response.stream, payload)
     rescue StandardError => e
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
@@ -398,7 +398,7 @@ module Dashboard
         followup_metadata: followup_metadata_safe(followup_result)
       )
       payload = build_response_payload(composed)
-      payload[:debug] = build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result) if ai_debug?
+      payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result)) if ai_debug?
       write_sse_done(response.stream, payload)
     end
 
@@ -576,23 +576,31 @@ module Dashboard
     def policy_metadata_from_run(run_result, followup_result)
       meta = run_result&.metadata || {}
       followup = followup_result.is_a?(Hash) ? followup_result : {}
+      decision_types = []
+      decision_types << :tool if meta[:tool_blocked_by_policy] || meta[:authorization_denied]
+      decision_types << :followup_inheritance if followup[:followup_inheritance_blocked]
       {
         authorization_denied: !!meta[:authorization_denied],
         tool_blocked_by_policy: !!meta[:tool_blocked_by_policy],
         followup_inheritance_blocked: !!followup[:followup_inheritance_blocked],
-        policy_reason_code: meta[:authorization_denied] ? 'access_denied' : nil
+        policy_reason_code: meta[:authorization_denied] ? 'access_denied' : nil,
+        policy_decision_types: decision_types.presence
       }.compact
     end
 
     def policy_debug_from_run(run_result, followup = nil)
       meta = run_result&.metadata || {}
       followup_hash = followup.is_a?(Hash) ? followup : {}
+      decision_types = []
+      decision_types << :tool if meta[:tool_blocked_by_policy] || meta[:authorization_denied]
+      decision_types << :followup_inheritance if followup_hash[:followup_inheritance_blocked]
       {
         authorization_checked: true,
         authorization_denied: !!meta[:authorization_denied],
         denied_reason_code: meta[:authorization_denied] ? 'access_denied' : nil,
         tool_blocked_by_policy: !!meta[:tool_blocked_by_policy],
-        followup_inheritance_blocked: !!followup_hash[:followup_inheritance_blocked]
+        followup_inheritance_blocked: !!followup_hash[:followup_inheritance_blocked],
+        policy_decision_types: decision_types.presence
       }.compact
     end
 
@@ -659,6 +667,15 @@ module Dashboard
         inherited_topic: followup[:inherited_topic],
         response_style_adjustments: followup[:response_style_adjustments]
       }.compact
+    end
+
+    # Gate debug payload with AI policy engine; never expose secrets.
+    def apply_debug_policy(debug)
+      return {} if debug.blank?
+      ctx = { 'merchant_id' => current_merchant&.id }
+      engine = ::Ai::Policy::Engine.call(context: ctx)
+      decision = engine.allow_debug_exposure?(context: ctx, debug_payload: debug)
+      decision.allowed ? debug : { debug_exposure_restricted: true, reason_code: decision.reason_code }
     end
   end
 end

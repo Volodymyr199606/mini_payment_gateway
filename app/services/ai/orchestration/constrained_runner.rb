@@ -31,8 +31,11 @@ module Ai
         intent = @resolved_intent || ::Ai::Tools::IntentDetector.detect(@message)
         return RunResult.no_orchestration unless intent
 
-        started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         context = { merchant_id: @merchant_id, request_id: @request_id }
+        engine = ::Ai::Policy::Engine.call(context: context, parsed_request: { intent: intent, resolved_intent: @resolved_intent })
+        return RunResult.no_orchestration if engine.allow_orchestration?(context: context, parsed_request: { intent: intent }).denied?
+
+        started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         steps = []
         tool_names = []
         deterministic_data = nil

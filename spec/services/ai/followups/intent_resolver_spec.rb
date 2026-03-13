@@ -86,4 +86,28 @@ RSpec.describe Ai::Followups::IntentResolver do
       expect(result[:intent]).to be_nil
     end
   end
+
+  describe 'policy engine: follow-up inheritance blocked cross-merchant' do
+    it 'returns nil intent and sets followup_inheritance_blocked when entity belongs to another merchant' do
+      merchant_a = create_merchant_with_api_key.first
+      merchant_b = create_merchant_with_api_key(name: 'Other').first
+      pi = merchant_a.payment_intents.create!(
+        customer_id: merchant_a.customers.create!(email: 'a@x.com', merchant_id: merchant_a.id).id,
+        amount_cents: 1000,
+        currency: 'USD'
+      )
+      recent = [
+        msg('user', "Status of payment intent #{pi.id}?"),
+        msg('assistant', "Payment intent #{pi.id} is authorized."),
+        msg('user', 'Was it captured?')
+      ]
+      result = described_class.call(
+        message: 'Was it captured?',
+        recent_messages: recent,
+        merchant_id: merchant_b.id
+      )
+      expect(result[:intent]).to be_nil
+      expect(result[:followup][:followup_inheritance_blocked]).to be true
+    end
+  end
 end

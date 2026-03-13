@@ -30,7 +30,7 @@ module Ai
       end
 
       def policy
-        @policy ||= ::Ai::Policy::Authorization.call(context: @context)
+        @policy ||= ::Ai::Policy::Engine.call(context: @context).authorization
       end
 
       def policy_denied?(record:, record_type: nil)
@@ -41,7 +41,7 @@ module Ai
       end
 
       def policy_error_message
-        ::Ai::Policy::Authorization.denied_message
+        ::Ai::Policy::Engine.denied_message
       end
 
       def ok(data)

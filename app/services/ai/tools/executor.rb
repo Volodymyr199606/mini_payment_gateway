@@ -22,11 +22,11 @@ module Ai
           return log_and_return(failure(error: 'Unknown tool', error_code: 'unknown_tool'), started_at)
         end
 
-        auth = ::Ai::Policy::Authorization.call(context: @context)
-        tool_decision = auth.allow_tool?(tool_name: @tool_name, args: @args)
+        engine = ::Ai::Policy::Engine.call(context: @context, parsed_request: { args: @args })
+        tool_decision = engine.allow_tool?(tool_name: @tool_name, parsed_request: { args: @args })
         if tool_decision.denied?
           return log_and_return(
-            failure(error: ::Ai::Policy::Authorization.denied_message, error_code: 'access_denied', authorization_denied: true),
+            failure(error: ::Ai::Policy::Engine.denied_message, error_code: 'access_denied', authorization_denied: true),
             started_at
           )
         end

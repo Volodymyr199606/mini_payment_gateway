@@ -59,14 +59,14 @@ module Ai
       def build_entity_intent(prior_tool, entities)
         return nil if prior_tool.blank? || entities.blank? || @merchant_id.blank?
 
-        auth = ::Ai::Policy::Authorization.call(context: { merchant_id: @merchant_id })
+        engine = ::Ai::Policy::Engine.call(context: { merchant_id: @merchant_id })
         args = entities.stringify_keys
 
         case prior_tool.to_s
         when 'get_payment_intent'
           pid = args['payment_intent_id']&.to_i
           return nil unless pid.present?
-          if auth.allow_followup_inheritance?(entity_type: 'payment_intent', entity_id: pid).denied?
+          if engine.allow_followup_inheritance?(inherited_item: { entity_type: 'payment_intent', entity_id: pid }).denied?
             @followup_inheritance_blocked = true
             return nil
           end
@@ -77,7 +77,7 @@ module Ai
             { tool_name: 'get_transaction', args: { processor_ref: args['processor_ref'] } }
           elsif args['transaction_id'].present?
             tid = args['transaction_id'].to_i
-            if auth.allow_followup_inheritance?(entity_type: 'transaction', entity_id: tid).denied?
+            if engine.allow_followup_inheritance?(inherited_item: { entity_type: 'transaction', entity_id: tid }).denied?
               @followup_inheritance_blocked = true
               return nil
             end
@@ -88,7 +88,7 @@ module Ai
         when 'get_webhook_event'
           wid = args['webhook_event_id']&.to_i
           return nil unless wid.present?
-          if auth.allow_followup_inheritance?(entity_type: 'webhook_event', entity_id: wid).denied?
+          if engine.allow_followup_inheritance?(inherited_item: { entity_type: 'webhook_event', entity_id: wid }).denied?
             @followup_inheritance_blocked = true
             return nil
           end

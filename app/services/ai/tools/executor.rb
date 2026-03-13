@@ -31,11 +31,16 @@ module Ai
           )
         end
 
+        # Cache lookup for safe read-only tools
+        cached = fetch_cached_result(started_at)
+        return cached if cached
+
         tool_class = Registry.resolve(@tool_name)
         tool = tool_class.new(args: @args, context: @context)
-        result = tool.call
-
-        log_and_return(build_result(result, tool_class), started_at)
+        tool_output = tool.call
+        built = build_result(tool_output, tool_class)
+        write_cached_result(built, started_at) if built[:success]
+        log_and_return(built, started_at)
       rescue StandardError => e
         log_and_return(
           failure(error: e.message, error_code: 'execution_error'),
@@ -101,6 +106,48 @@ module Ai
         return {} if args.blank?
 
         args.to_h.stringify_keys.except('api_key', 'token', 'secret', 'password')
+      end
+
+      def fetch_cached_result(started_at)
+        return nil unless ::Ai::Performance::CachePolicy.cacheable_tool?(@tool_name)
+        return nil if ::Ai::Performance::CachePolicy.bypass?
+
+        merchant_id = @context['merchant_id']&.to_i
+        return nil unless merchant_id.present?
+
+        key = ::Ai::Performance::CacheKeys.tool(merchant_id: merchant_id, tool_name: @tool_name, args: @args)
+        category = ::Ai::Performance::CachePolicy.tool_category(@tool_name)
+        raw = Rails.cache.read(key)
+        return nil unless raw.is_a?(Hash) && raw['success'] == true
+
+        result = raw.stringify_keys.transform_keys(&:to_sym)
+        latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+        result = result.merge(metadata: (result[:metadata] || {}).merge(latency_ms: latency_ms))
+        ::Ai::Observability::EventLogger.log_cache(
+          cache_category: category,
+          cache_key_fingerprint: ::Ai::Performance::CacheKeys.fingerprint(key),
+          cache_outcome: 'hit',
+          cache_ttl: ::Ai::Performance::CachePolicy.ttl_for(category)
+        )
+        log_and_return(result, started_at)
+      rescue StandardError
+        nil
+      end
+
+      def write_cached_result(result, started_at)
+        return unless result[:success] && result[:data].present?
+        return unless ::Ai::Performance::CachePolicy.cacheable_tool?(@tool_name)
+        return if ::Ai::Performance::CachePolicy.bypass?
+
+        merchant_id = @context['merchant_id']&.to_i
+        return unless merchant_id.present?
+
+        key = ::Ai::Performance::CacheKeys.tool(merchant_id: merchant_id, tool_name: @tool_name, args: @args)
+        category = ::Ai::Performance::CachePolicy.tool_category(@tool_name)
+        storeable = result.merge(metadata: (result[:metadata] || {}).except(:latency_ms))
+        Rails.cache.write(key, storeable.stringify_keys, expires_in: ::Ai::Performance::CachePolicy.ttl_for(category))
+      rescue StandardError
+        nil
       end
     end
   end

@@ -30,6 +30,7 @@ module Dashboard
       end
 
       Thread.current[:ai_request_id] = request.request_id
+      Thread.current[:ai_cache_events] = []
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       retriever_result = nil
       out = nil
@@ -47,7 +48,7 @@ module Dashboard
       )
 
       # Follow-up resolution: resolve inherited context before routing/tools
-      ctx = ::Ai::ConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
+      ctx = ::Ai::Performance::CachedConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
       intent_resolution = ::Ai::Followups::IntentResolver.call(
         message: msg,
         recent_messages: ctx[:recent_messages],
@@ -106,7 +107,7 @@ module Dashboard
         return render json: payload
       end
 
-      ctx = ::Ai::ConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
+      ctx = ::Ai::Performance::CachedConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
       memory_result = ::Ai::Conversation::MemoryBudgeter.call(
         summary_text: ctx[:summary_text],
         recent_messages: ctx[:recent_messages],
@@ -127,7 +128,7 @@ module Dashboard
                     ::Ai::Router.new(msg).call
                   end
       agent_key = ::Ai::AgentRegistry.default_key unless ::Ai::AgentRegistry.all_keys.include?(agent_key)
-      retriever_result = ::Ai::Rag::RetrievalService.call(msg, agent_key: agent_key)
+      retriever_result = ::Ai::Performance::CachedRetrievalService.call(msg, agent_key: agent_key)
       selected_retriever = retriever_result.dig(:debug, :retriever).presence || resolve_retriever_name
       context_text = retriever_result[:context_text]
       citations = retriever_result[:citations]
@@ -624,6 +625,7 @@ module Dashboard
     end
 
     def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed = nil, followup = nil)
+      cache_meta = build_cache_metadata
       debug = ::Ai::Observability::EventLogger.build_debug_payload(
         selected_agent: out.agent_key,
         selected_retriever: selected_retriever,
@@ -637,7 +639,8 @@ module Dashboard
         memory_used: memory_result&.dig(:memory_used),
         summary_used: memory_result&.dig(:summary_used),
         latency_ms: latency_ms,
-        retriever_debug: retriever_result&.dig(:debug)
+        retriever_debug: retriever_result&.dig(:debug),
+        cache_metadata: cache_meta
       )
       retriever_debug = retriever_result&.dig(:debug)
       debug.merge!(retriever_debug.symbolize_keys) if retriever_debug.is_a?(Hash) && retriever_debug.present?
@@ -667,6 +670,19 @@ module Dashboard
         inherited_topic: followup[:inherited_topic],
         response_style_adjustments: followup[:response_style_adjustments]
       }.compact
+    end
+
+    def build_cache_metadata
+      events = Thread.current[:ai_cache_events].to_a
+      return {} if events.empty?
+      meta = {}
+      events.each do |e|
+        cat = e[:category].to_s
+        meta[:retrieval_outcome] = e[:outcome] if cat == 'retrieval'
+        meta[:memory_outcome] = e[:outcome] if cat == 'memory'
+        meta[:cache_bypassed] = true if e[:outcome] == :bypassed
+      end
+      meta.compact
     end
 
     # Gate debug payload with AI policy engine; never expose secrets.

@@ -33,7 +33,7 @@ module Api
           selected_retriever = nil
 
           agent_key = ::Ai::Router.new(message).call
-          retriever_result = ::Ai::Rag::RetrievalService.call(message, agent_key: agent_key)
+          retriever_result = ::Ai::Performance::CachedRetrievalService.call(message, agent_key: agent_key)
           selected_retriever = retriever_result.dig(:debug, :retriever).presence || resolve_retriever_name
           context_text = retriever_result[:context_text]
           citations = retriever_result[:citations]

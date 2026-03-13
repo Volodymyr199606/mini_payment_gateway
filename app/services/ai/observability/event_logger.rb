@@ -138,6 +138,27 @@ module Ai
           log_info(payload)
         end
 
+        # Log cache events: hit, miss, bypassed.
+        def log_cache(
+          cache_category: nil,
+          cache_key_fingerprint: nil,
+          cache_outcome: nil,
+          cache_ttl: nil,
+          cache_bypass_reason: nil,
+          cache_result_keys: nil
+        )
+          payload = build_base_payload.merge(
+            event: 'ai_cache',
+            cache_category: cache_category,
+            cache_key_fingerprint: cache_key_fingerprint,
+            cache_outcome: cache_outcome,
+            cache_ttl: cache_ttl
+          )
+          payload[:cache_bypass_reason] = cache_bypass_reason if cache_bypass_reason.present?
+          payload[:cache_result_keys] = cache_result_keys if cache_result_keys.is_a?(Array)
+          log_info(payload)
+        end
+
         # Log guardrail events: empty_retrieval_fallback, citation_reask, secret_redaction, safe_fallback.
         def log_guardrail(
           event: nil,
@@ -177,7 +198,8 @@ module Ai
           tool_blocked_by_policy: nil,
           followup_inheritance_blocked: nil,
           policy_reason_code: nil,
-          policy_decision_types: nil
+          policy_decision_types: nil,
+          cache_metadata: nil
         )
           debug = {
             selected_agent: selected_agent,
@@ -200,6 +222,9 @@ module Ai
           debug[:followup_inheritance_blocked] = followup_inheritance_blocked if followup_inheritance_blocked.present?
           debug[:policy_reason_code] = policy_reason_code if policy_reason_code.present?
           debug[:policy_decision_types] = policy_decision_types if policy_decision_types.is_a?(Array) && policy_decision_types.any?
+          if cache_metadata.is_a?(Hash) && cache_metadata.present?
+            debug[:cache] = cache_metadata.slice(:retrieval_outcome, :memory_outcome, :cache_bypassed)
+          end
           debug
         end
 

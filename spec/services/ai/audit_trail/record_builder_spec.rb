@@ -110,5 +110,37 @@ RSpec.describe Ai::AuditTrail::RecordBuilder do
       expect(result[:error_class]).to eq('StandardError')
       expect(result[:error_message]).to eq('Something broke')
     end
+
+    it 'records policy metadata when provided' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'dashboard',
+        agent_key: 'tool:get_payment_intent',
+        success: false,
+        policy_metadata: {
+          authorization_denied: true,
+          tool_blocked_by_policy: true,
+          followup_inheritance_blocked: false,
+          policy_reason_code: 'access_denied'
+        }
+      )
+      expect(result[:authorization_denied]).to be(true)
+      expect(result[:tool_blocked_by_policy]).to be(true)
+      expect(result[:followup_inheritance_blocked]).to be(false)
+      expect(result[:policy_reason_code]).to eq('access_denied')
+    end
+
+    it 'omits policy fields when policy_metadata nil' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'api',
+        agent_key: 'operational',
+        success: true
+      )
+      expect(result).not_to have_key(:authorization_denied)
+      expect(result).not_to have_key(:tool_blocked_by_policy)
+      expect(result).not_to have_key(:followup_inheritance_blocked)
+      expect(result).not_to have_key(:policy_reason_code)
+    end
   end
 end

@@ -9,7 +9,8 @@ module Ai
         return error('webhook_event_id required') unless id.present?
 
         evt = merchant.webhook_events.find_by(id: id)
-        return error('Webhook event not found', code: 'not_found') unless evt
+        return error(policy_error_message, code: 'access_denied') if evt.nil?
+        return error(policy_error_message, code: 'access_denied') if policy_denied?(record: evt, record_type: 'webhook_event')
 
         ok(serialize(evt))
       rescue StandardError => e

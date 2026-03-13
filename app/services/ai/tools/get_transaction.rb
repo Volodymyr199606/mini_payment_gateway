@@ -8,8 +8,8 @@ module Ai
         return error('merchant_id required') unless merchant_id.present?
 
         txn = resolve_transaction
-        return error('Transaction not found', code: 'not_found') unless txn
-        return error('Transaction does not belong to merchant') unless txn.payment_intent&.merchant_id == merchant_id
+        return error(policy_error_message, code: 'access_denied') if txn.nil?
+        return error(policy_error_message, code: 'access_denied') if policy_denied?(record: txn, record_type: 'transaction')
 
         ok(serialize(txn))
       rescue StandardError => e

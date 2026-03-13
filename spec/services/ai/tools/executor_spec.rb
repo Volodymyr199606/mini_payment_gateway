@@ -65,7 +65,20 @@ RSpec.describe Ai::Tools::Executor do
         context: { merchant_id: other_merchant.id }
       )
       expect(result[:success]).to be false
-      expect(result[:error]).to include('not found')
+      expect(result[:error_code]).to eq('access_denied')
+      expect(result[:authorization_denied]).to be true
+      expect(result[:error]).to eq(Ai::Policy::Authorization.denied_message)
+    end
+
+    it 'returns access_denied for tool when merchant_id missing' do
+      result = described_class.call(
+        tool_name: 'get_payment_intent',
+        args: { payment_intent_id: 999 },
+        context: {}
+      )
+      expect(result[:success]).to be false
+      expect(result[:error_code]).to eq('access_denied')
+      expect(result[:authorization_denied]).to be true
     end
   end
 end

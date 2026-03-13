@@ -28,7 +28,8 @@ module Ai
           return nil unless record.is_a?(Hash)
 
           attrs = sanitize(record)
-          AiRequestAudit.create!(attrs)
+          valid_attrs = attrs.slice(*AiRequestAudit.column_names.map(&:to_sym))
+          AiRequestAudit.create!(valid_attrs)
         rescue StandardError => e
           Rails.logger.warn("[Ai::AuditTrail::Writer] Failed to persist audit: #{e.class} #{e.message}")
           nil
@@ -67,6 +68,10 @@ module Ai
             error_message: err_msg.presence,
             followup_detected: !!record[:followup_detected],
             followup_type: record[:followup_type].to_s.strip.truncate(64).presence,
+            authorization_denied: !!record[:authorization_denied],
+            policy_reason_code: record[:policy_reason_code].to_s.strip.truncate(64).presence,
+            tool_blocked_by_policy: !!record[:tool_blocked_by_policy],
+            followup_inheritance_blocked: !!record[:followup_inheritance_blocked],
             created_at: Time.current
           }
         end

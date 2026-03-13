@@ -22,6 +22,15 @@ module Ai
           return log_and_return(failure(error: 'Unknown tool', error_code: 'unknown_tool'), started_at)
         end
 
+        auth = ::Ai::Policy::Authorization.call(context: @context)
+        tool_decision = auth.allow_tool?(tool_name: @tool_name, args: @args)
+        if tool_decision.denied?
+          return log_and_return(
+            failure(error: ::Ai::Policy::Authorization.denied_message, error_code: 'access_denied', authorization_denied: true),
+            started_at
+          )
+        end
+
         tool_class = Registry.resolve(@tool_name)
         tool = tool_class.new(args: @args, context: @context)
         result = tool.call
@@ -57,8 +66,8 @@ module Ai
         end
       end
 
-      def failure(error:, error_code:)
-        {
+      def failure(error:, error_code:, authorization_denied: false)
+        out = {
           success: false,
           tool_name: @tool_name,
           data: nil,
@@ -66,19 +75,26 @@ module Ai
           error_code: error_code,
           metadata: {}
         }
+        out[:authorization_denied] = true if authorization_denied
+        out
       end
 
       def log_and_return(result, started_at)
         latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+        auth_denied = result[:authorization_denied] || result[:error_code] == 'access_denied'
         Ai::Observability::EventLogger.log_tool_call(
           request_id: @context['request_id'],
           merchant_id: @context['merchant_id'],
           tool_name: @tool_name,
           args: sanitize_args(@args),
           success: result[:success],
-          latency_ms: latency_ms
+          latency_ms: latency_ms,
+          authorization_denied: auth_denied,
+          tool_blocked_by_policy: auth_denied
         )
-        result.merge(metadata: (result[:metadata] || {}).merge(latency_ms: latency_ms))
+        merged = result.merge(metadata: (result[:metadata] || {}).merge(latency_ms: latency_ms))
+        merged[:authorization_denied] = true if auth_denied
+        merged
       end
 
       def sanitize_args(args)

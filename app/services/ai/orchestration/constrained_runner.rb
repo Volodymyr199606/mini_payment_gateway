@@ -48,6 +48,7 @@ module Ai
         step1_record = build_step_record(intent[:tool_name], intent[:args], step1_result)
         steps << step1_record
         tool_names << intent[:tool_name]
+        authorization_denied ||= step1_result[:authorization_denied] || step1_result[:error_code] == 'access_denied'
 
         if step1_result[:success] && step1_result[:data].present?
           reply_parts << ::Ai::Tools::Formatter.format(intent[:tool_name], step1_result[:data])
@@ -70,6 +71,7 @@ module Ai
             step2_record = build_step_record(rule[:next_tool], step2_args, step2_result)
             steps << step2_record
             tool_names << rule[:next_tool]
+            authorization_denied ||= step2_result[:authorization_denied] || step2_result[:error_code] == 'access_denied'
 
             if step2_result[:success] && step2_result[:data].present?
               reply_parts << ::Ai::Tools::Formatter.format(rule[:next_tool], step2_result[:data])
@@ -83,8 +85,9 @@ module Ai
             deterministic_data = step1_result[:data]
           end
         else
-          halted_reason = 'single_step' if steps.size == 1 && rule.nil?
-          halted_reason = 'follow_up_not_allowed' if steps.size == 1 && rule && !step1_result[:success]
+          halted_reason = 'authorization_denied' if authorization_denied
+          halted_reason ||= 'single_step' if steps.size == 1 && rule.nil?
+          halted_reason ||= 'follow_up_not_allowed' if steps.size == 1 && rule && !step1_result[:success]
           deterministic_data = step1_result[:data] if step1_result[:success]
         end
 
@@ -100,6 +103,10 @@ module Ai
           latency_ms: latency_ms
         )
 
+        result_metadata = { latency_ms: latency_ms }
+        result_metadata[:authorization_denied] = true if authorization_denied
+        result_metadata[:tool_blocked_by_policy] = true if authorization_denied
+
         RunResult.new(
           orchestration_used: true,
           step_count: steps.size,
@@ -108,7 +115,7 @@ module Ai
           success: success,
           halted_reason: halted_reason,
           deterministic_data: deterministic_data,
-          metadata: { latency_ms: latency_ms },
+          metadata: result_metadata,
           reply_text: reply_text
         )
       end

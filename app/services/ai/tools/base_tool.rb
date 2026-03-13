@@ -29,6 +29,21 @@ module Ai
         { success: false, error: message, error_code: code }
       end
 
+      def policy
+        @policy ||= ::Ai::Policy::Authorization.call(context: @context)
+      end
+
+      def policy_denied?(record:, record_type: nil)
+        decision = policy.allow_record?(record: record, record_type: record_type)
+        return false if decision.allowed?
+        @last_policy_decision = decision
+        true
+      end
+
+      def policy_error_message
+        ::Ai::Policy::Authorization.denied_message
+      end
+
       def ok(data)
         { success: true, data: data }
       end

@@ -34,7 +34,8 @@ module Ai
         orchestration_used: false,
         orchestration_step_count: nil,
         orchestration_halted_reason: nil,
-        followup_metadata: nil
+        followup_metadata: nil,
+        policy_metadata: nil
       )
         @request_id = request_id.to_s.strip.presence
         @endpoint = endpoint.to_s.strip.presence
@@ -61,6 +62,7 @@ module Ai
         @orchestration_step_count = orchestration_step_count.to_i if orchestration_step_count.present?
         @orchestration_halted_reason = orchestration_halted_reason.to_s.strip.presence
         @followup_metadata = followup_metadata
+        @policy_metadata = policy_metadata
       end
 
       def call
@@ -93,6 +95,12 @@ module Ai
         if @followup_metadata.is_a?(Hash) && @followup_metadata[:followup_detected]
           out[:followup_detected] = true
           out[:followup_type] = @followup_metadata[:followup_type].to_s.strip.presence
+        end
+        if @policy_metadata.is_a?(Hash)
+          out[:authorization_denied] = !!@policy_metadata[:authorization_denied]
+          out[:tool_blocked_by_policy] = !!@policy_metadata[:tool_blocked_by_policy]
+          out[:followup_inheritance_blocked] = !!@policy_metadata[:followup_inheritance_blocked]
+          out[:policy_reason_code] = @policy_metadata[:policy_reason_code].to_s.strip.presence
         end
         out
       end

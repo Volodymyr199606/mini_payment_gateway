@@ -98,7 +98,8 @@ module Dashboard
           orchestration_used: true,
           orchestration_step_count: run_result.step_count,
           orchestration_halted_reason: run_result.halted_reason,
-          followup_metadata: followup_metadata_safe(followup_result)
+          followup_metadata: followup_metadata_safe(followup_result),
+          policy_metadata: policy_metadata_from_run(run_result, followup_result)
         )
         payload = build_response_payload(composed)
         payload[:debug] = build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup_result) if ai_debug?
@@ -569,6 +570,30 @@ module Dashboard
         composed[:composition]
       )
       debug.merge!(followup_debug_safe(followup))
+      debug.merge!(policy_debug_from_run(run_result, followup))
+    end
+
+    def policy_metadata_from_run(run_result, followup_result)
+      meta = run_result&.metadata || {}
+      followup = followup_result.is_a?(Hash) ? followup_result : {}
+      {
+        authorization_denied: !!meta[:authorization_denied],
+        tool_blocked_by_policy: !!meta[:tool_blocked_by_policy],
+        followup_inheritance_blocked: !!followup[:followup_inheritance_blocked],
+        policy_reason_code: meta[:authorization_denied] ? 'access_denied' : nil
+      }.compact
+    end
+
+    def policy_debug_from_run(run_result, followup = nil)
+      meta = run_result&.metadata || {}
+      followup_hash = followup.is_a?(Hash) ? followup : {}
+      {
+        authorization_checked: true,
+        authorization_denied: !!meta[:authorization_denied],
+        denied_reason_code: meta[:authorization_denied] ? 'access_denied' : nil,
+        tool_blocked_by_policy: !!meta[:tool_blocked_by_policy],
+        followup_inheritance_blocked: !!followup_hash[:followup_inheritance_blocked]
+      }.compact
     end
 
     def write_ai_audit(**attrs)

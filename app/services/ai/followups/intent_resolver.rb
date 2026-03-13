@@ -37,8 +37,9 @@ module Ai
         prior_tool = followup[:prior_intent]
         entities = followup[:inherited_entities] || {}
         time_range = followup[:inherited_time_range]
+        @followup_inheritance_blocked = false
 
-        case type
+        result = case type
         when :entity_followup
           build_entity_intent(prior_tool, entities)
         when :time_range_adjustment
@@ -51,27 +52,47 @@ module Ai
           # explanation_rewrite, ambiguous_followup: don't force tool; let agent path handle
           nil
         end
+        followup[:followup_inheritance_blocked] = @followup_inheritance_blocked if @followup_inheritance_blocked
+        result
       end
 
       def build_entity_intent(prior_tool, entities)
-        return nil if prior_tool.blank? || entities.blank?
+        return nil if prior_tool.blank? || entities.blank? || @merchant_id.blank?
 
+        auth = ::Ai::Policy::Authorization.call(context: { merchant_id: @merchant_id })
         args = entities.stringify_keys
+
         case prior_tool.to_s
         when 'get_payment_intent'
-          return nil unless args['payment_intent_id'].present?
-          { tool_name: 'get_payment_intent', args: { payment_intent_id: args['payment_intent_id'].to_i } }
+          pid = args['payment_intent_id']&.to_i
+          return nil unless pid.present?
+          if auth.allow_followup_inheritance?(entity_type: 'payment_intent', entity_id: pid).denied?
+            @followup_inheritance_blocked = true
+            return nil
+          end
+          { tool_name: 'get_payment_intent', args: { payment_intent_id: pid } }
         when 'get_transaction'
           if args['processor_ref'].present?
+            # processor_ref lookup is done by tool; can't pre-validate
             { tool_name: 'get_transaction', args: { processor_ref: args['processor_ref'] } }
           elsif args['transaction_id'].present?
-            { tool_name: 'get_transaction', args: { transaction_id: args['transaction_id'].to_i } }
+            tid = args['transaction_id'].to_i
+            if auth.allow_followup_inheritance?(entity_type: 'transaction', entity_id: tid).denied?
+              @followup_inheritance_blocked = true
+              return nil
+            end
+            { tool_name: 'get_transaction', args: { transaction_id: tid } }
           else
             nil
           end
         when 'get_webhook_event'
-          return nil unless args['webhook_event_id'].present?
-          { tool_name: 'get_webhook_event', args: { webhook_event_id: args['webhook_event_id'].to_i } }
+          wid = args['webhook_event_id']&.to_i
+          return nil unless wid.present?
+          if auth.allow_followup_inheritance?(entity_type: 'webhook_event', entity_id: wid).denied?
+            @followup_inheritance_blocked = true
+            return nil
+          end
+          { tool_name: 'get_webhook_event', args: { webhook_event_id: wid } }
         else
           nil
         end

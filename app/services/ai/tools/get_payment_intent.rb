@@ -9,7 +9,8 @@ module Ai
         return error('payment_intent_id required') unless id.present?
 
         pi = merchant.payment_intents.find_by(id: id)
-        return error('Payment intent not found', code: 'not_found') unless pi
+        return error(policy_error_message, code: 'access_denied') if pi.nil?
+        return error(policy_error_message, code: 'access_denied') if policy_denied?(record: pi, record_type: 'payment_intent')
 
         ok(serialize(pi))
       rescue StandardError => e

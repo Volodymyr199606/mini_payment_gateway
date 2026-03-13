@@ -6,7 +6,8 @@ module Ai
     class GetMerchantAccount < BaseTool
       def call
         return error('merchant_id required') unless merchant_id.present?
-        return error('Merchant not found', code: 'not_found') unless merchant
+        return error(policy_error_message, code: 'access_denied') unless merchant
+        return error(policy_error_message, code: 'access_denied') if policy_denied?(record: merchant, record_type: 'merchant')
 
         ok(serialize)
       rescue StandardError => e

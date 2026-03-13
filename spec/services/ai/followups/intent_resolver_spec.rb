@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Ai::Followups::IntentResolver do
+  include ApiHelpers
+
   def msg(role, content)
     { role: role, content: content }
   end
@@ -24,16 +26,26 @@ RSpec.describe Ai::Followups::IntentResolver do
   end
 
   describe 'entity follow-up resolution' do
-    it 'returns get_payment_intent with inherited id when prior had pi_123 and current says "Was it captured?"' do
+    it 'returns get_payment_intent with inherited id when prior had pi and current says "Was it captured?"' do
+      merchant = create_merchant_with_api_key.first
+      pi = merchant.payment_intents.create!(
+        customer_id: merchant.customers.create!(email: 'c@x.com', merchant_id: merchant.id).id,
+        amount_cents: 1000,
+        currency: 'USD'
+      )
       recent = [
-        msg('user', 'Status of payment intent 456?'),
-        msg('assistant', 'Payment intent 456 is authorized.'),
+        msg('user', "Status of payment intent #{pi.id}?"),
+        msg('assistant', "Payment intent #{pi.id} is authorized."),
         msg('user', 'Was it captured after that?')
       ]
-      result = described_class.call(message: 'Was it captured after that?', recent_messages: recent)
+      result = described_class.call(
+        message: 'Was it captured after that?',
+        recent_messages: recent,
+        merchant_id: merchant.id
+      )
       expect(result[:intent]).to be_present
       expect(result[:intent][:tool_name]).to eq('get_payment_intent')
-      expect(result[:intent][:args][:payment_intent_id]).to eq(456)
+      expect(result[:intent][:args][:payment_intent_id]).to eq(pi.id)
     end
   end
 

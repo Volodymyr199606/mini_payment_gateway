@@ -60,7 +60,7 @@ module Ai
         build_agent_path_result(parsed)
       end
 
-      def build_orchestration_result(run_result, parsed)
+      def build_orchestration_result(run_result, parsed, latency)
         agent_key = run_result.step_count > 1 ? 'orchestration' : "tool:#{run_result.tool_names.first}"
         composed = Ai::ResponseComposer.call(
           reply_text: run_result.reply_text,
@@ -73,17 +73,22 @@ module Ai
           tool_result: run_result.deterministic_data,
           memory_used: false
         )
+        latency_ms = latency || run_result.metadata[:latency_ms]
+        policy_meta = policy_metadata_from_run(run_result, nil)
         audit = write_audit(
           agent_key: composed[:agent_key],
           composition: composed[:composition],
           tool_used: true,
           tool_names: run_result.tool_names.to_a,
           citations_count: 0,
-          latency_ms: latency_ms || run_result.metadata[:latency_ms],
+          latency_ms: latency_ms,
           orchestration_used: true,
           orchestration_step_count: run_result.step_count,
-          orchestration_halted_reason: run_result.halted_reason
+          orchestration_halted_reason: run_result.halted_reason,
+          policy_metadata: policy_meta
         )
+        debug = build_debug_section(composed, nil, latency_ms, nil)
+        debug.merge!(policy_debug_from_run(run_result, nil))
         {
           input: { message: @message },
           parsing: { intent_detected: parsed.present?, tool_name: parsed&.dig(:tool_name), args_keys: parsed&.dig(:args)&.keys },
@@ -100,9 +105,32 @@ module Ai
           memory: { used: false },
           composition: composed[:composition]&.slice(:composition_mode, :used_tool_data, :used_doc_context, :citations_count),
           response: { reply: composed[:reply], citations: [] },
-          debug: build_debug_section(composed, nil, latency_ms || run_result.metadata[:latency_ms], nil),
+          debug: debug,
           audit: audit_safe(audit)
         }
+      end
+
+      def policy_metadata_from_run(run_result, followup_result)
+        meta = run_result&.metadata || {}
+        followup = followup_result.is_a?(Hash) ? followup_result : {}
+        {
+          authorization_denied: !!meta[:authorization_denied],
+          tool_blocked_by_policy: !!meta[:tool_blocked_by_policy],
+          followup_inheritance_blocked: !!followup[:followup_inheritance_blocked],
+          policy_reason_code: meta[:authorization_denied] ? 'access_denied' : nil
+        }.compact
+      end
+
+      def policy_debug_from_run(run_result, followup = nil)
+        meta = run_result&.metadata || {}
+        followup_hash = followup.is_a?(Hash) ? followup : {}
+        {
+          authorization_checked: true,
+          authorization_denied: !!meta[:authorization_denied],
+          denied_reason_code: meta[:authorization_denied] ? 'access_denied' : nil,
+          tool_blocked_by_policy: !!meta[:tool_blocked_by_policy],
+          followup_inheritance_blocked: !!followup_hash[:followup_inheritance_blocked]
+        }.compact
       end
 
       def build_agent_path_result(parsed)
@@ -232,7 +260,8 @@ module Ai
 
         audit.attributes.slice(
           'id', 'request_id', 'agent_key', 'retriever_key', 'composition_mode',
-          'tool_used', 'tool_names', 'citations_count', 'latency_ms', 'success'
+          'tool_used', 'tool_names', 'citations_count', 'latency_ms', 'success',
+          'authorization_denied', 'tool_blocked_by_policy', 'followup_inheritance_blocked', 'policy_reason_code'
         )
       end
 

@@ -97,7 +97,9 @@ module Ai
           tool_name: nil,
           args: nil,
           success: nil,
-          latency_ms: nil
+          latency_ms: nil,
+          authorization_denied: nil,
+          tool_blocked_by_policy: nil
         )
           payload = build_base_payload.merge(
             event: 'ai_tool_call',
@@ -108,6 +110,8 @@ module Ai
             success: success,
             latency_ms: latency_ms
           )
+          payload[:authorization_denied] = authorization_denied if authorization_denied.present?
+          payload[:tool_blocked_by_policy] = tool_blocked_by_policy if tool_blocked_by_policy.present?
           log_info(payload)
         end
 
@@ -168,7 +172,11 @@ module Ai
           memory_used: nil,
           summary_used: nil,
           latency_ms: nil,
-          retriever_debug: nil
+          retriever_debug: nil,
+          authorization_denied: nil,
+          tool_blocked_by_policy: nil,
+          followup_inheritance_blocked: nil,
+          policy_reason_code: nil
         )
           debug = {
             selected_agent: selected_agent,
@@ -185,6 +193,11 @@ module Ai
             latency_ms: latency_ms
           }
           debug[:retriever] = retriever_debug if retriever_debug.is_a?(Hash) && retriever_debug.present?
+          debug[:authorization_checked] = true
+          debug[:authorization_denied] = authorization_denied if authorization_denied.present?
+          debug[:tool_blocked_by_policy] = tool_blocked_by_policy if tool_blocked_by_policy.present?
+          debug[:followup_inheritance_blocked] = followup_inheritance_blocked if followup_inheritance_blocked.present?
+          debug[:policy_reason_code] = policy_reason_code if policy_reason_code.present?
           debug
         end
 

@@ -36,7 +36,8 @@ module Ai
         orchestration_halted_reason: nil,
         followup_metadata: nil,
         policy_metadata: nil,
-        resilience_metadata: nil
+        resilience_metadata: nil,
+        execution_plan_metadata: nil
       )
         @request_id = request_id.to_s.strip.presence
         @endpoint = endpoint.to_s.strip.presence
@@ -65,6 +66,7 @@ module Ai
         @followup_metadata = followup_metadata
         @policy_metadata = policy_metadata
         @resilience_metadata = resilience_metadata
+        @execution_plan_metadata = execution_plan_metadata
       end
 
       def call
@@ -109,6 +111,12 @@ module Ai
           out[:failure_stage] = @resilience_metadata[:failure_stage].to_s.strip.presence
           out[:fallback_mode] = @resilience_metadata[:fallback_mode].to_s.strip.presence
           out[:success_after_fallback] = !!@resilience_metadata[:success_after_fallback] if @resilience_metadata.key?(:success_after_fallback)
+        end
+        if @execution_plan_metadata.is_a?(Hash)
+          out[:execution_mode] = @execution_plan_metadata[:execution_mode].to_s.strip.presence
+          out[:retrieval_skipped] = !!@execution_plan_metadata[:retrieval_skipped]
+          out[:memory_skipped] = !!@execution_plan_metadata[:memory_skipped]
+          out[:retrieval_budget_reduced] = !!@execution_plan_metadata[:retrieval_budget_reduced]
         end
         out
       end

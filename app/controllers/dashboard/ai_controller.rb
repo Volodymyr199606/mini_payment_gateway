@@ -56,6 +56,16 @@ module Dashboard
       )
       followup_result = intent_resolution[:followup]
 
+      # Cost/latency planning: choose cheapest safe path before execution
+      agent_param = chat_params[:agent].to_s.strip
+      planned_agent = (agent_param.present? && agent_param != 'auto') ? agent_param.to_sym : ::Ai::Router.new(msg).call
+      execution_plan = ::Ai::Performance::RequestPlanner.plan(
+        message: msg,
+        intent_resolution: intent_resolution,
+        agent_key: planned_agent
+      )
+      log_execution_plan_safe(execution_plan)
+
       # Constrained orchestration: up to 2 deterministic tool steps when clearly applicable
       run_result = ::Ai::Orchestration::ConstrainedRunner.call(
         message: msg,
@@ -100,35 +110,36 @@ module Dashboard
           orchestration_step_count: run_result.step_count,
           orchestration_halted_reason: run_result.halted_reason,
           followup_metadata: followup_metadata_safe(followup_result),
-          policy_metadata: policy_metadata_from_run(run_result, followup_result)
+          policy_metadata: policy_metadata_from_run(run_result, followup_result),
+          execution_plan_metadata: execution_plan.to_audit_metadata
         )
         payload = build_response_payload(composed)
-        payload[:debug] = apply_debug_policy(build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup_result)) if ai_debug?
+        payload[:debug] = apply_debug_policy(build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup_result, execution_plan)) if ai_debug?
         return render json: payload
       end
 
       ctx = ::Ai::Performance::CachedConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
-      memory_result = ::Ai::Conversation::MemoryBudgeter.call(
-        summary_text: ctx[:summary_text],
-        recent_messages: ctx[:recent_messages],
-        user_preferences: ctx[:user_preferences],
-        open_tasks_or_followups: ctx[:open_tasks_or_followups],
-        current_topic: ctx[:current_topic],
-        sanitization_applied: ctx[:summary_text].present?
-      )
+      memory_result = if execution_plan.memory_skipped?
+        { memory_text: '', memory_used: false, recent_messages_count: 0, summary_used: false }
+      else
+        ::Ai::Conversation::MemoryBudgeter.call(
+          summary_text: ctx[:summary_text],
+          recent_messages: ctx[:recent_messages],
+          user_preferences: ctx[:user_preferences],
+          open_tasks_or_followups: ctx[:open_tasks_or_followups],
+          current_topic: ctx[:current_topic],
+          sanitization_applied: ctx[:summary_text].present?
+        )
+      end
       memory_text = memory_result[:memory_text].to_s
       conversation_history = memory_text.present? ? [] : chat_session.ai_chat_messages.chronological.limit(10).map { |m| { role: m.role, content: m.content } }[0..-2] || []
       recent_count = memory_result[:recent_messages_count]
 
-      agent_param = chat_params[:agent].to_s.strip
+      retrieval_opts = execution_plan.retrieval_budget_reduced? ? { max_sections: 3 } : {}
       response_style = followup_result[:response_style_adjustments]
-      agent_key = if agent_param.present? && agent_param != "auto"
-                    agent_param.to_sym
-                  else
-                    ::Ai::Router.new(msg).call
-                  end
+      agent_key = (agent_param.present? && agent_param != 'auto') ? agent_param.to_sym : planned_agent
       agent_key = ::Ai::AgentRegistry.default_key unless ::Ai::AgentRegistry.all_keys.include?(agent_key)
-      retriever_result = ::Ai::Performance::CachedRetrievalService.call(msg, agent_key: agent_key)
+      retriever_result = ::Ai::Performance::CachedRetrievalService.call(msg, agent_key: agent_key, **retrieval_opts)
       selected_retriever = retriever_result.dig(:debug, :retriever).presence || resolve_retriever_name
       context_text = retriever_result[:context_text]
       citations = retriever_result[:citations]
@@ -150,7 +161,8 @@ module Dashboard
           recent_count: recent_count,
           chat_session: chat_session,
           started_at: started_at,
-          followup_result: followup_result
+          followup_result: followup_result,
+          execution_plan: execution_plan
         )
       end
 
@@ -198,12 +210,13 @@ module Dashboard
         latency_ms: latency_ms,
         model_used: out.model_used,
         success: true,
-        followup_metadata: followup_metadata_safe(followup_result)
+        followup_metadata: followup_metadata_safe(followup_result),
+        execution_plan_metadata: execution_plan.to_audit_metadata
       )
       end
 
       payload = build_response_payload(composed)
-      payload[:debug] = safe_apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result)) if ai_debug?
+      payload[:debug] = safe_apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result, execution_plan)) if ai_debug?
 
       render json: payload
     rescue StandardError => e
@@ -235,7 +248,7 @@ module Dashboard
       parsed['stream'] || parsed[:stream]
     end
 
-    def perform_streaming_chat(agent:, msg:, agent_key:, retriever_result:, selected_retriever:, memory_result:, recent_count:, chat_session:, started_at:, followup_result: nil)
+    def perform_streaming_chat(agent:, msg:, agent_key:, retriever_result:, selected_retriever:, memory_result:, recent_count:, chat_session:, started_at:, followup_result: nil, execution_plan: nil)
       response.headers['Content-Type'] = 'text/event-stream'
       response.headers['Cache-Control'] = 'no-cache'
       response.headers['X-Accel-Buffering'] = 'no'
@@ -261,7 +274,7 @@ module Dashboard
           memory_used: memory_result&.dig(:memory_used)
         )
         write_sse_chunk(response.stream, composed[:reply]) if composed[:reply].present?
-        finalize_streaming(chat_session, composed, out, agent_key, retriever_result, selected_retriever, memory_result, recent_count, latency_ms, msg, followup_result)
+        finalize_streaming(chat_session, composed, out, agent_key, retriever_result, selected_retriever, memory_result, recent_count, latency_ms, msg, followup_result, execution_plan)
         return
       end
 
@@ -330,11 +343,12 @@ module Dashboard
         latency_ms: latency_ms,
         model_used: out.model_used,
         success: true,
-        followup_metadata: followup_metadata_safe(followup_result)
+        followup_metadata: followup_metadata_safe(followup_result),
+        execution_plan_metadata: execution_plan&.to_audit_metadata
       )
 
       payload = build_response_payload(composed)
-      payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result)) if ai_debug?
+      payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result, execution_plan)) if ai_debug?
       write_sse_done(response.stream, payload)
     rescue StandardError => e
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
@@ -363,7 +377,7 @@ module Dashboard
       response.stream.close
     end
 
-    def finalize_streaming(chat_session, composed, out, agent_key, retriever_result, selected_retriever, memory_result, recent_count, latency_ms, msg, followup_result = nil)
+    def finalize_streaming(chat_session, composed, out, agent_key, retriever_result, selected_retriever, memory_result, recent_count, latency_ms, msg, followup_result = nil, execution_plan = nil)
       AiChatMessage.create!(
         ai_chat_session: chat_session,
         merchant_id: current_merchant.id,
@@ -391,10 +405,11 @@ module Dashboard
         latency_ms: latency_ms,
         model_used: out.model_used,
         success: true,
-        followup_metadata: followup_metadata_safe(followup_result)
+        followup_metadata: followup_metadata_safe(followup_result),
+        execution_plan_metadata: execution_plan&.to_audit_metadata
       )
       payload = build_response_payload(composed)
-      payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result)) if ai_debug?
+      payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result, execution_plan)) if ai_debug?
       write_sse_done(response.stream, payload)
     end
 
@@ -552,7 +567,7 @@ module Dashboard
       )
     end
 
-    def build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup = nil)
+    def build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup = nil, execution_plan = nil)
       debug = merge_composition_debug(
         {
           tool_used: run_result.tool_names.join(','),
@@ -567,6 +582,7 @@ module Dashboard
       )
       debug.merge!(followup_debug_safe(followup))
       debug.merge!(policy_debug_from_run(run_result, followup))
+      debug.merge!(execution_plan.present? && execution_plan.respond_to?(:execution_mode) ? { execution_plan: execution_plan.to_audit_metadata } : {})
     end
 
     def policy_metadata_from_run(run_result, followup_result)
@@ -619,7 +635,7 @@ module Dashboard
       debug.merge(extra)
     end
 
-    def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed = nil, followup = nil)
+    def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed = nil, followup = nil, execution_plan = nil)
       cache_meta = build_cache_metadata
       debug = ::Ai::Observability::EventLogger.build_debug_payload(
         selected_agent: out.agent_key,
@@ -651,7 +667,11 @@ module Dashboard
       debug[:current_topic] = memory_result[:current_topic] if memory_result
       debug[:sanitization_applied] = memory_result[:sanitization_applied] if memory_result
       debug.merge!(followup_debug_safe(followup))
-      merge_composition_debug(debug, composed&.dig(:composition))
+      debug = merge_composition_debug(debug, composed&.dig(:composition))
+      if execution_plan.respond_to?(:execution_mode)
+        debug[:execution_plan] = execution_plan.to_audit_metadata
+      end
+      debug
     end
 
     def followup_debug_safe(followup)
@@ -726,6 +746,21 @@ module Dashboard
         )
       end
       { payload: payload }
+    end
+
+    def log_execution_plan_safe(plan)
+      return unless plan.respond_to?(:execution_mode)
+      ::Ai::Observability::EventLogger.log_execution_plan(
+        execution_mode: plan.execution_mode,
+        retrieval_skipped: plan.skip_retrieval,
+        memory_skipped: plan.skip_memory,
+        orchestration_skipped: plan.skip_orchestration,
+        retrieval_budget_reduced: plan.retrieval_budget_reduced,
+        reason_codes: plan.reason_codes,
+        request_id: request.request_id
+      )
+    rescue StandardError => e
+      Rails.logger.warn("[AI] Execution plan logging failed (non-blocking): #{e.message}")
     end
 
     def safe_audit

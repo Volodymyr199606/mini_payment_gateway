@@ -163,6 +163,29 @@ module Ai
           log_info(payload)
         end
 
+        # Log execution planning (cost/latency control).
+        def log_execution_plan(
+          execution_mode: nil,
+          retrieval_skipped: nil,
+          memory_skipped: nil,
+          orchestration_skipped: nil,
+          retrieval_budget_reduced: nil,
+          reason_codes: nil,
+          request_id: nil
+        )
+          payload = build_base_payload.merge(
+            event: 'ai_execution_plan',
+            execution_mode: execution_mode,
+            retrieval_skipped: retrieval_skipped,
+            memory_skipped: memory_skipped,
+            orchestration_skipped: orchestration_skipped,
+            retrieval_budget_reduced: retrieval_budget_reduced,
+            reason_codes: reason_codes,
+            request_id: request_id
+          )
+          log_info(payload)
+        end
+
         # Log cache events: hit, miss, bypassed.
         def log_cache(
           cache_category: nil,
@@ -225,7 +248,8 @@ module Ai
           policy_reason_code: nil,
           policy_decision_types: nil,
           cache_metadata: nil,
-          resilience_metadata: nil
+          resilience_metadata: nil,
+          execution_plan: nil
         )
           debug = {
             selected_agent: selected_agent,
@@ -253,6 +277,16 @@ module Ai
           end
           if resilience_metadata.is_a?(Hash) && resilience_metadata.present?
             debug[:resilience] = resilience_metadata.slice(:degraded, :failure_stage, :fallback_mode)
+          end
+          if execution_plan.respond_to?(:execution_mode)
+            debug[:execution_plan] = {
+              execution_mode: execution_plan.execution_mode,
+              retrieval_skipped: !!execution_plan.skip_retrieval,
+              memory_skipped: !!execution_plan.skip_memory,
+              orchestration_skipped: !!execution_plan.skip_orchestration,
+              retrieval_budget_reduced: !!execution_plan.retrieval_budget_reduced,
+              reason_codes: Array(execution_plan.reason_codes)
+            }.compact
           end
           debug
         end

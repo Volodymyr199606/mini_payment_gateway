@@ -142,5 +142,37 @@ RSpec.describe Ai::AuditTrail::RecordBuilder do
       expect(result).not_to have_key(:followup_inheritance_blocked)
       expect(result).not_to have_key(:policy_reason_code)
     end
+
+    it 'records execution_plan_metadata when provided' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'dashboard',
+        agent_key: 'operational',
+        success: true,
+        execution_plan_metadata: {
+          execution_mode: 'deterministic_only',
+          retrieval_skipped: true,
+          memory_skipped: true,
+          retrieval_budget_reduced: false,
+          reason_codes: %w[intent_present]
+        }
+      )
+      expect(result[:execution_mode]).to eq('deterministic_only')
+      expect(result[:retrieval_skipped]).to be(true)
+      expect(result[:memory_skipped]).to be(true)
+      expect(result[:retrieval_budget_reduced]).to be(false)
+    end
+
+    it 'omits execution_plan fields when execution_plan_metadata nil' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'api',
+        agent_key: 'operational',
+        success: true
+      )
+      expect(result).not_to have_key(:execution_mode)
+      expect(result).not_to have_key(:retrieval_skipped)
+      expect(result).not_to have_key(:memory_skipped)
+    end
   end
 end

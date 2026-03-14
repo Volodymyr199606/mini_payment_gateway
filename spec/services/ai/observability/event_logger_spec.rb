@@ -53,6 +53,60 @@ RSpec.describe Ai::Observability::EventLogger do
       expect(payload[:retriever]).to eq(retriever_debug)
     end
 
+    it 'includes execution_plan when provided' do
+      plan = Ai::Performance::ExecutionPlan.new(
+        execution_mode: :deterministic_only,
+        skip_retrieval: true,
+        skip_memory: true,
+        skip_orchestration: false,
+        retrieval_budget_reduced: false,
+        reason_codes: %w[intent_present deterministic_sufficient],
+        metadata: {}
+      )
+      payload = described_class.build_debug_payload(
+        selected_agent: 'operational',
+        selected_retriever: nil,
+        graph_enabled: false,
+        vector_enabled: false,
+        retrieved_sections_count: 0,
+        citations_count: 0,
+        fallback_used: false,
+        citation_reask_used: false,
+        model_used: nil,
+        memory_used: false,
+        summary_used: false,
+        latency_ms: 50,
+        execution_plan: plan
+      )
+      expect(payload[:execution_plan]).to eq(
+        execution_mode: :deterministic_only,
+        retrieval_skipped: true,
+        memory_skipped: true,
+        orchestration_skipped: false,
+        retrieval_budget_reduced: false,
+        reason_codes: %w[intent_present deterministic_sufficient]
+      )
+    end
+
+    it 'omits execution_plan when nil' do
+      payload = described_class.build_debug_payload(
+        selected_agent: 'operational',
+        selected_retriever: 'DocsRetriever',
+        graph_enabled: false,
+        vector_enabled: false,
+        retrieved_sections_count: 2,
+        citations_count: 2,
+        fallback_used: false,
+        citation_reask_used: false,
+        model_used: nil,
+        memory_used: false,
+        summary_used: false,
+        latency_ms: 100,
+        retriever_debug: nil
+      )
+      expect(payload).not_to have_key(:execution_plan)
+    end
+
     it 'omits retriever_debug when nil or empty' do
       payload = described_class.build_debug_payload(
         selected_agent: 'support_faq',
@@ -142,6 +196,28 @@ RSpec.describe Ai::Observability::EventLogger do
         request_id: 'req-789',
         citations_count: 1,
         context_length: 500
+      )
+    end
+  end
+
+  describe '.log_execution_plan' do
+    it 'logs ai_execution_plan event' do
+      expect(Rails.logger).to receive(:info) do |json_str|
+        payload = JSON.parse(json_str)
+        expect(payload['event']).to eq('ai_execution_plan')
+        expect(payload['execution_mode']).to eq('deterministic_only')
+        expect(payload['retrieval_skipped']).to be(true)
+        expect(payload['memory_skipped']).to be(true)
+        expect(payload['reason_codes']).to eq(%w[intent_present])
+      end
+      described_class.log_execution_plan(
+        execution_mode: :deterministic_only,
+        retrieval_skipped: true,
+        memory_skipped: true,
+        orchestration_skipped: false,
+        retrieval_budget_reduced: false,
+        reason_codes: %w[intent_present],
+        request_id: 'req-plan-1'
       )
     end
   end

@@ -70,21 +70,8 @@ module Api
           render json: payload
         rescue StandardError => e
           latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
-          log_ai_request_error(e, message, agent_key, retriever_result, selected_retriever, latency_ms)
-          write_ai_audit(
-            request_id: request.request_id,
-            endpoint: 'api',
-            merchant_id: current_merchant&.id,
-            agent_key: agent_key&.to_s,
-            retriever_key: selected_retriever,
-            citations_count: retriever_result&.dig(:citations)&.size,
-            retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
-            latency_ms: latency_ms,
-            success: false,
-            error_class: e.class.name,
-            error_message: e.message
-          )
-          raise
+          payload = apply_resilience_fallback(e, message, agent_key, retriever_result, selected_retriever, latency_ms)
+          render json: payload
         end
 
         private
@@ -186,6 +173,56 @@ module Api
         def write_ai_audit(**attrs)
           record = ::Ai::AuditTrail::RecordBuilder.call(**attrs)
           ::Ai::AuditTrail::Writer.write(record)
+        end
+
+        def apply_resilience_fallback(e, message, agent_key, retriever_result, selected_retriever, latency_ms)
+          stage = ::Ai::Resilience::Coordinator.infer_stage(e)
+          context = { context_text: retriever_result&.dig(:context_text), tool_data: nil, original_path: 'api' }
+          decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: context)
+          safe = ::Ai::Resilience::Coordinator.build_safe_response(decision: decision, context: context)
+
+          safe_audit { log_ai_request_error(e, message, agent_key, retriever_result, selected_retriever, latency_ms) }
+          ::Ai::Observability::EventLogger.log_resilience(
+            degraded: true, failure_stage: stage, fallback_mode: decision.fallback_mode,
+            original_path: 'api', final_path_used: decision.fallback_mode, success_after_fallback: true, request_id: request.request_id
+          )
+          resilience_meta = { degraded: true, failure_stage: stage, fallback_mode: decision.fallback_mode, success_after_fallback: true }
+          safe_audit do
+            write_ai_audit(
+              request_id: request.request_id, endpoint: 'api', merchant_id: current_merchant&.id,
+              agent_key: 'resilience_fallback', retriever_key: selected_retriever,
+              citations_count: retriever_result&.dig(:citations)&.size,
+              retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+              latency_ms: latency_ms, success: false, error_class: e.class.name, error_message: e.message.to_s[0, 500],
+              resilience_metadata: resilience_meta
+            )
+          end
+
+          payload = build_resilience_payload(safe)
+          payload[:debug] = build_debug_payload_for_resilience(safe, selected_retriever, retriever_result, latency_ms, resilience_meta) if ai_debug?
+          payload
+        end
+
+        def safe_audit
+          yield
+        rescue StandardError => err
+          Rails.logger.warn("[AI] Audit failed (non-blocking): #{err.class} #{err.message}")
+        end
+
+        def build_resilience_payload(safe)
+          { reply: safe[:reply], agent: safe[:agent_key], citations: safe[:citations], fallback_used: true }.tap do |p|
+            p[:data] = safe[:data] if safe[:data].present?
+          end
+        end
+
+        def build_debug_payload_for_resilience(safe, selected_retriever, retriever_result, latency_ms, resilience_meta)
+          ::Ai::Observability::EventLogger.build_debug_payload(
+            selected_agent: 'resilience_fallback',
+            selected_retriever: selected_retriever,
+            fallback_used: true,
+            latency_ms: latency_ms,
+            resilience_metadata: resilience_meta
+          )
         end
 
         def chat_params

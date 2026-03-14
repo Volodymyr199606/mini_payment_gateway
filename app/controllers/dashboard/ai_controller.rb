@@ -177,8 +177,9 @@ module Dashboard
 
       increment_ai_chat_count
 
-      log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_result, recent_count)
+      safe_audit { log_ai_request_success(out, msg, agent_key, retriever_result, selected_retriever, latency_ms, memory_result, recent_count) }
 
+      safe_audit do
       write_ai_audit(
         request_id: request.request_id,
         endpoint: 'dashboard',
@@ -199,28 +200,16 @@ module Dashboard
         success: true,
         followup_metadata: followup_metadata_safe(followup_result)
       )
+      end
 
       payload = build_response_payload(composed)
-      payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result)) if ai_debug?
+      payload[:debug] = safe_apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result)) if ai_debug?
 
       render json: payload
     rescue StandardError => e
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
-      log_ai_request_error(e, msg, agent_key, retriever_result, selected_retriever, latency_ms)
-      write_ai_audit(
-        request_id: request.request_id,
-        endpoint: 'dashboard',
-        merchant_id: current_merchant&.id,
-        agent_key: agent_key&.to_s,
-        retriever_key: selected_retriever,
-        citations_count: retriever_result&.dig(:citations)&.size,
-        retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
-        latency_ms: latency_ms,
-        success: false,
-        error_class: e.class.name,
-        error_message: e.message
-      )
-      raise
+      resilience_response = apply_resilience_fallback(e, msg, agent_key, retriever_result, selected_retriever, latency_ms, followup_result: followup_result)
+      render json: resilience_response[:payload], status: :ok
     end
 
     private
@@ -349,21 +338,27 @@ module Dashboard
       write_sse_done(response.stream, payload)
     rescue StandardError => e
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
-      log_ai_request_error(e, msg, agent_key, retriever_result, selected_retriever, latency_ms)
-      write_ai_audit(
-        request_id: request.request_id,
-        endpoint: 'dashboard',
-        merchant_id: current_merchant&.id,
-        agent_key: agent_key&.to_s,
-        retriever_key: selected_retriever,
-        citations_count: retriever_result&.dig(:citations)&.size,
-        retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
-        latency_ms: latency_ms,
-        success: false,
-        error_class: e.class.name,
-        error_message: e.message
+      stage = ::Ai::Resilience::Coordinator.infer_stage(e)
+      decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: { original_path: 'streaming' })
+      safe = ::Ai::Resilience::Coordinator.build_safe_response(decision: decision, context: {})
+      safe_audit { log_ai_request_error(e, msg, agent_key, retriever_result, selected_retriever, latency_ms) }
+      ::Ai::Observability::EventLogger.log_resilience(
+        degraded: true, failure_stage: stage, fallback_mode: decision.fallback_mode,
+        original_path: 'streaming', final_path_used: :non_streaming_fallback, success_after_fallback: true, request_id: request.request_id
       )
-      write_sse_error(response.stream, e.message)
+      safe_audit do
+        write_ai_audit(
+          request_id: request.request_id, endpoint: 'dashboard', merchant_id: current_merchant&.id,
+          agent_key: 'resilience_fallback', retriever_key: selected_retriever,
+          citations_count: retriever_result&.dig(:citations)&.size,
+          retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+          latency_ms: latency_ms, success: false, error_class: e.class.name, error_message: e.message.to_s[0, 500],
+          resilience_metadata: { degraded: true, failure_stage: stage, fallback_mode: decision.fallback_mode, success_after_fallback: true }
+        )
+      end
+      write_sse_chunk(response.stream, safe[:reply]) if safe[:reply].present?
+      payload = build_response_payload(safe)
+      write_sse_done(response.stream, payload)
     ensure
       response.stream.close
     end
@@ -683,6 +678,79 @@ module Dashboard
         meta[:cache_bypassed] = true if e[:outcome] == :bypassed
       end
       meta.compact
+    end
+
+    def apply_resilience_fallback(e, msg, agent_key, retriever_result, selected_retriever, latency_ms, followup_result: nil)
+      stage = ::Ai::Resilience::Coordinator.infer_stage(e)
+      context = {
+        context_text: retriever_result&.dig(:context_text),
+        tool_data: nil,
+        tool_name: nil,
+        original_path: 'agent'
+      }
+      decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: context)
+      safe = ::Ai::Resilience::Coordinator.build_safe_response(decision: decision, context: context)
+
+      safe_audit { log_ai_request_error(e, msg, agent_key, retriever_result, selected_retriever, latency_ms) }
+      ::Ai::Observability::EventLogger.log_resilience(
+        degraded: true,
+        failure_stage: stage,
+        fallback_mode: decision.fallback_mode,
+        original_path: 'agent',
+        final_path_used: decision.fallback_mode,
+        success_after_fallback: true,
+        request_id: request.request_id
+      )
+      resilience_meta = { degraded: true, failure_stage: stage, fallback_mode: decision.fallback_mode, success_after_fallback: true }
+      safe_audit do
+        write_ai_audit(
+          request_id: request.request_id,
+          endpoint: 'dashboard',
+          merchant_id: current_merchant&.id,
+          agent_key: 'resilience_fallback',
+          retriever_key: selected_retriever,
+          citations_count: retriever_result&.dig(:citations)&.size,
+          retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
+          latency_ms: latency_ms,
+          success: false,
+          error_class: e.class.name,
+          error_message: e.message.to_s[0, 500],
+          resilience_metadata: resilience_meta
+        )
+      end
+
+      payload = build_response_payload(safe)
+      if ai_debug?
+        payload[:debug] = safe_apply_debug_policy(
+          build_debug_payload_for_resilience(safe, agent_key, selected_retriever, retriever_result, latency_ms, followup_result, resilience_meta)
+        )
+      end
+      { payload: payload }
+    end
+
+    def safe_audit
+      yield
+    rescue StandardError => audit_err
+      Rails.logger.warn("[AI] Audit/observability failed (non-blocking): #{audit_err.class} #{audit_err.message}")
+    end
+
+    def build_debug_payload_for_resilience(safe, agent_key, selected_retriever, retriever_result, latency_ms, followup, resilience_meta)
+      base = ::Ai::Observability::EventLogger.build_debug_payload(
+        selected_agent: 'resilience_fallback',
+        selected_retriever: selected_retriever,
+        fallback_used: true,
+        latency_ms: latency_ms,
+        resilience_metadata: resilience_meta
+      )
+      base[:context_truncated] = retriever_result[:context_truncated] if retriever_result&.key?(:context_truncated)
+      base.merge!(followup_debug_safe(followup))
+      base
+    end
+
+    def safe_apply_debug_policy(debug)
+      apply_debug_policy(debug)
+    rescue StandardError
+      {}
     end
 
     # Gate debug payload with AI policy engine; never expose secrets.

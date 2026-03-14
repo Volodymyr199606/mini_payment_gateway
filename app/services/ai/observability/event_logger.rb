@@ -138,6 +138,31 @@ module Ai
           log_info(payload)
         end
 
+        # Log resilience/fallback events.
+        def log_resilience(
+          degraded: nil,
+          failure_stage: nil,
+          fallback_mode: nil,
+          original_path: nil,
+          final_path_used: nil,
+          retry_attempted: nil,
+          success_after_fallback: nil,
+          request_id: nil
+        )
+          payload = build_base_payload.merge(
+            event: 'ai_resilience',
+            degraded: degraded,
+            failure_stage: failure_stage,
+            fallback_mode: fallback_mode,
+            original_path: original_path,
+            final_path_used: final_path_used,
+            retry_attempted: retry_attempted,
+            success_after_fallback: success_after_fallback,
+            request_id: request_id
+          )
+          log_info(payload)
+        end
+
         # Log cache events: hit, miss, bypassed.
         def log_cache(
           cache_category: nil,
@@ -199,7 +224,8 @@ module Ai
           followup_inheritance_blocked: nil,
           policy_reason_code: nil,
           policy_decision_types: nil,
-          cache_metadata: nil
+          cache_metadata: nil,
+          resilience_metadata: nil
         )
           debug = {
             selected_agent: selected_agent,
@@ -224,6 +250,9 @@ module Ai
           debug[:policy_decision_types] = policy_decision_types if policy_decision_types.is_a?(Array) && policy_decision_types.any?
           if cache_metadata.is_a?(Hash) && cache_metadata.present?
             debug[:cache] = cache_metadata.slice(:retrieval_outcome, :memory_outcome, :cache_bypassed)
+          end
+          if resilience_metadata.is_a?(Hash) && resilience_metadata.present?
+            debug[:resilience] = resilience_metadata.slice(:degraded, :failure_stage, :fallback_mode)
           end
           debug
         end

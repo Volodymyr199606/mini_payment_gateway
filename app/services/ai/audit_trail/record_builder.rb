@@ -35,7 +35,8 @@ module Ai
         orchestration_step_count: nil,
         orchestration_halted_reason: nil,
         followup_metadata: nil,
-        policy_metadata: nil
+        policy_metadata: nil,
+        resilience_metadata: nil
       )
         @request_id = request_id.to_s.strip.presence
         @endpoint = endpoint.to_s.strip.presence
@@ -63,6 +64,7 @@ module Ai
         @orchestration_halted_reason = orchestration_halted_reason.to_s.strip.presence
         @followup_metadata = followup_metadata
         @policy_metadata = policy_metadata
+        @resilience_metadata = resilience_metadata
       end
 
       def call
@@ -101,6 +103,12 @@ module Ai
           out[:tool_blocked_by_policy] = !!@policy_metadata[:tool_blocked_by_policy]
           out[:followup_inheritance_blocked] = !!@policy_metadata[:followup_inheritance_blocked]
           out[:policy_reason_code] = @policy_metadata[:policy_reason_code].to_s.strip.presence
+        end
+        if @resilience_metadata.is_a?(Hash)
+          out[:degraded] = !!@resilience_metadata[:degraded]
+          out[:failure_stage] = @resilience_metadata[:failure_stage].to_s.strip.presence
+          out[:fallback_mode] = @resilience_metadata[:fallback_mode].to_s.strip.presence
+          out[:success_after_fallback] = !!@resilience_metadata[:success_after_fallback] if @resilience_metadata.key?(:success_after_fallback)
         end
         out
       end

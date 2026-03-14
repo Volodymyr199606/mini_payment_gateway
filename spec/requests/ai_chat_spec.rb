@@ -146,6 +146,26 @@ RSpec.describe 'AI chat API', type: :request do
       expect(debug).to have_key('latency_ms')
     end
 
+    it 'returns graceful fallback when agent raises (resilience)' do
+      _m, api_key = create_merchant_with_api_key
+      stub_retrieval_service!
+      groq = instance_double(Ai::GroqClient, chat: { content: 'x' })
+      allow(Ai::GroqClient).to receive(:new).and_return(groq)
+      allow(groq).to receive(:chat).and_raise(Faraday::ConnectionFailed.new('connection failed'))
+
+      post '/api/v1/ai/chat',
+           params: { message: 'How do refunds work?' },
+           headers: api_headers(api_key),
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body['agent']).to eq('resilience_fallback')
+      expect(body['fallback_used']).to be true
+      expect(body['reply']).to be_present
+      expect(body['reply']).not_to include('connection failed')
+    end
+
     it 'passes stubbed context and citations to agent and returns them in response' do
       _m, api_key = create_merchant_with_api_key
       stub_retrieval_service!(

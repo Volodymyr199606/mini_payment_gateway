@@ -183,3 +183,22 @@ body.dev-playground {
   padding: 1.25rem;
   margin-bottom: 1rem;
 }
+
+/* AI Analytics page */
+.analytics-filters {
+  margin-bottom: 1.5rem;
+}
+
+.analytics-filters .filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}

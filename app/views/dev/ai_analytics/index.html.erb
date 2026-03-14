@@ -1,0 +1,227 @@
+<% content_for :dev_header_title, "AI Analytics" %>
+<% content_for :dev_header_subtitle, "Internal AI request metrics — dev only" %>
+
+<div class="page-header">
+  <h1 class="page-title">AI Analytics</h1>
+  <p class="page-description">Internal AI request metrics. Dev only.</p>
+</div>
+
+<%= form_with url: dev_ai_analytics_path, method: :get, local: true, class: "analytics-filters" do |f| %>
+  <div class="filter-row">
+    <label class="form-label">Period</label>
+    <%= select_tag :period, options_for_select([["Today", "today"], ["Last 7 days", "7d"], ["Last 30 days", "30d"]], params[:period].presence || "7d"), class: "form-input", style: "width: auto; display: inline-block;" %>
+    <label class="form-label" style="margin-left: 1rem;">Merchant</label>
+    <%= select_tag :merchant_id, options_for_select([["All merchants", ""]] + @merchants.map { |id, name, email| ["##{id} #{name.presence || email}".strip, id] }, @merchant_id), class: "form-input", style: "width: auto; display: inline-block; max-width: 220px;" %>
+    <button type="submit" class="btn btn-primary" style="margin-left: 0.5rem;">Apply</button>
+  </div>
+<% end %>
+
+<% m = @metrics %>
+
+<% if m[:summary][:total_requests].zero? %>
+  <div class="card">
+    <div class="card-body">
+      <p class="text-muted">No AI audit records in the selected period. Generate traffic via AI chat to see analytics.</p>
+    </div>
+  </div>
+<% else %>
+
+<div class="summary-grid summary-grid-kpi">
+  <div class="summary-card">
+    <div class="summary-label">Total Requests</div>
+    <div class="summary-value"><%= m[:summary][:total_requests] %></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Avg Latency</div>
+    <div class="summary-value"><%= m[:summary][:avg_latency_ms].present? ? "#{m[:summary][:avg_latency_ms]} ms" : "—" %></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Fallback Rate</div>
+    <div class="summary-value <%= m[:summary][:fallback_rate] > 0.1 ? 'text-error' : '' %>"><%= (m[:summary][:fallback_rate] * 100).round(1) %>%</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Tool Usage Rate</div>
+    <div class="summary-value"><%= (m[:summary][:tool_usage_rate] * 100).round(1) %>%</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Policy Blocked Rate</div>
+    <div class="summary-value <%= m[:summary][:policy_blocked_rate] > 0 ? 'text-error' : '' %>"><%= (m[:summary][:policy_blocked_rate] * 100).round(1) %>%</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Top Agent</div>
+    <div class="summary-value" style="font-size: 1rem;"><%= m[:summary][:top_agent] || "—" %></div>
+  </div>
+</div>
+
+<div class="analytics-grid">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">By Agent</h2>
+    </div>
+    <div class="card-body">
+      <table class="table">
+        <thead>
+          <tr><th>Agent</th><th>Count</th></tr>
+        </thead>
+        <tbody>
+          <% m[:by_agent].each do |agent, count| %>
+            <tr><td><%= agent %></td><td><%= count %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Composition Modes</h2>
+    </div>
+    <div class="card-body">
+      <% if m[:by_composition_mode].any? %>
+        <table class="table">
+          <thead>
+            <tr><th>Mode</th><th>Count</th></tr>
+          </thead>
+          <tbody>
+            <% m[:by_composition_mode].each do |mode, count| %>
+              <tr><td><%= mode %></td><td><%= count %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="text-muted">No composition_mode data</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Tool Usage</h2>
+    </div>
+    <div class="card-body">
+      <p><strong>Rate:</strong> <%= (m[:tool_usage][:tool_usage_rate] * 100).round(1) %>%</p>
+      <% if m[:tool_usage][:tool_names_frequency].any? %>
+        <table class="table">
+          <thead><tr><th>Tool</th><th>Count</th></tr></thead>
+          <tbody>
+            <% m[:tool_usage][:tool_names_frequency].first(10).each do |tool, cnt| %>
+              <tr><td><%= tool %></td><td><%= cnt %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Fallback & Failed</h2>
+    </div>
+    <div class="card-body">
+      <p><strong>Fallback:</strong> <%= m[:fallback][:fallback_count] %> (<%= (m[:fallback][:fallback_rate] * 100).round(1) %>%)</p>
+      <p><strong>Failed:</strong> <%= m[:fallback][:failed_count] %> (<%= (m[:fallback][:failed_rate] * 100).round(1) %>%)</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Policy</h2>
+    </div>
+    <div class="card-body">
+      <p><strong>Auth denied:</strong> <%= m[:policy][:authorization_denied_count] %></p>
+      <p><strong>Tool blocked:</strong> <%= m[:policy][:tool_blocked_count] %></p>
+      <p><strong>Follow-up blocked:</strong> <%= m[:policy][:followup_blocked_count] %></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Follow-up & Memory</h2>
+    </div>
+    <div class="card-body">
+      <p><strong>Follow-up rate:</strong> <%= (m[:followup][:followup_rate] * 100).round(1) %>%</p>
+      <p><strong>Memory usage rate:</strong> <%= (m[:memory][:memory_usage_rate] * 100).round(1) %>%</p>
+      <% if m[:followup][:by_type].any? %>
+        <p><strong>By type:</strong> <%= m[:followup][:by_type].map { |k, v| "#{k}: #{v}" }.join(", ") %></p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Citations</h2>
+    </div>
+    <div class="card-body">
+      <p><strong>With citations:</strong> <%= (m[:citations][:with_citations_rate] * 100).round(1) %>%</p>
+      <p><strong>Citation re-ask rate:</strong> <%= (m[:citations][:citation_reask_rate] * 100).round(1) %>%</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Latency by Agent</h2>
+    </div>
+    <div class="card-body">
+      <% if m[:latency][:by_agent].any? %>
+        <table class="table">
+          <thead><tr><th>Agent</th><th>Avg ms</th></tr></thead>
+          <tbody>
+            <% m[:latency][:by_agent].each do |agent, avg| %>
+              <tr><td><%= agent %></td><td><%= avg || "—" %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="text-muted">No latency data</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Recent Requests (last 50)</h2>
+  </div>
+  <div class="card-body">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Merchant</th>
+          <th>Agent</th>
+          <th>Mode</th>
+          <th>Latency</th>
+          <th>Success</th>
+          <th>Fallback</th>
+          <th>Citations</th>
+          <th>Tool</th>
+          <th>Policy</th>
+          <th>Request ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% m[:recent_requests].each do |r| %>
+          <tr>
+            <td><%= r[:created_at].strftime("%Y-%m-%d %H:%M") %></td>
+            <td><%= r[:merchant_id] || "—" %></td>
+            <td><%= r[:agent_key] %></td>
+            <td><%= r[:composition_mode] || "—" %></td>
+            <td><%= r[:latency_ms] || "—" %></td>
+            <td><%= r[:success] ? "✓" : "✗" %></td>
+            <td><%= r[:fallback_used] ? "Yes" : "—" %></td>
+            <td><%= r[:citations_count] %></td>
+            <td><%= r[:tool_names].any? ? r[:tool_names].join(", ") : "—" %></td>
+            <td><%= r[:policy_blocked] ? "Yes" : "—" %></td>
+            <td><code><%= truncate(r[:request_id], length: 12) %></code></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<% end %>
+
+<p class="text-muted" style="margin-top: 1.5rem;">
+  <%= link_to "← AI Playground", dev_ai_playground_path, class: "link" %>
+</p>

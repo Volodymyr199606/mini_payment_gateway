@@ -12,8 +12,8 @@
   </head>
   <body class="dev-playground">
     <header class="dev-playground-header">
-      <h1>AI Playground</h1>
-      <p class="dev-playground-subtitle">Internal dev tool — inspect AI pipeline end-to-end</p>
+      <h1><%= content_for?(:dev_header_title) ? yield(:dev_header_title) : "AI Playground" %></h1>
+      <p class="dev-playground-subtitle"><%= content_for?(:dev_header_subtitle) ? yield(:dev_header_subtitle) : "Internal dev tool — inspect AI pipeline end-to-end" %></p>
     </header>
     <main class="dev-playground-main">
       <%= yield %>

@@ -1,5 +1,7 @@
 # AI Extension Guide: Adding Agents and Tools
 
+**See also**: [AI_PLATFORM.md](AI_PLATFORM.md) (overview and doc index), [AI_SAFETY_AND_POLICY.md](AI_SAFETY_AND_POLICY.md) (policy and tool restrictions).
+
 This guide describes how to add new **agents** and **tools** to the payment gateway AI system using the plugin-style registry pattern. The registries are the single source of truth for discovery, metadata, and capability checks.
 
 ## Overview

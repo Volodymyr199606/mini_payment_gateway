@@ -4,6 +4,7 @@ module Ai
   module Performance
     # Structured execution plan for cost/latency control.
     # execution_mode: deterministic_only, docs_only, tool_plus_docs, agent_full, no_memory, no_retrieval, concise_rewrite_only
+    # Contract: stable fields; contract_version for serialization/audit.
     ExecutionPlan = Struct.new(
       :execution_mode,
       :skip_retrieval,
@@ -14,6 +15,8 @@ module Ai
       :metadata,
       keyword_init: true
     ) do
+      CONTRACT_VERSION = (defined?(Ai::Contracts) && Ai::Contracts::EXECUTION_PLAN_VERSION) || '1'
+
       def self.full_agent
         new(
           execution_mode: :agent_full,
@@ -45,7 +48,21 @@ module Ai
           memory_skipped: !!skip_memory,
           orchestration_skipped: !!skip_orchestration,
           retrieval_budget_reduced: !!retrieval_budget_reduced,
-          reason_codes: Array(reason_codes)
+          reason_codes: Array(reason_codes),
+          contract_version: CONTRACT_VERSION
+        }.compact
+      end
+
+      def to_h
+        {
+          execution_mode: execution_mode&.to_s,
+          skip_retrieval: !!skip_retrieval,
+          skip_memory: !!skip_memory,
+          skip_orchestration: !!skip_orchestration,
+          retrieval_budget_reduced: !!retrieval_budget_reduced,
+          reason_codes: Array(reason_codes),
+          metadata: metadata.to_h,
+          contract_version: CONTRACT_VERSION
         }.compact
       end
     end

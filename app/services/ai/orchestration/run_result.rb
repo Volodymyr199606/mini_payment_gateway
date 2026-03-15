@@ -4,7 +4,10 @@ module Ai
   module Orchestration
     # Result of a constrained multi-step tool run. Used for audit, debug, and response composition.
     # Deterministic data is the source of truth; no LLM override.
+    # Contract: stable fields; contract_version for serialization/audit.
     class RunResult
+      CONTRACT_VERSION = (defined?(Ai::Contracts) && Ai::Contracts::RUN_RESULT_VERSION) || '1'
+
       attr_reader :orchestration_used,
                   :step_count,
                   :steps,
@@ -62,6 +65,19 @@ module Ai
             latency_ms: s[:latency_ms]
           }.compact
         end
+      end
+
+      def to_h
+        {
+          orchestration_used: @orchestration_used,
+          step_count: @step_count,
+          tool_names: @tool_names.to_a,
+          success: @success,
+          halted_reason: @halted_reason,
+          reply_text: @reply_text,
+          explanation_metadata: @explanation_metadata,
+          contract_version: CONTRACT_VERSION
+        }.compact
       end
     end
   end

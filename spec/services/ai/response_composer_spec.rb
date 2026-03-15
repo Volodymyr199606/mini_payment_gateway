@@ -142,7 +142,8 @@ RSpec.describe Ai::ResponseComposer do
           :used_memory_context,
           :citations_count,
           :deterministic_fields_used,
-          :composition_mode
+          :composition_mode,
+          :contract_version
         )
       end
 

@@ -63,7 +63,8 @@ module Ai
         used_memory_context: used_mem,
         citations_count: @citations.size,
         deterministic_fields_used: deterministic_fields,
-        composition_mode: mode
+        composition_mode: mode,
+        contract_version: (defined?(Ai::Contracts) && Ai::Contracts::COMPOSED_RESPONSE_VERSION) || '1'
       }
       composition.merge!(@explanation_metadata) if @explanation_metadata.present?
       composition

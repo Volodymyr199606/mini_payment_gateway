@@ -27,6 +27,16 @@ module Ai
       def denied?
         !allowed
       end
+
+      def to_h
+        {
+          allowed: allowed,
+          decision_type: decision_type,
+          reason_code: reason_code,
+          safe_message: safe_message,
+          metadata: metadata.to_h
+        }.compact
+      end
     end
   end
 end

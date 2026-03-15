@@ -331,6 +331,7 @@ module Ai
               reason_codes: Array(execution_plan.reason_codes)
             }.compact
           end
+          debug[:schema_version] = (defined?(Ai::Contracts) && Ai::Contracts::DEBUG_PAYLOAD_VERSION) || '1'
           debug
         end
 

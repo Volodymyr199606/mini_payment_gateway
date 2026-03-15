@@ -126,6 +126,7 @@ module Ai
           out[:explanation_type] = @composition[:explanation_type].to_s.strip.presence if @composition[:explanation_type].present?
           out[:explanation_key] = @composition[:explanation_key].to_s.strip.truncate(64).presence if @composition[:explanation_key].present?
         end
+        out[:schema_version] = (defined?(Ai::Contracts) && Ai::Contracts::AUDIT_PAYLOAD_VERSION) || '1'
         out
       end
 

@@ -23,6 +23,16 @@ RSpec.describe Ai::AuditTrail::RecordBuilder do
       expect(result[:parsed_intent_hints]).to eq({})
     end
 
+    it 'includes schema_version in output when Ai::Contracts is defined' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'dashboard',
+        agent_key: 'operational',
+        success: true
+      )
+      expect(result[:schema_version]).to eq(Ai::Contracts::AUDIT_PAYLOAD_VERSION)
+    end
+
     it 'uses unknown agent_key when missing' do
       result = described_class.call(request_id: 'x', endpoint: 'api', agent_key: nil)
       expect(result[:agent_key]).to eq('unknown')

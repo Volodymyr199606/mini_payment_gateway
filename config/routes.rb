@@ -7,6 +7,7 @@ Rails.application.routes.draw do
       get 'ai_playground', to: 'ai_playground#show', as: :ai_playground
       post 'ai_playground/run', to: 'ai_playground#run', as: :ai_playground_run
       get 'ai_analytics', to: 'ai_analytics#index', as: :ai_analytics
+      get 'ai_health', to: 'ai_health#show', as: :ai_health
     end
   end
 

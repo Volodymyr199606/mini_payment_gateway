@@ -113,6 +113,7 @@ module Dashboard
           policy_metadata: policy_metadata_from_run(run_result, followup_result),
           execution_plan_metadata: execution_plan.to_audit_metadata
         )
+        enqueue_summary_refresh_if_ok(chat_session)
         payload = build_response_payload(composed)
         payload[:debug] = apply_debug_policy(build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup_result, execution_plan)) if ai_debug?
         return render json: payload
@@ -215,6 +216,7 @@ module Dashboard
       )
       end
 
+      enqueue_summary_refresh_if_ok(chat_session)
       payload = build_response_payload(composed)
       payload[:debug] = safe_apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result, execution_plan)) if ai_debug?
 
@@ -347,6 +349,7 @@ module Dashboard
         execution_plan_metadata: execution_plan&.to_audit_metadata
       )
 
+      enqueue_summary_refresh_if_ok(chat_session)
       payload = build_response_payload(composed)
       payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result, execution_plan)) if ai_debug?
       write_sse_done(response.stream, payload)
@@ -746,6 +749,17 @@ module Dashboard
         )
       end
       { payload: payload }
+    end
+
+    def enqueue_summary_refresh_if_ok(chat_session)
+      return unless chat_session&.id.present?
+      ::Ai::Async::SummaryRefreshEnqueuer.enqueue_if_ok(
+        ai_chat_session_id: chat_session.id,
+        merchant_id: current_merchant&.id,
+        request_id: request.request_id
+      )
+    rescue StandardError => e
+      Rails.logger.warn("[AI] Summary refresh enqueue failed (non-blocking): #{e.message}")
     end
 
     def log_execution_plan_safe(plan)

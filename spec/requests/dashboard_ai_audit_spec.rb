@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Dashboard AI audit trail', type: :request do
+  include ActiveJob::TestHelper
   def stub_retrieval_service!
     allow(Ai::Rag::RetrievalService).to receive(:call).and_return(
       context_text: 'Stubbed context.',
@@ -126,5 +127,39 @@ RSpec.describe 'API AI audit trail', type: :request do
     expect(audit.endpoint).to eq('api')
     expect(audit.merchant_id).to eq(merchant.id)
     expect(audit.success).to be(true)
+  end
+
+  describe 'async summary refresh' do
+    it 'enqueues RefreshConversationSummaryJob on successful dashboard chat (agent path)' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+
+      stub_retrieval_service!
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'OK.', model_used: 'test', fallback_used: false })
+      )
+
+      expect {
+        post_chat('What is authorize?')
+      }.to have_enqueued_job(Ai::RefreshConversationSummaryJob)
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it 'returns 200 when summary refresh enqueue fails (non-blocking)' do
+      merchant, key = create_merchant_with_api_key
+      post dashboard_sign_in_path, params: { api_key: key, authenticity_token: csrf_token }
+      follow_redirect! if response.redirect?
+
+      stub_retrieval_service!
+      allow(Ai::GroqClient).to receive(:new).and_return(
+        instance_double(Ai::GroqClient, chat: { content: 'OK.', model_used: 'test', fallback_used: false })
+      )
+      allow(Ai::Async::SummaryRefreshEnqueuer).to receive(:enqueue_if_ok).and_raise(StandardError.new('Redis down'))
+
+      post_chat('What is authorize?')
+      expect(response).to have_http_status(:ok)
+    end
   end
 end

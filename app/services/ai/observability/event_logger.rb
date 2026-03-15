@@ -186,6 +186,43 @@ module Ai
           log_info(payload)
         end
 
+        # Log AI background job lifecycle (enqueued, performed, failed).
+        def log_ai_job(
+          phase: nil,
+          job_class: nil,
+          job_id: nil,
+          ai_chat_session_id: nil,
+          merchant_id: nil,
+          request_id: nil,
+          duration_ms: nil,
+          error_class: nil,
+          error_message: nil,
+          retry_count: nil,
+          skipped: nil,
+          summary_updated: nil,
+          period: nil,
+          total_requests: nil
+        )
+          payload = build_base_payload.merge(
+            event: 'ai_job',
+            phase: phase,
+            job_class: job_class.to_s,
+            job_id: job_id
+          )
+          payload[:ai_chat_session_id] = ai_chat_session_id if ai_chat_session_id.present?
+          payload[:merchant_id] = merchant_id if merchant_id.present?
+          payload[:request_id] = request_id.to_s.strip.presence if request_id.present?
+          payload[:duration_ms] = duration_ms if duration_ms.present?
+          payload[:error_class] = error_class.to_s.strip.presence if error_class.present?
+          payload[:error_message] = truncate_safe(error_message, 500) if error_message.present?
+          payload[:retry_count] = retry_count if retry_count.is_a?(Integer)
+          payload[:skipped] = skipped if skipped.present?
+          payload[:summary_updated] = summary_updated unless summary_updated.nil?
+          payload[:period] = period.to_s if period.present?
+          payload[:total_requests] = total_requests if total_requests.is_a?(Integer)
+          log_info(payload)
+        end
+
         # Log cache events: hit, miss, bypassed.
         def log_cache(
           cache_category: nil,

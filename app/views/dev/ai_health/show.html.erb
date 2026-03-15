@@ -1,0 +1,118 @@
+<% content_for :dev_header_title, "AI Health" %>
+<% content_for :dev_header_subtitle, "SLO-style monitoring — dev only" %>
+
+<div class="page-header">
+  <h1 class="page-title">AI Health</h1>
+  <p class="page-description">Internal SLO-style monitoring. Dev only.</p>
+</div>
+
+<%= form_with url: dev_ai_health_path, method: :get, local: true, class: "analytics-filters" do |f| %>
+  <div class="filter-row">
+    <label class="form-label">Merchant</label>
+    <%= select_tag :merchant_id, options_for_select([["All merchants", ""]] + @merchants.map { |id, name, email| ["##{id} #{name.presence || email}".strip, id] }, @merchant_id), class: "form-input", style: "width: auto; display: inline-block; max-width: 220px;" %>
+    <button type="submit" class="btn btn-primary" style="margin-left: 0.5rem;">Apply</button>
+  </div>
+<% end %>
+
+<% r = @report %>
+
+<div class="summary-grid summary-grid-kpi" style="margin-bottom: 1.5rem;">
+  <div class="summary-card">
+    <div class="summary-label">Overall status</div>
+    <div class="summary-value status-<%= r.overall_status %>"><%= r.overall_status %></div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Evaluated at</div>
+    <div class="summary-value" style="font-size: 0.95rem;"><%= r.evaluated_at&.strftime("%Y-%m-%d %H:%M:%S") %></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <h2 class="card-title">Metric statuses (SLO)</h2>
+  </div>
+  <div class="card-body">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+          <th>Threshold</th>
+          <th>Status</th>
+          <th>Window</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% r.metric_statuses&.each do |s| %>
+          <tr class="status-<%= s.status %>">
+            <td><%= s.metric_name %></td>
+            <td><%= s.metric_name.to_s.include?('rate') && s.value.is_a?(Float) ? "#{(s.value * 100).round(2)}%" : s.value %></td>
+            <td><%= s.threshold %></td>
+            <td><%= s.status %></td>
+            <td><%= s.time_window %></td>
+            <td><%= s.reason_code || "—" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <h2 class="card-title">Metrics by time window</h2>
+  </div>
+  <div class="card-body">
+    <% r.time_windows&.each do |window, m| %>
+      <h3 style="font-size: 1rem; margin-top: 1rem;"><%= window %></h3>
+      <table class="table">
+        <tr><td>Total requests</td><td><%= m[:total_requests] %></td></tr>
+        <tr><td>p50 latency (ms)</td><td><%= m[:p50_latency_ms].present? ? m[:p50_latency_ms] : "—" %></td></tr>
+        <tr><td>p95 latency (ms)</td><td><%= m[:p95_latency_ms].present? ? m[:p95_latency_ms] : "—" %></td></tr>
+        <tr><td>Error rate</td><td><%= (m[:error_rate].to_f * 100).round(2) %>%</td></tr>
+        <tr><td>Degraded fallback rate</td><td><%= (m[:degraded_fallback_rate].to_f * 100).round(2) %>%</td></tr>
+        <tr><td>Tool success rate</td><td><%= (m[:tool_success_rate].to_f * 100).round(2) %>%</td></tr>
+        <tr><td>Retrieval failure rate</td><td><%= (m[:retrieval_failure_rate].to_f * 100).round(2) %>%</td></tr>
+        <tr><td>Orchestration usage rate</td><td><%= (m[:orchestration_usage_rate].to_f * 100).round(2) %>%</td></tr>
+        <tr><td>Orchestration failure rate</td><td><%= (m[:orchestration_failure_rate].to_f * 100).round(2) %>%</td></tr>
+        <tr><td>Policy blocked rate</td><td><%= (m[:policy_blocked_rate].to_f * 100).round(2) %>%</td></tr>
+        <tr><td>Citation re-ask rate</td><td><%= (m[:citation_reask_rate].to_f * 100).round(2) %>%</td></tr>
+      </table>
+    <% end %>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <h2 class="card-title">Recent anomalies</h2>
+  </div>
+  <div class="card-body">
+    <% if r.recent_anomalies&.any? %>
+      <ul>
+        <% r.recent_anomalies.each do |a| %>
+          <li>
+            <strong><%= a[:type] %></strong>: <%= a[:description] %> (window: <%= a[:window] %>)
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-muted">No recent anomalies detected.</p>
+    <% end %>
+  </div>
+</div>
+
+<p class="text-muted" style="margin-top: 1.5rem;">
+  <%= link_to "AI Analytics →", dev_ai_analytics_path(period: "7d", merchant_id: @merchant_id), class: "link" %>
+  &nbsp;|&nbsp;
+  <%= link_to "← AI Playground", dev_ai_playground_path, class: "link" %>
+</p>
+
+<style>
+  .status-healthy { color: green; }
+  .status-warning { color: orange; }
+  .status-unhealthy { color: red; }
+  .summary-value.status-healthy { color: green; }
+  .summary-value.status-warning { color: orange; }
+  .summary-value.status-unhealthy { color: red; }
+</style>

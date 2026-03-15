@@ -17,7 +17,8 @@ module Ai
       REWRITE_PHRASES = /\b(simpler|shorter|more\s+detailed|bullet\s*points?|only\s+(?:the\s+)?important|just\s+the\s+key)\b/i
       REFERENCE_WORDS = /\b(that|it|those|this|same)\b/i
 
-      # Agent-aware defaults: prefer lighter paths when safe
+      # Fallback when registry definition is missing (e.g. in tests without full load).
+      # Prefer Ai::AgentRegistry.definition(agent_key) for retrieval/memory when present.
       AGENT_PREFERENCE = {
         reporting_calculation: { retrieval: :minimal, memory: :skip_standalone },
         support_faq: { retrieval: :full, memory: :full },
@@ -63,6 +64,7 @@ module Ai
         followup_type = @followup[:followup_type]
         rewrite_only = concise_rewrite?(followup_type)
         standalone = !followup_detected
+        defn = ::Ai::AgentRegistry.definition(@agent_key)
 
         skip_retrieval = false
         skip_memory = false
@@ -71,20 +73,27 @@ module Ai
         mode = :agent_full
 
         if rewrite_only && prior_has_content?
-          # Lightweight rewrite: reduce retrieval, use minimal context
           retrieval_budget_reduced = true
           reason_codes << 'concise_rewrite'
           mode = :concise_rewrite_only
         end
 
         if standalone
-          pref = AGENT_PREFERENCE[@agent_key]
-          skip_memory = pref&.dig(:memory) == :skip_standalone
+          skip_memory = if defn
+            !defn.supports_memory?
+          else
+            (AGENT_PREFERENCE[@agent_key]&.dig(:memory) == :skip_standalone)
+          end
           reason_codes << 'standalone_no_followup' if skip_memory
         end
 
         if retrieval_budget_reduced
           reason_codes << 'narrow_question'
+        end
+
+        if defn && !defn.supports_retrieval?
+          skip_retrieval = true
+          reason_codes << 'agent_no_retrieval'
         end
 
         ExecutionPlan.new(

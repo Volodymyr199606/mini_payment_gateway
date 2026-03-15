@@ -692,7 +692,15 @@ module Dashboard
       if execution_plan.respond_to?(:execution_mode)
         debug[:execution_plan] = execution_plan.to_audit_metadata
       end
+      debug.merge!(safe_registry_metadata)
       debug
+    end
+
+    # Safe registry metadata for debug/playground: available agents and tools (no internal secrets).
+    def safe_registry_metadata
+      agents = ::Ai::AgentRegistry.definitions.map { |d| { key: d.key, label: d.debug_label, supports_retrieval: d.supports_retrieval?, supports_memory: d.supports_memory? } }
+      tools = ::Ai::Tools::Registry.definitions.map { |d| { key: d.key, description: d.description.to_s[0..80], cacheable: d.cacheable? } }
+      { registry_agents: agents, registry_tools: tools }
     end
 
     def followup_debug_safe(followup)

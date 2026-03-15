@@ -76,6 +76,19 @@ RSpec.describe Ai::Performance::RequestPlanner do
         expect(plan.reason_codes).to include('standalone_no_followup')
       end
 
+      it 'skips retrieval for agent with supports_retrieval false (reporting_calculation)' do
+        resolution = { intent: nil, followup: { followup_detected: false } }
+
+        plan = described_class.plan(
+          message: 'What was my net volume last month?',
+          intent_resolution: resolution,
+          agent_key: :reporting_calculation
+        )
+
+        expect(plan.skip_retrieval).to be true
+        expect(plan.reason_codes).to include('agent_no_retrieval')
+      end
+
       it 'skips memory for standalone operational request' do
         resolution = { intent: nil, followup: { followup_detected: false } }
 

@@ -46,4 +46,39 @@ RSpec.describe Ai::AgentRegistry do
       expect(described_class.default_key).to eq(:support_faq)
     end
   end
+
+  describe '.definition' do
+    it 'returns AgentDefinition for known key' do
+      d = described_class.definition(:support_faq)
+      expect(d).to be_a(Ai::Agents::AgentDefinition)
+      expect(d.key).to eq(:support_faq)
+      expect(d.debug_label).to eq('Support FAQ')
+      expect(d.supports_retrieval?).to be true
+      expect(d.supports_memory?).to be true
+    end
+
+    it 'returns definition for reporting_calculation with supports_retrieval false' do
+      d = described_class.definition(:reporting_calculation)
+      expect(d).to be_a(Ai::Agents::AgentDefinition)
+      expect(d.supports_retrieval?).to be false
+      expect(d.supports_memory?).to be false
+    end
+
+    it 'returns nil for unknown key' do
+      expect(described_class.definition(:unknown)).to be_nil
+    end
+  end
+
+  describe '.definitions' do
+    it 'returns one definition per registered agent' do
+      expect(described_class.definitions.size).to eq(described_class.all_keys.size)
+    end
+  end
+
+  describe '.validate!' do
+    it 'does not raise with current registry and definitions' do
+      expect { described_class.validate! }.not_to raise_error
+      expect(described_class.validate!).to be true
+    end
+  end
 end

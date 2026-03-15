@@ -33,4 +33,36 @@ RSpec.describe Ai::Tools::Registry do
       )
     end
   end
+
+  describe '.definition' do
+    it 'returns ToolDefinition for known tool' do
+      d = described_class.definition('get_ledger_summary')
+      expect(d).to be_a(Ai::Tools::ToolDefinition)
+      expect(d.key).to eq('get_ledger_summary')
+      expect(d.read_only?).to be true
+      expect(d.cacheable?).to be true
+    end
+
+    it 'returns definition with cacheable false for get_payment_intent' do
+      d = described_class.definition('get_payment_intent')
+      expect(d.cacheable?).to be false
+    end
+
+    it 'returns nil for unknown tool' do
+      expect(described_class.definition('unknown_tool')).to be_nil
+    end
+  end
+
+  describe '.definitions' do
+    it 'returns one definition per registered tool' do
+      expect(described_class.definitions.size).to eq(described_class.known_tools.size)
+    end
+  end
+
+  describe '.validate!' do
+    it 'does not raise with current tools and definitions' do
+      expect { described_class.validate! }.not_to raise_error
+      expect(described_class.validate!).to be true
+    end
+  end
 end

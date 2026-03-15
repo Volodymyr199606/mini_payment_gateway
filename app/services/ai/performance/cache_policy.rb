@@ -44,6 +44,9 @@ module Ai
         end
 
         def cacheable_tool?(tool_name)
+          defn = ::Ai::Tools::Registry.definition(tool_name)
+          return defn.cacheable? if defn
+          # Fallback when no definition (should not happen if registry is used)
           %w[get_merchant_account get_ledger_summary].include?(tool_name.to_s)
         end
 

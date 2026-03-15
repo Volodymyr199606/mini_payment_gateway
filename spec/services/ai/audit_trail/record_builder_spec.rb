@@ -194,5 +194,38 @@ RSpec.describe Ai::AuditTrail::RecordBuilder do
       expect(result).not_to have_key(:retrieval_skipped)
       expect(result).not_to have_key(:memory_skipped)
     end
+
+    it 'records explanation metadata from composition when present' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'dashboard',
+        agent_key: 'tool:get_payment_intent',
+        tool_used: true,
+        tool_names: ['get_payment_intent'],
+        success: true,
+        composition: {
+          composition_mode: 'tool_only',
+          deterministic_explanation_used: true,
+          explanation_type: 'payment_intent',
+          explanation_key: 'authorized'
+        }
+      )
+      expect(result[:deterministic_explanation_used]).to be true
+      expect(result[:explanation_type]).to eq('payment_intent')
+      expect(result[:explanation_key]).to eq('authorized')
+    end
+
+    it 'omits explanation fields when composition has no explanation keys' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'api',
+        agent_key: 'operational',
+        success: true,
+        composition: { composition_mode: 'docs_only' }
+      )
+      expect(result).not_to have_key(:deterministic_explanation_used)
+      expect(result).not_to have_key(:explanation_type)
+      expect(result).not_to have_key(:explanation_key)
+    end
   end
 end

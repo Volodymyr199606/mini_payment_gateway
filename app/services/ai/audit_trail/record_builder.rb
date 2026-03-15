@@ -121,6 +121,11 @@ module Ai
           out[:retrieval_budget_reduced] = !!@execution_plan_metadata[:retrieval_budget_reduced]
         end
         out[:corpus_version] = @corpus_version if @corpus_version.present?
+        if @composition.is_a?(Hash)
+          out[:deterministic_explanation_used] = true if @composition[:deterministic_explanation_used]
+          out[:explanation_type] = @composition[:explanation_type].to_s.strip.presence if @composition[:explanation_type].present?
+          out[:explanation_key] = @composition[:explanation_key].to_s.strip.truncate(64).presence if @composition[:explanation_key].present?
+        end
         out
       end
 

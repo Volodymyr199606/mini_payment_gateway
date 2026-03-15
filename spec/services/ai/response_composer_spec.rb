@@ -145,6 +145,26 @@ RSpec.describe Ai::ResponseComposer do
           :composition_mode
         )
       end
+
+      it 'merges explanation_metadata into composition when provided' do
+        result = described_class.call(
+          reply_text: 'Payment intent 42 is authorized.',
+          citations: [],
+          agent_key: 'tool:get_payment_intent',
+          tool_name: 'get_payment_intent',
+          explanation_metadata: {
+            deterministic_explanation_used: true,
+            explanation_type: 'payment_intent',
+            explanation_key: 'authorized',
+            llm_skipped_due_to_template: true
+          }
+        )
+        comp = result[:composition]
+        expect(comp[:deterministic_explanation_used]).to be true
+        expect(comp[:explanation_type]).to eq('payment_intent')
+        expect(comp[:explanation_key]).to eq('authorized')
+        expect(comp[:llm_skipped_due_to_template]).to be true
+      end
     end
   end
 end

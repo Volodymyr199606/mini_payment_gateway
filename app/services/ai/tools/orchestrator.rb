@@ -29,22 +29,32 @@ module Ai
           context: context
         )
 
-        reply_text = format_reply(result)
-        {
+        reply_text, explanation = format_reply_with_explanation(result)
+        out = {
           invoked: true,
           result: result,
           reply_text: reply_text,
           tool_name: intent[:tool_name]
         }
+        out[:explanation] = explanation if explanation
+        out
       end
 
       private
 
-      def format_reply(executor_result)
-        return 'Could not fetch data.' unless executor_result[:success]
-        return 'No data.' if executor_result[:data].blank?
+      def format_reply_with_explanation(executor_result)
+        return ['Could not fetch data.', nil] unless executor_result[:success]
+        return ['No data.', nil] if executor_result[:data].blank?
 
-        Formatter.format(executor_result[:tool_name], executor_result[:data])
+        rendered = ::Ai::Explanations::Renderer.render(
+          executor_result[:tool_name],
+          executor_result[:data]
+        )
+        if rendered
+          [rendered.explanation_text, rendered]
+        else
+          [Formatter.format(executor_result[:tool_name], executor_result[:data]), nil]
+        end
       end
     end
   end

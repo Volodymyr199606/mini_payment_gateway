@@ -85,7 +85,8 @@ module Dashboard
           data: run_result.deterministic_data,
           tool_name: run_result.tool_names.first,
           tool_result: run_result.deterministic_data,
-          memory_used: false
+          memory_used: false,
+          explanation_metadata: run_result.explanation_metadata
         )
         AiChatMessage.create!(
           ai_chat_session: chat_session,
@@ -111,7 +112,8 @@ module Dashboard
           orchestration_halted_reason: run_result.halted_reason,
           followup_metadata: followup_metadata_safe(followup_result),
           policy_metadata: policy_metadata_from_run(run_result, followup_result),
-          execution_plan_metadata: execution_plan.to_audit_metadata
+          execution_plan_metadata: execution_plan.to_audit_metadata,
+          explanation_metadata: run_result.explanation_metadata
         )
         enqueue_summary_refresh_if_ok(chat_session)
         payload = build_response_payload(composed)
@@ -642,7 +644,11 @@ module Dashboard
         used_doc_context: composition[:used_doc_context],
         used_memory_context: composition[:used_memory_context],
         citations_count: composition[:citations_count],
-        deterministic_fields_used: composition[:deterministic_fields_used]
+        deterministic_fields_used: composition[:deterministic_fields_used],
+        deterministic_explanation_used: composition[:deterministic_explanation_used],
+        explanation_type: composition[:explanation_type],
+        explanation_key: composition[:explanation_key],
+        llm_skipped_due_to_template: composition[:llm_skipped_due_to_template]
       }.compact
       debug.merge(extra)
     end

@@ -75,6 +75,9 @@ module Ai
             created_at: Time.current
           }.tap do |h|
             h[:corpus_version] = record[:corpus_version].to_s.strip.truncate(64).presence if record.key?(:corpus_version)
+            h[:deterministic_explanation_used] = !!record[:deterministic_explanation_used] if record.key?(:deterministic_explanation_used)
+            h[:explanation_type] = record[:explanation_type].to_s.strip.truncate(64).presence if record.key?(:explanation_type)
+            h[:explanation_key] = record[:explanation_key].to_s.strip.truncate(64).presence if record.key?(:explanation_key)
           end
         end
       end

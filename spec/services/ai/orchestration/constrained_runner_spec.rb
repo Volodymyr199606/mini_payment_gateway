@@ -46,6 +46,28 @@ RSpec.describe Ai::Orchestration::ConstrainedRunner do
       expect(result.steps.first[:tool_name]).to eq('get_merchant_account')
     end
 
+    it 'sets explanation_metadata when deterministic template applies (e.g. get_payment_intent)' do
+      pi = merchant.payment_intents.create!(
+        customer_id: merchant.customers.create!(email: 'c@x.com', merchant_id: merchant.id).id,
+        amount_cents: 1000,
+        currency: 'USD',
+        status: 'authorized'
+      )
+      result = described_class.call(
+        message: "payment intent id #{pi.id}",
+        merchant_id: merchant.id
+      )
+      expect(result.orchestration_used?).to be true
+      expect(result.success?).to be true
+      expect(result.explanation_metadata).to be_a(Hash)
+      expect(result.explanation_metadata[:deterministic_explanation_used]).to be true
+      expect(result.explanation_metadata[:explanation_type]).to eq('payment_intent')
+      expect(result.explanation_metadata[:explanation_key]).to eq('authorized')
+      expect(result.explanation_metadata[:llm_skipped_due_to_template]).to be true
+      expect(result.reply_text).to include('authorized')
+      expect(result.reply_text).to include(pi.id.to_s)
+    end
+
     it 'runs single step for get_payment_intent (no follow-up rule)' do
       pi = merchant.payment_intents.create!(
         customer_id: merchant.customers.create!(email: 'c@x.com', merchant_id: merchant.id).id,

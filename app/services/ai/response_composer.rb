@@ -20,7 +20,8 @@ module Ai
       data: nil,
       tool_name: nil,
       tool_result: nil,
-      memory_used: false
+      memory_used: false,
+      explanation_metadata: nil
     )
       @reply_text = reply_text.to_s
       @citations = citations.to_a
@@ -31,6 +32,7 @@ module Ai
       @tool_name = tool_name.to_s.strip.presence
       @tool_result = tool_result
       @memory_used = !!memory_used
+      @explanation_metadata = explanation_metadata.is_a?(Hash) ? explanation_metadata : nil
     end
 
     def call
@@ -55,8 +57,7 @@ module Ai
 
       mode = resolve_mode(used_tool, used_doc, used_mem)
       deterministic_fields = safe_deterministic_fields(used_tool)
-
-      {
+      composition = {
         used_tool_data: used_tool,
         used_doc_context: used_doc,
         used_memory_context: used_mem,
@@ -64,6 +65,8 @@ module Ai
         deterministic_fields_used: deterministic_fields,
         composition_mode: mode
       }
+      composition.merge!(@explanation_metadata) if @explanation_metadata.present?
+      composition
     end
 
     def used_tool_data?

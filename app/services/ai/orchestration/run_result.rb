@@ -13,7 +13,8 @@ module Ai
                   :halted_reason,
                   :deterministic_data,
                   :metadata,
-                  :reply_text
+                  :reply_text,
+                  :explanation_metadata
 
       def initialize(
         orchestration_used: false,
@@ -24,7 +25,8 @@ module Ai
         halted_reason: nil,
         deterministic_data: nil,
         metadata: {},
-        reply_text: ''
+        reply_text: '',
+        explanation_metadata: nil
       )
         @orchestration_used = !!orchestration_used
         @step_count = step_count.to_i
@@ -35,6 +37,7 @@ module Ai
         @deterministic_data = deterministic_data
         @metadata = metadata.to_h.freeze
         @reply_text = reply_text.to_s
+        @explanation_metadata = explanation_metadata.is_a?(Hash) ? explanation_metadata.freeze : nil
       end
 
       def self.no_orchestration

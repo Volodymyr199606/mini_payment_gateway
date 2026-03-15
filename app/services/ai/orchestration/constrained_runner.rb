@@ -53,8 +53,15 @@ module Ai
         tool_names << intent[:tool_name]
         authorization_denied ||= step1_result[:authorization_denied] || step1_result[:error_code] == 'access_denied'
 
+        explanation_metadata = nil
         if step1_result[:success] && step1_result[:data].present?
-          reply_parts << ::Ai::Tools::Formatter.format(intent[:tool_name], step1_result[:data])
+          rendered = ::Ai::Explanations::Renderer.render(intent[:tool_name], step1_result[:data])
+          if rendered
+            reply_parts << rendered.explanation_text
+            explanation_metadata = rendered.to_audit_metadata
+          else
+            reply_parts << ::Ai::Tools::Formatter.format(intent[:tool_name], step1_result[:data])
+          end
         else
           reply_parts << format_step_failure(intent[:tool_name], step1_result)
         end
@@ -77,7 +84,9 @@ module Ai
             authorization_denied ||= step2_result[:authorization_denied] || step2_result[:error_code] == 'access_denied'
 
             if step2_result[:success] && step2_result[:data].present?
-              reply_parts << ::Ai::Tools::Formatter.format(rule[:next_tool], step2_result[:data])
+              rendered2 = ::Ai::Explanations::Renderer.render(rule[:next_tool], step2_result[:data])
+              reply_parts << (rendered2 ? rendered2.explanation_text : ::Ai::Tools::Formatter.format(rule[:next_tool], step2_result[:data]))
+              explanation_metadata ||= rendered2&.to_audit_metadata
               deterministic_data = build_merged_data(intent[:tool_name], step1_result[:data], rule[:next_tool], step2_result[:data])
             else
               reply_parts << format_step_failure(rule[:next_tool], step2_result)
@@ -119,7 +128,8 @@ module Ai
           halted_reason: halted_reason,
           deterministic_data: deterministic_data,
           metadata: result_metadata,
-          reply_text: reply_text
+          reply_text: reply_text,
+          explanation_metadata: explanation_metadata
         )
       end
 

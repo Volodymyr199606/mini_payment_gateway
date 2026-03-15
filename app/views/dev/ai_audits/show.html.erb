@@ -4,6 +4,10 @@
 <div class="page-header">
   <h1 class="page-title">Audit <%= @audit.id %></h1>
   <p class="page-description">Request ID: <code><%= @audit.request_id %></code> · <%= @audit.created_at&.strftime("%Y-%m-%d %H:%M:%S") %></p>
+  <p style="margin-top: 0.5rem;">
+    <%= button_to "Replay request", replay_ai_audit_path(@audit), method: :post, class: "btn btn-primary", data: { disable_with: "Replaying…" } %>
+    <span class="text-muted" style="margin-left: 0.5rem;">Rerun through current pipeline and compare (dev only).</span>
+  </p>
 </div>
 
 <% p = @presented %>
@@ -42,6 +46,65 @@
           </tr>
         <% end %>
       </table>
+    </div>
+  </div>
+<% end %>
+
+<% if @replay_result.present? %>
+  <% r = @replay_result.with_indifferent_access %>
+  <div class="card" style="margin-bottom: 1rem; border: 1px solid #0d6efd;">
+    <div class="card-header">
+      <h2 class="card-title">Replay comparison</h2>
+    </div>
+    <div class="card-body">
+      <p><strong>Replay possible:</strong> <%= r[:replay_possible] ? 'Yes' : 'No' %> &nbsp;|&nbsp; <strong>Duration:</strong> <%= r[:duration_ms].present? ? "#{r[:duration_ms]} ms" : "—" %> &nbsp;|&nbsp; <strong>Reason:</strong> <%= r[:reason_codes]&.join(", ") || "—" %></p>
+      <% if r[:notes]&.any? %>
+        <p class="text-muted"><%= r[:notes].join(" ") %></p>
+      <% end %>
+
+      <h3 style="font-size: 1rem; margin-top: 1rem;">Path comparison</h3>
+      <p>
+        <strong>Matched path:</strong> <%= r[:matched_path].nil? ? "—" : (r[:matched_path] ? "Yes" : "No") %>
+        &nbsp;|&nbsp; <strong>Matched tool usage:</strong> <%= r[:matched_tool_usage].nil? ? "—" : (r[:matched_tool_usage] ? "Yes" : "No") %>
+        &nbsp;|&nbsp; <strong>Matched composition mode:</strong> <%= r[:matched_composition_mode].nil? ? "—" : (r[:matched_composition_mode] ? "Yes" : "No") %>
+        &nbsp;|&nbsp; <strong>Matched policy:</strong> <%= r[:matched_policy_decisions].nil? ? "—" : (r[:matched_policy_decisions] ? "Yes" : "No") %>
+      </p>
+
+      <h3 style="font-size: 1rem; margin-top: 1rem;">Original summary</h3>
+      <table class="table">
+        <% (r[:original_summary] || {}).each do |k, v| %>
+          <tr><td><code><%= k %></code></td><td><%= v.is_a?(Array) ? v.join(", ") : v %></td></tr>
+        <% end %>
+      </table>
+
+      <h3 style="font-size: 1rem; margin-top: 1rem;">Replay summary</h3>
+      <table class="table">
+        <% (r[:replay_summary] || {}).each do |k, v| %>
+          <tr><td><code><%= k %></code></td><td><%= v.is_a?(Array) ? v.join(", ") : v %></td></tr>
+        <% end %>
+      </table>
+
+      <% if r[:differences]&.any? %>
+        <h3 style="font-size: 1rem; margin-top: 1rem;">Differences</h3>
+        <table class="table">
+          <thead><tr><th>Field</th><th>Original</th><th>Replayed</th></tr></thead>
+          <tbody>
+            <% r[:differences].each do |d| %>
+              <tr>
+                <td><code><%= d["field"] || d[:field] %></code></td>
+                <td><%= d["original"] || d[:original] %></td>
+                <td><%= d["replayed"] || d[:replayed] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="text-muted">No differences (or replay not run).</p>
+      <% end %>
+
+      <% if r[:replay_failure].present? %>
+        <p class="text-error"><strong>Replay failure:</strong> <%= r[:replay_failure] %></p>
+      <% end %>
     </div>
   </div>
 <% end %>

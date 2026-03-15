@@ -10,6 +10,7 @@ Rails.application.routes.draw do
       get 'ai_health', to: 'ai_health#show', as: :ai_health
       get 'ai_audits', to: 'ai_audits#index', as: :ai_audits
       get 'ai_audits/:id', to: 'ai_audits#show', as: :ai_audit
+      post 'ai_audits/:id/replay', to: 'ai_audits#replay', as: :replay_ai_audit
     end
   end
 

@@ -26,8 +26,27 @@ module Dev
         return
       end
       @presented = Ai::AuditTrail::DetailPresenter.call(@audit)
+      @replay_result = flash[:replay_result].presence
     rescue StandardError
       redirect_to dev_ai_audits_path, alert: 'Audit not found'
+    end
+
+    def replay
+      @audit = AiRequestAudit.find_by(id: params[:id])
+      unless @audit
+        redirect_to dev_ai_audits_path, alert: 'Audit not found'
+        return
+      end
+
+      result = Ai::Replay::RequestReplayer.call(
+        audit_id: params[:id],
+        request_id: "replay-#{params[:id]}-#{SecureRandom.hex(4)}"
+      )
+      flash[:replay_result] = result.to_h
+      redirect_to dev_ai_audit_path(@audit), notice: result.replay_possible ? 'Replay completed.' : 'Replay not possible for this request.'
+    rescue StandardError => e
+      Rails.logger.warn("[Dev::AiAuditsController] Replay failed: #{e.message}")
+      redirect_to dev_ai_audit_path(params[:id]), alert: "Replay failed: #{e.message}"
     end
 
     private

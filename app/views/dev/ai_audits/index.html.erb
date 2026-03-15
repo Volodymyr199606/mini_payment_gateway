@@ -1,0 +1,111 @@
+<% content_for :dev_header_title, "AI Audit Drill-Down" %>
+<% content_for :dev_header_subtitle, "Browse and filter AI request audits — dev only" %>
+
+<div class="page-header">
+  <h1 class="page-title">AI Audits</h1>
+  <p class="page-description">Inspect individual AI requests. Safe metadata only; no prompts or secrets.</p>
+</div>
+
+<%= form_with url: dev_ai_audits_path, method: :get, local: true, class: "analytics-filters" do |f| %>
+  <div class="filter-row" style="display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: flex-end;">
+    <div>
+      <label class="form-label">From (date/time)</label>
+      <%= text_field_tag :from, @filters[:from], placeholder: "YYYY-MM-DD", class: "form-input", style: "width: 140px;" %>
+    </div>
+    <div>
+      <label class="form-label">To (date/time)</label>
+      <%= text_field_tag :to, @filters[:to], placeholder: "YYYY-MM-DD", class: "form-input", style: "width: 140px;" %>
+    </div>
+    <div>
+      <label class="form-label">Merchant</label>
+      <%= select_tag :merchant_id, options_for_select([["All", ""]] + @merchants.map { |id, name, email| ["##{id} #{name.presence || email}".strip, id] }, @filters[:merchant_id]), class: "form-input", style: "width: auto; max-width: 200px;" %>
+    </div>
+    <div>
+      <label class="form-label">Agent</label>
+      <%= text_field_tag :agent_key, @filters[:agent_key], placeholder: "e.g. tool:get_payment_intent", class: "form-input", style: "width: 180px;" %>
+    </div>
+    <div>
+      <label class="form-label">Composition mode</label>
+      <%= select_tag :composition_mode, options_for_select([["Any", ""], ["tool_only", "tool_only"], ["docs_only", "docs_only"], ["hybrid_tool_docs", "hybrid_tool_docs"], ["memory_docs", "memory_docs"]], @filters[:composition_mode]), class: "form-input", style: "width: auto;" %>
+    </div>
+    <div>
+      <label class="form-label">Request ID</label>
+      <%= text_field_tag :request_id, @filters[:request_id], placeholder: "Search", class: "form-input", style: "width: 120px;" %>
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <%= check_box_tag :fallback_only, "1", @filters[:fallback_only], class: "form-input" %>
+      <label for="fallback_only">Fallback only</label>
+      <%= check_box_tag :failed_only, "1", @filters[:failed_only], class: "form-input" %>
+      <label for="failed_only">Failed only</label>
+      <%= check_box_tag :policy_blocked_only, "1", @filters[:policy_blocked_only], class: "form-input" %>
+      <label for="policy_blocked_only">Policy blocked</label>
+      <%= check_box_tag :high_latency_only, "1", @filters[:high_latency_only], class: "form-input" %>
+      <label for="high_latency_only">High latency (≥5s)</label>
+    </div>
+    <div>
+      <label class="form-label">Tool</label>
+      <%= select_tag :tool_used, options_for_select([["Any", ""], ["Yes", "1"], ["No", "0"], ["get_payment_intent", "get_payment_intent"], ["get_transaction", "get_transaction"], ["get_merchant_account", "get_merchant_account"], ["get_ledger_summary", "get_ledger_summary"]], @filters[:tool_used]), class: "form-input", style: "width: auto;" %>
+    </div>
+    <button type="submit" class="btn btn-primary">Apply</button>
+  </div>
+<% end %>
+
+<% if @audits.blank? %>
+  <div class="card">
+    <div class="card-body">
+      <p class="text-muted">No audits match the filters. Try widening the date range or removing filters.</p>
+    </div>
+  </div>
+<% else %>
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Recent audits (<%= @audits.size %>)</h2>
+    </div>
+    <div class="card-body">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Request ID</th>
+            <th>Merchant</th>
+            <th>Agent</th>
+            <th>Mode</th>
+            <th>Latency</th>
+            <th>Success</th>
+            <th>Fallback</th>
+            <th>Policy</th>
+            <th>Tools</th>
+            <th>Citations</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @audits.each do |audit| %>
+            <tr>
+              <td><%= audit.created_at&.strftime("%Y-%m-%d %H:%M") %></td>
+              <td><code><%= truncate(audit.request_id, length: 14) %></code></td>
+              <td><%= audit.merchant_id || "—" %></td>
+              <td><%= audit.agent_key %></td>
+              <td><%= audit.composition_mode || "—" %></td>
+              <td><%= audit.latency_ms.present? ? "#{audit.latency_ms} ms" : "—" %></td>
+              <td><%= audit.success? ? "✓" : "✗" %></td>
+              <td><%= audit.fallback_used? ? "Yes" : "—" %></td>
+              <td><%= (audit.try(:authorization_denied) || audit.try(:tool_blocked_by_policy)) ? "Yes" : "—" %></td>
+              <td><%= Array(audit.tool_names).any? ? Array(audit.tool_names).join(", ") : "—" %></td>
+              <td><%= audit.citations_count.to_i %></td>
+              <td><%= link_to "View", dev_ai_audit_path(audit), class: "link" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<p class="text-muted" style="margin-top: 1.5rem;">
+  <%= link_to "AI Analytics", dev_ai_analytics_path(period: "7d"), class: "link" %>
+  &nbsp;|&nbsp;
+  <%= link_to "AI Health", dev_ai_health_path, class: "link" %>
+  &nbsp;|&nbsp;
+  <%= link_to "← AI Playground", dev_ai_playground_path, class: "link" %>
+</p>

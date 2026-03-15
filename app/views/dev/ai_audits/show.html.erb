@@ -1,0 +1,55 @@
+<% content_for :dev_header_title, "AI Audit ##{@audit.id}" %>
+<% content_for :dev_header_subtitle, "Request path and metadata — dev only" %>
+
+<div class="page-header">
+  <h1 class="page-title">Audit <%= @audit.id %></h1>
+  <p class="page-description">Request ID: <code><%= @audit.request_id %></code> · <%= @audit.created_at&.strftime("%Y-%m-%d %H:%M:%S") %></p>
+</div>
+
+<% p = @presented %>
+<% path = p[:path_summary] %>
+<% steps = p[:path_steps] %>
+
+<div class="card" style="margin-bottom: 1rem;">
+  <div class="card-header">
+    <h2 class="card-title">Path summary</h2>
+  </div>
+  <div class="card-body">
+    <p><strong><%= path.presence || "—" %></strong></p>
+    <table class="table">
+      <% steps.each do |step| %>
+        <tr>
+          <td style="width: 220px;"><%= step[:label] %></td>
+          <td><%= step[:value] %></td>
+        </tr>
+      <% end %>
+    </table>
+  </div>
+</div>
+
+<% p[:sections].each do |section_name, pairs| %>
+  <% next if pairs.blank? %>
+  <div class="card" style="margin-bottom: 1rem;">
+    <div class="card-header">
+      <h2 class="card-title"><%= section_name.to_s.humanize %></h2>
+    </div>
+    <div class="card-body">
+      <table class="table">
+        <% pairs.each do |key, value| %>
+          <tr>
+            <td style="width: 240px;"><code><%= key %></code></td>
+            <td><%= value.is_a?(Hash) || value.is_a?(Array) ? content_tag(:pre, value.inspect, style: "margin: 0; font-size: 0.85rem;") : value %></td>
+          </tr>
+        <% end %>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<p class="text-muted" style="margin-top: 1.5rem;">
+  <%= link_to "← Back to list", dev_ai_audits_path, class: "link" %>
+  &nbsp;|&nbsp;
+  <%= link_to "AI Analytics", dev_ai_analytics_path, class: "link" %>
+  &nbsp;|&nbsp;
+  <%= link_to "AI Health", dev_ai_health_path, class: "link" %>
+</p>

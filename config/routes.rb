@@ -8,6 +8,8 @@ Rails.application.routes.draw do
       post 'ai_playground/run', to: 'ai_playground#run', as: :ai_playground_run
       get 'ai_analytics', to: 'ai_analytics#index', as: :ai_analytics
       get 'ai_health', to: 'ai_health#show', as: :ai_health
+      get 'ai_audits', to: 'ai_audits#index', as: :ai_audits
+      get 'ai_audits/:id', to: 'ai_audits#show', as: :ai_audit
     end
   end
 

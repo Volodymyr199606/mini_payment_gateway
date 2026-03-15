@@ -213,6 +213,7 @@
             <td><%= r[:tool_names].any? ? r[:tool_names].join(", ") : "—" %></td>
             <td><%= r[:policy_blocked] ? "Yes" : "—" %></td>
             <td><code><%= truncate(r[:request_id], length: 12) %></code></td>
+            <td><%= link_to "Drill down", dev_ai_audit_path(r[:id]), class: "link" if r[:id].present? %></td>
           </tr>
         <% end %>
       </tbody>
@@ -223,6 +224,8 @@
 <% end %>
 
 <p class="text-muted" style="margin-top: 1.5rem;">
+  <%= link_to "AI Audits (drill-down)", dev_ai_audits_path(merchant_id: @merchant_id), class: "link" %>
+  &nbsp;|&nbsp;
   <%= link_to "AI Health (SLO)", dev_ai_health_path(merchant_id: @merchant_id), class: "link" %>
   &nbsp;|&nbsp;
   <%= link_to "← AI Playground", dev_ai_playground_path, class: "link" %>

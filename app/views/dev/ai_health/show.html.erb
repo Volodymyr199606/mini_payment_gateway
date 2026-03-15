@@ -120,7 +120,9 @@
 </div>
 
 <p class="text-muted" style="margin-top: 1.5rem;">
-  <%= link_to "AI Analytics →", dev_ai_analytics_path(period: "7d", merchant_id: @merchant_id), class: "link" %>
+  <%= link_to "AI Analytics", dev_ai_analytics_path(period: "7d", merchant_id: @merchant_id), class: "link" %>
+  &nbsp;|&nbsp;
+  <%= link_to "AI Audits (drill-down)", dev_ai_audits_path(merchant_id: @merchant_id), class: "link" %>
   &nbsp;|&nbsp;
   <%= link_to "← AI Playground", dev_ai_playground_path, class: "link" %>
 </p>

@@ -68,6 +68,26 @@ RSpec.describe Ai::AuditTrail::RecordBuilder do
       expect(result[:orchestration_halted_reason]).to be_nil
     end
 
+    it 'includes corpus_version when provided' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'dashboard',
+        agent_key: 'support_faq',
+        corpus_version: 'abc12'
+      )
+      expect(result[:corpus_version]).to eq('abc12')
+    end
+
+    it 'omits corpus_version when blank' do
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'dashboard',
+        agent_key: 'operational',
+        corpus_version: ''
+      )
+      expect(result).not_to have_key(:corpus_version)
+    end
+
     it 'omits orchestration fields when orchestration_used false' do
       result = described_class.call(
         request_id: 'r',

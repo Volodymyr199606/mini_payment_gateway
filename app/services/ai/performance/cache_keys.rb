@@ -7,13 +7,13 @@ module Ai
       PREFIX = 'ai'
 
       class << self
-        # Retrieval: message + agent + mode (docs are global; no merchant)
+        # Retrieval: message + agent + mode + corpus version (cache invalidates when docs change)
         def retrieval(message:, agent_key: nil, graph_enabled: false, vector_enabled: false, doc_version: nil)
           norm = normalize_message(message)
           parts = [PREFIX, 'ret', norm, (agent_key || 'none').to_s]
           parts << 'g' if graph_enabled
           parts << 'v' if vector_enabled
-          parts << (doc_version || doc_version_default)
+          parts << (doc_version.to_s.presence || doc_version_default)
           safe_key(parts)
         end
 

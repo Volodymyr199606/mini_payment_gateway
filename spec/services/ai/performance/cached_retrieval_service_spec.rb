@@ -28,6 +28,9 @@ RSpec.describe Ai::Performance::CachedRetrievalService do
     allow(Ai::Rag::RetrievalService).to receive(:context_graph_enabled?).and_return(false)
     allow(Ai::Rag::RetrievalService).to receive(:vector_rag_enabled?).and_return(false)
     allow(Ai::Performance::CachePolicy).to receive(:bypass?).and_return(false)
+    allow(Ai::Rag::Corpus::StateService).to receive(:call).and_return(
+      Ai::Rag::Corpus::State.new(corpus_version: 'test_corpus_v1', docs_count: 0, last_changed_at: nil, graph_enabled: false, vector_enabled: false, last_indexed_at: nil, stale: false)
+    )
   end
 
   it 'returns retrieval result' do
@@ -59,6 +62,17 @@ RSpec.describe Ai::Performance::CachedRetrievalService do
   it 'uses different cache keys for different agents' do
     described_class.call('refunds', agent_key: :support_faq)
     described_class.call('refunds', agent_key: :operational)
+    expect(Ai::Rag::RetrievalService).to have_received(:call).twice
+  end
+
+  it 'misses cache when corpus version changes' do
+    state = Ai::Rag::Corpus::State
+    allow(Ai::Rag::Corpus::StateService).to receive(:call).and_return(
+      state.new(corpus_version: 'v1', docs_count: 0, last_changed_at: nil, graph_enabled: false, vector_enabled: false, last_indexed_at: nil, stale: false),
+      state.new(corpus_version: 'v2', docs_count: 0, last_changed_at: nil, graph_enabled: false, vector_enabled: false, last_indexed_at: nil, stale: false)
+    )
+    described_class.call('same query', agent_key: :support_faq)
+    described_class.call('same query', agent_key: :support_faq)
     expect(Ai::Rag::RetrievalService).to have_received(:call).twice
   end
 end

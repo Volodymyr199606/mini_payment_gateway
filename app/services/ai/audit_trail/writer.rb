@@ -73,7 +73,9 @@ module Ai
             tool_blocked_by_policy: !!record[:tool_blocked_by_policy],
             followup_inheritance_blocked: !!record[:followup_inheritance_blocked],
             created_at: Time.current
-          }
+          }.tap do |h|
+            h[:corpus_version] = record[:corpus_version].to_s.strip.truncate(64).presence if record.key?(:corpus_version)
+          end
         end
       end
     end

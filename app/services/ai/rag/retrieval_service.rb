@@ -46,7 +46,8 @@ module Ai
             context_text_length: out[:final_context_chars],
             context_truncated: out[:context_truncated],
             citations_count: out[:citations]&.size || 0,
-            request_id: Thread.current[:ai_request_id]
+            request_id: Thread.current[:ai_request_id],
+            corpus_version: ::Ai::Rag::Corpus::StateService.call.corpus_version
           )
 
           if ai_debug?

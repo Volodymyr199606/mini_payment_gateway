@@ -8,8 +8,7 @@ module Ai
 
     def perform
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      ::Ai::Rag::DocsIndex.reset!
-      ::Ai::Rag::DocsIndex.instance
+      ::Ai::Rag::Corpus::RefreshService.call
       duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
 
       self.class.log_performed(

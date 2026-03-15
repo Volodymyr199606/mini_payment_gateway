@@ -71,7 +71,8 @@ module Ai
           context_text_length: nil,
           context_truncated: nil,
           citations_count: nil,
-          request_id: nil
+          request_id: nil,
+          corpus_version: nil
         )
           payload = build_base_payload.merge(
             event: 'ai_retrieval',
@@ -87,6 +88,7 @@ module Ai
             citations_count: citations_count,
             request_id: request_id
           )
+          payload[:corpus_version] = corpus_version if corpus_version.present?
           log_info(payload)
         end
 
@@ -286,7 +288,9 @@ module Ai
           policy_decision_types: nil,
           cache_metadata: nil,
           resilience_metadata: nil,
-          execution_plan: nil
+          execution_plan: nil,
+          corpus_version: nil,
+          retrieval_corpus_version: nil
         )
           debug = {
             selected_agent: selected_agent,
@@ -310,8 +314,10 @@ module Ai
           debug[:policy_reason_code] = policy_reason_code if policy_reason_code.present?
           debug[:policy_decision_types] = policy_decision_types if policy_decision_types.is_a?(Array) && policy_decision_types.any?
           if cache_metadata.is_a?(Hash) && cache_metadata.present?
-            debug[:cache] = cache_metadata.slice(:retrieval_outcome, :memory_outcome, :cache_bypassed)
+            debug[:cache] = cache_metadata.slice(:retrieval_outcome, :memory_outcome, :cache_bypassed, :retrieval_corpus_version, :cache_version_used)
           end
+          debug[:corpus_version] = corpus_version if corpus_version.present?
+          debug[:retrieval_corpus_version] = retrieval_corpus_version if retrieval_corpus_version.present?
           if resilience_metadata.is_a?(Hash) && resilience_metadata.present?
             debug[:resilience] = resilience_metadata.slice(:degraded, :failure_stage, :fallback_mode)
           end

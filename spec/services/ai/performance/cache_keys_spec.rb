@@ -22,6 +22,14 @@ RSpec.describe Ai::Performance::CacheKeys do
       k2 = described_class.retrieval(message: 'test', agent_key: nil, graph_enabled: true, vector_enabled: false)
       expect(k1).not_to eq(k2)
     end
+
+    it 'includes corpus version so cache invalidates when docs change' do
+      k1 = described_class.retrieval(message: 'test', agent_key: nil, doc_version: 'abc123')
+      k2 = described_class.retrieval(message: 'test', agent_key: nil, doc_version: 'def456')
+      expect(k1).not_to eq(k2)
+      expect(k1).to include('abc123')
+      expect(k2).to include('def456')
+    end
   end
 
   describe '.tool' do

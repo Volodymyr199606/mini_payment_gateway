@@ -9,6 +9,7 @@ module Dev
 
     def show
       @report = Ai::Monitoring::HealthReporter.call(merchant_id: params[:merchant_id].presence)
+      @corpus_state = Ai::Rag::Corpus::StateService.call
       @merchant_id = params[:merchant_id].presence
       @merchants = Merchant.order(:id).limit(200).pluck(:id, :name, :email)
 

@@ -171,8 +171,17 @@ module Api
         end
 
         def write_ai_audit(**attrs)
+          attrs[:corpus_version] ||= current_corpus_version if audit_has_corpus_version?
           record = ::Ai::AuditTrail::RecordBuilder.call(**attrs)
           ::Ai::AuditTrail::Writer.write(record)
+        end
+
+        def current_corpus_version
+          @current_corpus_version ||= ::Ai::Rag::Corpus::StateService.call.corpus_version
+        end
+
+        def audit_has_corpus_version?
+          AiRequestAudit.column_names.include?('corpus_version')
         end
 
         def apply_resilience_fallback(e, message, agent_key, retriever_result, selected_retriever, latency_ms)

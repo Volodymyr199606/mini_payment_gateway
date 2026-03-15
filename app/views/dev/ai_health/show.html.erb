@@ -83,6 +83,23 @@
   </div>
 </div>
 
+<% if @corpus_state %>
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <h2 class="card-title">RAG corpus</h2>
+  </div>
+  <div class="card-body">
+    <table class="table">
+      <tr><td>corpus_version</td><td><code><%= @corpus_state.corpus_version %></code></td></tr>
+      <tr><td>docs_count</td><td><%= @corpus_state.docs_count %></td></tr>
+      <tr><td>last_changed_at</td><td><%= @corpus_state.last_changed_at&.strftime("%Y-%m-%d %H:%M") || "—" %></td></tr>
+      <tr><td>graph_enabled</td><td><%= @corpus_state.graph_enabled %></td></tr>
+      <tr><td>vector_enabled</td><td><%= @corpus_state.vector_enabled %></td></tr>
+    </table>
+  </div>
+</div>
+<% end %>
+
 <div class="card" style="margin-bottom: 1.5rem;">
   <div class="card-header">
     <h2 class="card-title">Recent anomalies</h2>

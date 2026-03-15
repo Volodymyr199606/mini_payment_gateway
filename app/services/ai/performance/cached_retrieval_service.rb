@@ -8,11 +8,13 @@ module Ai
       def self.call(message, agent_key: nil, max_context_chars: nil, max_sections: nil, max_citations: nil)
         graph = ::Ai::Rag::RetrievalService.context_graph_enabled?
         vector = ::Ai::Rag::RetrievalService.vector_rag_enabled?
+        corpus_version = ::Ai::Rag::Corpus::StateService.call.corpus_version
         key = CacheKeys.retrieval(
           message: message,
           agent_key: agent_key,
           graph_enabled: graph,
-          vector_enabled: vector
+          vector_enabled: vector,
+          doc_version: corpus_version
         )
         bypass = CachePolicy.bypass?
 

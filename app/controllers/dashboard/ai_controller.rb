@@ -620,8 +620,17 @@ module Dashboard
     end
 
     def write_ai_audit(**attrs)
+      attrs[:corpus_version] ||= current_corpus_version if audit_has_corpus_version?
       record = ::Ai::AuditTrail::RecordBuilder.call(**attrs)
       ::Ai::AuditTrail::Writer.write(record)
+    end
+
+    def current_corpus_version
+      @current_corpus_version ||= ::Ai::Rag::Corpus::StateService.call.corpus_version
+    end
+
+    def audit_has_corpus_version?
+      AiRequestAudit.column_names.include?('corpus_version')
     end
 
     def merge_composition_debug(debug, composition)
@@ -640,6 +649,7 @@ module Dashboard
 
     def build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed = nil, followup = nil, execution_plan = nil)
       cache_meta = build_cache_metadata
+      corpus_ver = audit_has_corpus_version? ? current_corpus_version : nil
       debug = ::Ai::Observability::EventLogger.build_debug_payload(
         selected_agent: out.agent_key,
         selected_retriever: selected_retriever,
@@ -654,7 +664,9 @@ module Dashboard
         summary_used: memory_result&.dig(:summary_used),
         latency_ms: latency_ms,
         retriever_debug: retriever_result&.dig(:debug),
-        cache_metadata: cache_meta
+        cache_metadata: cache_meta,
+        corpus_version: corpus_ver,
+        retrieval_corpus_version: corpus_ver
       )
       retriever_debug = retriever_result&.dig(:debug)
       debug.merge!(retriever_debug.symbolize_keys) if retriever_debug.is_a?(Hash) && retriever_debug.present?
@@ -692,7 +704,6 @@ module Dashboard
 
     def build_cache_metadata
       events = Thread.current[:ai_cache_events].to_a
-      return {} if events.empty?
       meta = {}
       events.each do |e|
         cat = e[:category].to_s
@@ -700,6 +711,8 @@ module Dashboard
         meta[:memory_outcome] = e[:outcome] if cat == 'memory'
         meta[:cache_bypassed] = true if e[:outcome] == :bypassed
       end
+      meta[:retrieval_corpus_version] = current_corpus_version if audit_has_corpus_version?
+      meta[:cache_version_used] = current_corpus_version if audit_has_corpus_version?
       meta.compact
     end
 

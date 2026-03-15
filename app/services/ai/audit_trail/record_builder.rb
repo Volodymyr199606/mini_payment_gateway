@@ -37,7 +37,8 @@ module Ai
         followup_metadata: nil,
         policy_metadata: nil,
         resilience_metadata: nil,
-        execution_plan_metadata: nil
+        execution_plan_metadata: nil,
+        corpus_version: nil
       )
         @request_id = request_id.to_s.strip.presence
         @endpoint = endpoint.to_s.strip.presence
@@ -67,6 +68,7 @@ module Ai
         @policy_metadata = policy_metadata
         @resilience_metadata = resilience_metadata
         @execution_plan_metadata = execution_plan_metadata
+        @corpus_version = corpus_version.to_s.strip.presence
       end
 
       def call
@@ -118,6 +120,7 @@ module Ai
           out[:memory_skipped] = !!@execution_plan_metadata[:memory_skipped]
           out[:retrieval_budget_reduced] = !!@execution_plan_metadata[:retrieval_budget_reduced]
         end
+        out[:corpus_version] = @corpus_version if @corpus_version.present?
         out
       end
 

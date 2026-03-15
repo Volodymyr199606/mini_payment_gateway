@@ -21,6 +21,13 @@ RSpec.describe 'Dev::AiHealthController', type: :request do
       expect(response.body).to include('Recent anomalies')
     end
 
+    it 'renders RAG corpus section with corpus_version and docs_count' do
+      get dev_ai_health_path
+      expect(response.body).to include('RAG corpus')
+      expect(response.body).to include('corpus_version')
+      expect(response.body).to include('docs_count')
+    end
+
     it 'accepts merchant_id filter' do
       merchant = create_merchant_with_api_key.first
       get dev_ai_health_path, params: { merchant_id: merchant.id }

@@ -53,6 +53,13 @@
   <div data-dev-ai-playground-target="sections"></div>
 </div>
 
+<% if @corpus_state %>
+<p class="text-muted" style="margin-top: 1rem; font-size: 0.9rem;">
+  RAG corpus: <code><%= @corpus_state.corpus_version %></code> · <%= @corpus_state.docs_count %> docs · <%= @corpus_state.last_changed_at&.strftime("%Y-%m-%d %H:%M") || "—" %>
+</p>
+<% end %>
 <p class="text-muted" style="margin-top: 1.5rem;">
   <%= link_to "AI Analytics →", dev_ai_analytics_path, class: "link" %>
+  &nbsp;|&nbsp;
+  <%= link_to "AI Health", dev_ai_health_path, class: "link" %>
 </p>

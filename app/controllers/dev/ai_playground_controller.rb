@@ -11,6 +11,7 @@ module Dev
     def show
       @merchants = Merchant.order(:id).limit(50)
       @presets = PRESETS
+      @corpus_state = Ai::Rag::Corpus::StateService.call
     end
 
     def run

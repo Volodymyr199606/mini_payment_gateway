@@ -356,9 +356,10 @@ module Dashboard
       payload[:debug] = apply_debug_policy(build_debug_payload(out, agent_key, selected_retriever, retriever_result, latency_ms, memory_result, composed, followup_result, execution_plan)) if ai_debug?
       write_sse_done(response.stream, payload)
     rescue StandardError => e
+      Rails.logger.warn("[AI] Resilience fallback (streaming): #{e.class.name} - #{e.message}") if Rails.env.development? || Rails.env.test?
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
       stage = ::Ai::Resilience::Coordinator.infer_stage(e)
-      decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: { original_path: 'streaming' })
+      decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: { original_path: 'streaming' }, exception: e)
       safe = ::Ai::Resilience::Coordinator.build_safe_response(decision: decision, context: {})
       safe_audit { log_ai_request_error(e, msg, agent_key, retriever_result, selected_retriever, latency_ms) }
       ::Ai::Observability::EventLogger.log_resilience(
@@ -736,6 +737,7 @@ module Dashboard
     end
 
     def apply_resilience_fallback(e, msg, agent_key, retriever_result, selected_retriever, latency_ms, followup_result: nil)
+      Rails.logger.warn("[AI] Resilience fallback: #{e.class.name} - #{e.message}") if Rails.env.development? || Rails.env.test?
       stage = ::Ai::Resilience::Coordinator.infer_stage(e)
       context = {
         context_text: retriever_result&.dig(:context_text),
@@ -743,7 +745,7 @@ module Dashboard
         tool_name: nil,
         original_path: 'agent'
       }
-      decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: context)
+      decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: context, exception: e)
       safe = ::Ai::Resilience::Coordinator.build_safe_response(decision: decision, context: context)
 
       safe_audit { log_ai_request_error(e, msg, agent_key, retriever_result, selected_retriever, latency_ms) }

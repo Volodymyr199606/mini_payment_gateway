@@ -19,6 +19,9 @@ module Ai
         unknown: "Something went wrong. Please try again."
       }.freeze
 
+      # Shown when the exception indicates missing LLM config (e.g. GROQ_API_KEY).
+      API_KEY_MESSAGE = "AI chat needs an API key to generate replies. Set GROQ_API_KEY in your environment (e.g. in .env) and restart the server. For local dev, see docs or the AI setup guide."
+
       class << self
         # Infer failure_stage from exception.
         def infer_stage(exception)
@@ -26,6 +29,7 @@ module Ai
           msg = exception.message.to_s.downcase
           class_name = exception.class.name.to_s
           return :generation if class_name.include?('Groq') || class_name.include?('Faraday') || msg.include?('groq') || msg.include?('api') && msg.include?('error')
+          return :generation if msg.include?('api_key') || msg.include?('api key') || msg.include?('groq_api_key') || msg.include?('not set')
           return :retrieval if msg.include?('retriev') || msg.include?('doc') && msg.include?('fail')
           return :tool if msg.include?('tool') || msg.include?('executor')
           return :orchestration if msg.include?('orchestrat')
@@ -35,12 +39,12 @@ module Ai
         end
 
         # Plan fallback decision from failure stage and context.
-        def plan_fallback(failure_stage:, context: {})
+        def plan_fallback(failure_stage:, context: {}, exception: nil)
           stage = failure_stage.to_s.to_sym
           stage = :unknown unless FAILURE_STAGES.include?(stage)
 
           fallback_mode = choose_fallback_mode(stage, context)
-          safe_message = safe_message_for(stage)
+          safe_message = api_key_related?(exception) ? API_KEY_MESSAGE : safe_message_for(stage)
 
           Decision.degrade(
             failure_stage: stage,
@@ -95,6 +99,12 @@ module Ai
 
         def safe_message_for(stage)
           SAFE_MESSAGES[stage.to_s.to_sym] || SAFE_MESSAGES[:unknown]
+        end
+
+        def api_key_related?(exception)
+          return false unless exception
+          msg = exception.message.to_s.downcase
+          msg.include?('api_key') || msg.include?('api key') || msg.include?('groq_api_key') || msg.include?('not set')
         end
 
         private

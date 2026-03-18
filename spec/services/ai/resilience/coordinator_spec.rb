@@ -19,6 +19,11 @@ RSpec.describe Ai::Resilience::Coordinator do
     it 'returns unknown for generic errors' do
       expect(described_class.infer_stage(StandardError.new('something broke'))).to eq(:unknown)
     end
+
+    it 'infers generation from api_key / not set messages' do
+      expect(described_class.infer_stage(StandardError.new('GROQ_API_KEY not set'))).to eq(:generation)
+      expect(described_class.infer_stage(StandardError.new('api_key missing'))).to eq(:generation)
+    end
   end
 
   describe '.plan_fallback' do
@@ -38,6 +43,11 @@ RSpec.describe Ai::Resilience::Coordinator do
     it 'chooses docs_only when tool fails but context_text present' do
       d = described_class.plan_fallback(failure_stage: :tool, context: { context_text: 'doc content' })
       expect(d.fallback_mode).to eq(:docs_only)
+    end
+
+    it 'uses API key message when exception is api_key related' do
+      d = described_class.plan_fallback(failure_stage: :generation, context: {}, exception: StandardError.new('GROQ_API_KEY not set'))
+      expect(d.safe_message).to include('GROQ_API_KEY')
     end
   end
 

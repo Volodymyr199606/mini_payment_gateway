@@ -10,10 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_11_100000) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_16_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
-  enable_extension "vector"
 
   create_table "ai_chat_messages", force: :cascade do |t|
     t.bigint "merchant_id", null: false
@@ -64,6 +63,14 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_11_100000) do
     t.datetime "created_at", null: false
     t.boolean "followup_detected", default: false, null: false
     t.string "followup_type"
+    t.boolean "authorization_denied", default: false, null: false
+    t.string "policy_reason_code"
+    t.boolean "tool_blocked_by_policy", default: false, null: false
+    t.boolean "followup_inheritance_blocked", default: false, null: false
+    t.string "corpus_version"
+    t.boolean "deterministic_explanation_used", default: false, null: false
+    t.string "explanation_type"
+    t.string "explanation_key"
     t.index ["agent_key"], name: "index_ai_request_audits_on_agent_key"
     t.index ["created_at"], name: "index_ai_request_audits_on_created_at"
     t.index ["merchant_id"], name: "index_ai_request_audits_on_merchant_id"
@@ -110,9 +117,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_11_100000) do
     t.index ["merchant_id"], name: "index_customers_on_merchant_id"
   end
 
-# Could not dump table "doc_section_embeddings" because of following StandardError
-#   Unknown type 'vector(1536)' for column 'embedding'
-
+  create_table "doc_section_embeddings", primary_key: "section_id", id: :string, force: :cascade do |t|
+    t.datetime "updated_at", null: false
+    t.index ["section_id"], name: "index_doc_section_embeddings_on_section_id", unique: true
+  end
 
   create_table "idempotency_records", force: :cascade do |t|
     t.bigint "merchant_id", null: false

@@ -187,7 +187,7 @@ module Api
         def apply_resilience_fallback(e, message, agent_key, retriever_result, selected_retriever, latency_ms)
           stage = ::Ai::Resilience::Coordinator.infer_stage(e)
           context = { context_text: retriever_result&.dig(:context_text), tool_data: nil, original_path: 'api' }
-          decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: context)
+          decision = ::Ai::Resilience::Coordinator.plan_fallback(failure_stage: stage, context: context, exception: e)
           safe = ::Ai::Resilience::Coordinator.build_safe_response(decision: decision, context: context)
 
           safe_audit { log_ai_request_error(e, message, agent_key, retriever_result, selected_retriever, latency_ms) }

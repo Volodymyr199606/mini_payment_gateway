@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+# Run AI quality gates locally (same as CI). Requires test DB prepared.
+# Usage: bin/ci_ai   or   bundle exec rake ai:ci
+# See docs/AI_CI_QUALITY_GATES.md
+
+APP_ROOT = File.expand_path('..', __dir__)
+Dir.chdir(APP_ROOT) do
+  ENV['RAILS_ENV'] = 'test'
+  exec('bundle', 'exec', 'rake', 'ai:ci')
+end

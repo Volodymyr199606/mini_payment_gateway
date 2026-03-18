@@ -1,0 +1,321 @@
+# CI for mini_payment_gateway: full test suite with dedicated AI quality gates.
+# AI gates: contracts, scenarios, adversarial, policy, internal tooling, docs. Optional: demo seed.
+# No external API calls; all AI tests use stubs/fakes. Deterministic and self-contained.
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  RAILS_ENV: test
+  DATABASE_USERNAME: postgres
+  DATABASE_PASSWORD: postgres
+  DATABASE_HOST: localhost
+
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Prepare test database
+        run: bundle exec rails db:create db:schema:load
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+
+  # --- AI quality gates (all depend on setup, no external APIs) ---
+
+  ai_contracts:
+    name: AI contracts
+    needs: setup
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Prepare DB
+        run: bundle exec rails db:create db:schema:load
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+      - name: Run AI contract tests
+        run: bundle exec rspec spec/ai/contracts/ --format progress
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+
+  ai_scenarios:
+    name: AI scenarios
+    needs: setup
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Prepare DB
+        run: bundle exec rails db:create db:schema:load
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+      - name: Run AI scenario tests
+        run: bundle exec rspec spec/ai/end_to_end_scenarios_spec.rb --format progress
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+
+  ai_adversarial:
+    name: AI adversarial
+    needs: setup
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Prepare DB
+        run: bundle exec rails db:create db:schema:load
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+      - name: Run AI adversarial tests
+        run: bundle exec rspec spec/ai/adversarial_scenarios_spec.rb --format progress
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+
+  ai_policy:
+    name: AI policy
+    needs: setup
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Prepare DB
+        run: bundle exec rails db:create db:schema:load
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+      - name: Run AI policy tests
+        run: bundle exec rspec spec/ai/authorization_policy_spec.rb --format progress
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+
+  ai_internal_tooling:
+    name: AI internal tooling
+    needs: setup
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Prepare DB
+        run: bundle exec rails db:create db:schema:load
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+      - name: Run AI internal tooling smoke tests
+        run: >
+          bundle exec rspec
+          spec/requests/dev/ai_analytics_spec.rb
+          spec/requests/dev/ai_health_spec.rb
+          spec/requests/dev/ai_audits_spec.rb
+          spec/requests/dev/ai_audits_replay_spec.rb
+          spec/requests/dev/ai_playground_spec.rb
+          --format progress
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+
+  ai_docs:
+    name: AI docs
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Run AI docs consistency checks
+        run: bundle exec rspec spec/docs/ai_platform_docs_spec.rb --format progress
+
+  demo_seed:
+    name: Demo seed (smoke)
+    needs: setup
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Prepare DB
+        run: bundle exec rails db:create db:schema:load
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+      - name: Run demo seed smoke test
+        run: bundle exec rspec spec/seeds/demo_seed_spec.rb --format progress
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+
+  # Remaining specs (excludes AI gate paths already run above)
+  spec_rest:
+    name: Spec (rest)
+    needs: [setup, ai_contracts, ai_scenarios, ai_adversarial, ai_policy, ai_internal_tooling, ai_docs]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Prepare DB
+        run: bundle exec rails db:create db:schema:load
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres
+      - name: Run remaining RSpec (exclude AI gate paths)
+        run: >
+          bundle exec rspec spec
+          --exclude-pattern "spec/ai/**/*_spec.rb,spec/docs/ai_platform_docs_spec.rb,spec/requests/dev/ai_*_spec.rb,spec/seeds/demo_seed_spec.rb"
+          --format progress
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_USERNAME: postgres
+          DATABASE_PASSWORD: postgres

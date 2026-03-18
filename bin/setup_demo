@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+# One-command demo setup: prepare DB and load demo data (development only).
+
+APP_ROOT = File.expand_path('..', __dir__)
+Dir.chdir(APP_ROOT) do
+  puts '== Preparing database =='
+  system('bundle exec rails db:prepare', exception: true)
+  puts "\n== Seeding demo data =="
+  system('bundle exec rails demo:seed', exception: true)
+  puts "\nDone. Sign in to the dashboard with the demo credentials printed above."
+end

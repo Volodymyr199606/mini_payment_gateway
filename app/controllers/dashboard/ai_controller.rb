@@ -243,7 +243,7 @@ module Dashboard
     end
 
     def streaming_enabled?
-      ENV['AI_STREAMING_ENABLED'].to_s.strip.downcase.in?(%w[true 1])
+      ::Ai::Config::FeatureFlags.ai_streaming_enabled?
     end
 
     def parse_stream_from_body
@@ -500,8 +500,8 @@ module Dashboard
     end
 
     def resolve_retriever_name
-      graph = ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1])
-      vector = ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1])
+      graph = ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?
+      vector = ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?
       graph ? 'GraphExpandedRetriever' : (vector ? 'HybridRetriever' : 'DocsRetriever')
     end
 
@@ -513,8 +513,8 @@ module Dashboard
         question: msg,
         selected_agent: out.agent_key,
         selected_retriever: selected_retriever,
-        graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-        vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
+        graph_enabled: ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?,
+        vector_enabled: ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?,
         memory_used: memory_result&.dig(:memory_used),
         summary_used: memory_result&.dig(:summary_used),
         recent_messages_count: recent_count,
@@ -536,8 +536,8 @@ module Dashboard
         question: msg,
         selected_agent: agent_key&.to_s,
         selected_retriever: selected_retriever,
-        graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-        vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
+        graph_enabled: ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?,
+        vector_enabled: ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?,
         memory_used: nil,
         summary_used: nil,
         recent_messages_count: nil,
@@ -659,8 +659,8 @@ module Dashboard
       debug = ::Ai::Observability::EventLogger.build_debug_payload(
         selected_agent: out.agent_key,
         selected_retriever: selected_retriever,
-        graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-        vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
+        graph_enabled: ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?,
+        vector_enabled: ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?,
         retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
         citations_count: out.citations.size,
         fallback_used: out.fallback_used,
@@ -693,6 +693,7 @@ module Dashboard
         debug[:execution_plan] = execution_plan.to_audit_metadata
       end
       debug.merge!(safe_registry_metadata)
+      debug[:config_flags] = safe_config_summary
       debug
     end
 
@@ -701,6 +702,10 @@ module Dashboard
       agents = ::Ai::AgentRegistry.definitions.map { |d| { key: d.key, label: d.debug_label, supports_retrieval: d.supports_retrieval?, supports_memory: d.supports_memory? } }
       tools = ::Ai::Tools::Registry.definitions.map { |d| { key: d.key, description: d.description.to_s[0..80], cacheable: d.cacheable? } }
       { registry_agents: agents, registry_tools: tools }
+    end
+
+    def safe_config_summary
+      ::Ai::Config::FeatureFlags.safe_summary
     end
 
     def followup_debug_safe(followup)

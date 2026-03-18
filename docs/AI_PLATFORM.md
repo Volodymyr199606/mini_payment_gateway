@@ -30,6 +30,7 @@ All AI requests are **merchant-scoped**. Policy enforces tenant isolation before
 | [AI_OPERATIONS.md](AI_OPERATIONS.md) | Analytics, health, audit drill-down, replay, cache/corpus, resilience, debugging regressions. |
 | [AI_SAFETY_AND_POLICY.md](AI_SAFETY_AND_POLICY.md) | Merchant scoping, policy engine, tool/orchestration limits, debug exposure, trust boundaries. |
 | [AI_DEBUGGING_AND_REPLAY.md](AI_DEBUGGING_AND_REPLAY.md) | Inspecting audits, replay workflow, what replay can/cannot do, useful metadata. |
+| [AI_DEPLOYMENT_AND_RELEASE_SAFETY.md](AI_DEPLOYMENT_AND_RELEASE_SAFETY.md) | Feature flags, startup validation, production safety, rollout controls, config visibility. |
 | [AI_INTERFACE_CONTRACTS.md](AI_INTERFACE_CONTRACTS.md) | Contract versions and field names for payloads (ParsedIntent, ExecutionPlan, ToolResult, etc.). |
 | [AI_RAG_AUDIT.md](AI_RAG_AUDIT.md) | RAG component map and per-component notes (reference). |
 

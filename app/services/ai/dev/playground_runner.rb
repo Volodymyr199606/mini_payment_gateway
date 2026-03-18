@@ -189,8 +189,8 @@ module Ai
           routing: {
             agent: composed[:agent_key],
             path: composed.dig(:composition, :composition_mode) || 'docs_only',
-            graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-            vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1])
+            graph_enabled: ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?,
+            vector_enabled: ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?
           },
           retrieval: {
             retriever: selected_retriever,

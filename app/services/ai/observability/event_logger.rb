@@ -336,8 +336,7 @@ module Ai
         end
 
         def ai_debug_enabled?
-          v = ENV['AI_DEBUG'].to_s.strip.downcase
-          v == 'true' || v == '1'
+          ::Ai::Config::FeatureFlags.ai_debug_enabled?
         end
 
         private

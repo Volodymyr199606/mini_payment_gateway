@@ -14,9 +14,6 @@ module Ai
 
       CATEGORIES = %i[retrieval ledger merchant_account memory tool_other].freeze
 
-      BYPASS_ENV_AI_DEBUG = 'AI_DEBUG'
-      BYPASS_ENV_CACHE = 'AI_CACHE_BYPASS'
-
       class << self
         def ttl_for(category)
           case category.to_s.to_sym
@@ -34,13 +31,11 @@ module Ai
         end
 
         def ai_debug?
-          v = ENV[BYPASS_ENV_AI_DEBUG].to_s.strip.downcase
-          v == 'true' || v == '1'
+          ::Ai::Config::FeatureFlags.ai_debug_enabled?
         end
 
         def cache_bypass?
-          v = ENV[BYPASS_ENV_CACHE].to_s.strip.downcase
-          v == 'true' || v == '1'
+          ::Ai::Config::FeatureFlags.ai_cache_bypass?
         end
 
         def cacheable_tool?(tool_name)

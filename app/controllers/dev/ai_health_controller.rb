@@ -12,10 +12,11 @@ module Dev
       @corpus_state = Ai::Rag::Corpus::StateService.call
       @merchant_id = params[:merchant_id].presence
       @merchants = Merchant.order(:id).limit(200).pluck(:id, :name, :email)
+      @config_flags = Ai::Config::FeatureFlags.safe_summary
 
       respond_to do |format|
         format.html
-        format.json { render json: @report.to_h }
+        format.json { render json: @report.to_h.merge(config_flags: @config_flags) }
       end
     end
 

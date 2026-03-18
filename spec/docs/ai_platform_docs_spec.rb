@@ -29,4 +29,8 @@ RSpec.describe 'AI platform docs' do
   it 'has AI_DEBUGGING_AND_REPLAY.md' do
     expect(File).to exist(docs_root.join('AI_DEBUGGING_AND_REPLAY.md'))
   end
+
+  it 'has AI_DEPLOYMENT_AND_RELEASE_SAFETY.md' do
+    expect(File).to exist(docs_root.join('AI_DEPLOYMENT_AND_RELEASE_SAFETY.md'))
+  end
 end

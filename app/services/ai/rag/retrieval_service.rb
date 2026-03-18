@@ -71,18 +71,15 @@ module Ai
         end
 
         def ai_debug?
-          v = ENV[DEBUG_ENV_KEY].to_s.strip.downcase
-          v == 'true' || v == '1'
+          ::Ai::Config::FeatureFlags.ai_debug_enabled?
         end
 
         def context_graph_enabled?
-          v = ENV[ENV_KEY].to_s.strip.downcase
-          v == 'true' || v == '1'
+          ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?
         end
 
         def vector_rag_enabled?
-          v = ENV[VECTOR_RAG_ENV_KEY].to_s.strip.downcase
-          v == 'true' || v == '1'
+          ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?
         end
       end
     end

@@ -77,8 +77,8 @@ module Api
         private
 
         def resolve_retriever_name
-          graph = ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1])
-          vector = ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1])
+          graph = ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?
+          vector = ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?
           graph ? 'GraphExpandedRetriever' : (vector ? 'HybridRetriever' : 'DocsRetriever')
         end
 
@@ -90,8 +90,8 @@ module Api
             question: message,
             selected_agent: out.agent_key,
             selected_retriever: selected_retriever,
-            graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-            vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
+            graph_enabled: ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?,
+            vector_enabled: ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?,
             memory_used: false,
             summary_used: out.metadata[:summary_used],
             recent_messages_count: 0,
@@ -113,8 +113,8 @@ module Api
             question: message,
             selected_agent: agent_key&.to_s,
             selected_retriever: selected_retriever,
-            graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-            vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
+            graph_enabled: ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?,
+            vector_enabled: ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?,
             memory_used: false,
             summary_used: nil,
             recent_messages_count: 0,
@@ -140,8 +140,8 @@ module Api
           debug = ::Ai::Observability::EventLogger.build_debug_payload(
             selected_agent: out.agent_key,
             selected_retriever: selected_retriever,
-            graph_enabled: ENV['AI_CONTEXT_GRAPH_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
-            vector_enabled: ENV['AI_VECTOR_RAG_ENABLED'].to_s.strip.downcase.in?(%w[true 1]),
+            graph_enabled: ::Ai::Config::FeatureFlags.ai_graph_retrieval_enabled?,
+            vector_enabled: ::Ai::Config::FeatureFlags.ai_vector_retrieval_enabled?,
             retrieved_sections_count: retriever_result&.dig(:final_sections_count) || retriever_result&.dig(:citations)&.size,
             citations_count: out.citations.size,
             fallback_used: out.fallback_used,

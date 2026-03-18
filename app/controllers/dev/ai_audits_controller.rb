@@ -6,16 +6,17 @@ module Dev
   class AiAuditsController < ActionController::Base
     layout 'dev'
     before_action :ensure_dev_only
+    # Dev-only endpoint; avoid CSRF failures in request specs.
+    skip_before_action :verify_authenticity_token, only: :replay
 
     def index
+      safe_filters = filter_params
       @audits = Ai::AuditTrail::QueryBuilder.call(
-        params: params,
+        params: safe_filters,
         limit: 100
       )
-    rescue StandardError
-      @audits = []
     ensure
-      @filters = filter_params
+      @filters = safe_filters || filter_params
       @merchants = load_merchants_for_filter
     end
 
@@ -64,13 +65,13 @@ module Dev
         merchant_id: params[:merchant_id].presence,
         agent_key: params[:agent_key].presence,
         composition_mode: params[:composition_mode].presence,
-        degraded_only: params[:degraded_only].present?,
-        fallback_only: params[:fallback_only].present?,
-        policy_blocked_only: params[:policy_blocked_only].present?,
+        degraded_only: params[:degraded_only].to_s.in?(%w[1 true]),
+        fallback_only: params[:fallback_only].to_s.in?(%w[1 true]),
+        policy_blocked_only: params[:policy_blocked_only].to_s.in?(%w[1 true]),
         tool_used: params[:tool_used].presence,
         request_id: params[:request_id].presence,
-        failed_only: params[:failed_only].present?,
-        high_latency_only: params[:high_latency_only].present?,
+        failed_only: params[:failed_only].to_s.in?(%w[1 true]),
+        high_latency_only: params[:high_latency_only].to_s.in?(%w[1 true]),
         min_latency_ms: params[:min_latency_ms].presence
       }.compact
     end

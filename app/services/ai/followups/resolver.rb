@@ -114,6 +114,7 @@ module Ai
 
         # Short message with references
         has_ref = REFERENCE_WORDS.match?(lower)
+        mentions_entity = lower.match?(/\b(transaction|payment\s+intent|webhook\s+event)\b/i)
         has_time = TIME_ADJUSTMENT.match?(lower)
         has_filter = FILTER_PHRASES.match?(lower)
         has_explain = EXPLAIN_PHRASES.match?(lower)
@@ -121,6 +122,11 @@ module Ai
 
         if has_time && (lower.split.size <= 8)
           { type: :time_range_adjustment, confidence: 0.85 }
+        elsif has_ref && mentions_entity
+          # Examples we want to recognize:
+          # - "Use that transaction from the previous session"
+          # - "Use same payment intent from before after merchant/session switch"
+          { type: :entity_followup, confidence: 0.9 }
         elsif has_ref && has_continuation
           { type: :entity_followup, confidence: 0.9 }
         elsif has_ref && has_filter

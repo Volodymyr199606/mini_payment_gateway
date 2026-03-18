@@ -5,7 +5,7 @@
   <h1 class="page-title">Audit <%= @audit.id %></h1>
   <p class="page-description">Request ID: <code><%= @audit.request_id %></code> · <%= @audit.created_at&.strftime("%Y-%m-%d %H:%M:%S") %></p>
   <p style="margin-top: 0.5rem;">
-    <%= button_to "Replay request", replay_ai_audit_path(@audit), method: :post, class: "btn btn-primary", data: { disable_with: "Replaying…" } %>
+    <%= button_to "Replay request", dev_replay_ai_audit_path(@audit), method: :post, class: "btn btn-primary", data: { disable_with: "Replaying…" } %>
     <span class="text-muted" style="margin-left: 0.5rem;">Rerun through current pipeline and compare (dev only).</span>
   </p>
 </div>

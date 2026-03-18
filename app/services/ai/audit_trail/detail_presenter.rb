@@ -8,7 +8,7 @@ module Ai
       # Whitelist of attribute names we are allowed to show (all persisted audit fields are safe by design)
       SAFE_KEYS = %w[
         id request_id endpoint merchant_id agent_key retriever_key composition_mode
-        tool_used tool_names fallback_used citation_reask_used memory_used summary_used
+        tool_used tool_names fallback_used memory_used summary_used
         parsed_entities parsed_intent_hints citations_count retrieved_sections_count
         latency_ms model_used success error_class error_message created_at
         followup_detected followup_type authorization_denied policy_reason_code
@@ -26,7 +26,7 @@ module Ai
         execution_plan: %w[execution_mode retrieval_skipped memory_skipped retrieval_budget_reduced],
         tool_usage: %w[tool_used tool_names],
         orchestration: %w[orchestration_used orchestration_step_count orchestration_halted_reason],
-        retrieval: %w[retrieved_sections_count citations_count citation_reask_used corpus_version],
+        retrieval: %w[retrieved_sections_count citations_count corpus_version],
         memory: %w[memory_used summary_used],
         composition: %w[composition_mode deterministic_explanation_used explanation_type explanation_key],
         policy: %w[authorization_denied tool_blocked_by_policy followup_inheritance_blocked policy_reason_code],

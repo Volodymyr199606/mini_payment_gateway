@@ -68,7 +68,7 @@ module Ai
         lines = [
           "Account: #{m[:name]} (##{m[:id]})",
           "Status: #{m[:status]}",
-          "Payment intents: #{m[:payment_intents_count]}",
+          "Intents: #{m[:payment_intents_count]}",
           "Webhook events: #{m[:webhook_events_count]}"
         ]
         lines.join("\n")

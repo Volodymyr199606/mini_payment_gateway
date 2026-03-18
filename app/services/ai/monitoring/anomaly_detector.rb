@@ -22,7 +22,9 @@ module Ai
 
       def call
         anomalies = []
-        since = LOOKBACK_BUCKETS * BUCKET_MINUTES.minutes.ago
+        # `N * (minutes.ago)` produces `TimeWithZone * Integer` which crashes.
+        # We want a single timestamp `LOOKBACK_BUCKETS * BUCKET_MINUTES` minutes ago.
+        since = (LOOKBACK_BUCKETS * BUCKET_MINUTES).minutes.ago
         scope = AiRequestAudit.where(created_at: since..Time.current)
         scope = scope.where(merchant_id: @merchant_id) if @merchant_id.present?
 

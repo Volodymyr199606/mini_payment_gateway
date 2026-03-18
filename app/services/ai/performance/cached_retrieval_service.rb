@@ -33,7 +33,11 @@ module Ai
             final_context_chars: raw[:final_context_chars],
             final_sections_count: raw[:final_sections_count],
             dropped_section_ids_count: raw[:dropped_section_ids_count],
-            included_section_ids: raw[:included_section_ids].to_a
+            # Some tests/stubs only provide a subset of retrieval fields.
+            # Treat missing included_section_ids as empty rather than raising.
+            included_section_ids: Array(raw[:included_section_ids]),
+            # Forward retrieval debug payload for AI_DEBUG dashboards.
+            debug: raw[:debug]
           }
         end
 

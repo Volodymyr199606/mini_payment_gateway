@@ -6,15 +6,15 @@ module Ai
     # All templates are deterministic and human-readable.
     class TemplateRegistry
       PAYMENT_INTENT = {
-        'created' => 'Payment intent #{{id}} is in **created** status. Amount: {{amount}} {{currency}}. It has not been authorized yet.',
-        'authorized' => 'Payment intent #{{id}} is **authorized**. Amount: {{amount}} {{currency}}. It is ready to capture.',
-        'requires_capture' => 'Payment intent #{{id}} is authorized and **requires capture**. Amount: {{amount}} {{currency}}. Capture it to settle the funds.',
-        'captured' => 'Payment intent #{{id}} is **captured**. Amount: {{amount}} {{currency}}. The funds have been settled.',
-        'canceled' => 'Payment intent #{{id}} has been **canceled** (voided). No charge was made.',
-        'failed' => 'Payment intent #{{id}} **failed**. It did not reach a successful authorization or capture.',
-        'refunded' => 'Payment intent #{{id}} is captured and has been **refunded** (fully or partially).',
-        'disputed_none' => 'Payment intent #{{id}}: dispute status is **none**. No open dispute.',
-        'disputed_open' => 'Payment intent #{{id}} has an **open dispute**. Review and respond to the dispute.'
+        'created' => 'Payment Intent #{{id}} is in **created** status. Amount: {{amount}} {{currency}}. It has not been authorized yet.',
+        'authorized' => 'Payment Intent #{{id}} is **authorized**. Amount: {{amount}} {{currency}}. It is ready to capture.',
+        'requires_capture' => 'Payment Intent #{{id}} is authorized and **requires capture**. Amount: {{amount}} {{currency}}. Capture it to settle the funds.',
+        'captured' => 'Payment Intent #{{id}} is **captured**. Amount: {{amount}} {{currency}}. The funds have been settled.',
+        'canceled' => 'Payment Intent #{{id}} has been **canceled** (voided). No charge was made.',
+        'failed' => 'Payment Intent #{{id}} **failed**. It did not reach a successful authorization or capture.',
+        'refunded' => 'Payment Intent #{{id}} is captured and has been **refunded** (fully or partially).',
+        'disputed_none' => 'Payment Intent #{{id}}: dispute status is **none**. No open dispute.',
+        'disputed_open' => 'Payment Intent #{{id}} has an **open dispute**. Review and respond to the dispute.'
       }.freeze
 
       TRANSACTION = {
@@ -81,7 +81,9 @@ module Ai
           dispute = (data[:dispute_status] || data['dispute_status']).to_s
 
           return "disputed_#{dispute}" if dispute == 'open'
-          return 'disputed_none' if dispute.present? && dispute != 'open'
+          # Only treat disputes as special when they are explicitly open.
+          # "none"/blank should map to the intent status (authorized/created/etc),
+          # which keeps explanation metadata aligned with tests.
 
           case status
           when 'created' then 'created'

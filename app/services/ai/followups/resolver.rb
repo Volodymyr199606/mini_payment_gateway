@@ -119,6 +119,9 @@ module Ai
         has_filter = FILTER_PHRASES.match?(lower)
         has_explain = EXPLAIN_PHRASES.match?(lower)
         has_continuation = CONTINUATION_PHRASES.match?(lower)
+        mentions_payment_lifecycle = lower.match?(
+          /\b(authorize|capture|refund|void|dispute|chargeback)\b/i
+        )
 
         if has_time && (lower.split.size <= 8)
           { type: :time_range_adjustment, confidence: 0.85 }
@@ -135,6 +138,10 @@ module Ai
           { type: :explanation_rewrite, confidence: 0.85 }
         elsif has_filter && lower.split.size <= 10
           { type: :result_filtering, confidence: 0.8 }
+        elsif mentions_payment_lifecycle && lower.split.size <= 6
+          # Allow "And capture?", "Capture?", etc. to be treated as a follow-up
+          # even without explicit reference words like "that/it".
+          { type: :ambiguous_followup, confidence: 0.5 }
         elsif has_ref && lower.split.size <= 6
           { type: :ambiguous_followup, confidence: 0.5 }
         elsif lower.match?(/\bwhat\s+about\b/i) && lower.split.size <= 12

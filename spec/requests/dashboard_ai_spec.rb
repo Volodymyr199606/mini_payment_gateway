@@ -120,6 +120,10 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       allow(ENV).to receive(:[]).with('AI_VECTOR_RAG_ENABLED').and_return('')
 
       post_chat('What is authorize?')
+      if ENV['AI_DEBUG_RAISE_ERRORS'].to_s.strip == '1'
+        puts "DEBUG_STATUS=#{response.status}"
+        puts "DEBUG_BODY=#{response.body}"
+      end
       expect(response).to have_http_status(:ok)
       body = response.parsed_body
       expect(body).to have_key('debug')
@@ -146,6 +150,10 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       follow_redirect! if response.redirect?
 
       post_chat('Show my account info')
+      if ENV['AI_DEBUG_RAISE_ERRORS'].to_s.strip == '1'
+        puts "DEBUG_STATUS=#{response.status}"
+        puts "DEBUG_BODY=#{response.body}"
+      end
       expect(response).to have_http_status(:ok)
       body = response.parsed_body
       expect(body['reply']).to include(merchant.name)
@@ -166,6 +174,10 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       txn = pi.transactions.create!(kind: 'capture', status: 'succeeded', amount_cents: 1000, processor_ref: 'txn_spec123')
 
       post_chat("transaction id #{txn.id}")
+      if ENV['AI_DEBUG_RAISE_ERRORS'].to_s.strip == '1'
+        puts "DEBUG_STATUS=#{response.status}"
+        puts "DEBUG_BODY=#{response.body}"
+      end
       expect(response).to have_http_status(:ok)
       body = response.parsed_body
       expect(body['reply']).to include('Transaction')
@@ -185,6 +197,10 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       allow(ENV).to receive(:[]).with('AI_DEBUG').and_return('true')
 
       post_chat('Show my account info')
+      if ENV['AI_DEBUG_RAISE_ERRORS'].to_s.strip == '1'
+        puts "DEBUG_STATUS=#{response.status}"
+        puts "DEBUG_BODY=#{response.body}"
+      end
       expect(response).to have_http_status(:ok)
       body = response.parsed_body
       expect(body).to have_key('debug')

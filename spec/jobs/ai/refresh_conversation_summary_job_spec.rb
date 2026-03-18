@@ -47,11 +47,13 @@ RSpec.describe Ai::RefreshConversationSummaryJob, type: :job do
     it 'logs failed and re-raises on summarizer error' do
       allow(Ai::ConversationSummarizer).to receive(:call).and_raise(StandardError.new('Groq down'))
 
-      expect {
-        perform_enqueued_jobs do
-          described_class.perform_later(session.id)
-        end
-      }.to raise_error(StandardError, 'Groq down')
+      described_class.perform_later(session.id)
+
+      # Rails' `perform_enqueued_jobs { ... }` block form uses
+      # ActiveSupport's `assert_nothing_raised`, which wraps raised exceptions
+      # as `Minitest::UnexpectedError`. Using the non-block form lets the
+      # original exception class/message propagate.
+      expect { perform_enqueued_jobs }.to raise_error(StandardError, 'Groq down')
 
       expect(Ai::Observability::EventLogger).to have_received(:log_ai_job).with(
         hash_including(phase: 'failed', error_class: 'StandardError', error_message: 'Groq down')

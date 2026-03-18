@@ -113,7 +113,8 @@ module Dashboard
           followup_metadata: followup_metadata_safe(followup_result),
           policy_metadata: policy_metadata_from_run(run_result, followup_result),
           execution_plan_metadata: execution_plan.to_audit_metadata,
-          explanation_metadata: run_result.explanation_metadata
+          # Explanation details are persisted via `composition:` fields
+          # (deterministic_explanation_used / explanation_type / explanation_key).
         )
         enqueue_summary_refresh_if_ok(chat_session)
         payload = build_response_payload(composed)
@@ -123,7 +124,18 @@ module Dashboard
 
       ctx = ::Ai::Performance::CachedConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
       memory_result = if execution_plan.memory_skipped?
-        { memory_text: '', memory_used: false, recent_messages_count: 0, summary_used: false }
+        {
+          memory_text: '',
+          memory_used: false,
+          recent_messages_count: 0,
+          summary_used: false,
+          memory_truncated: false,
+          final_memory_chars: 0,
+          summary_updated: false,
+          summary_chars: 0,
+          current_topic: nil,
+          sanitization_applied: false
+        }
       else
         ::Ai::Conversation::MemoryBudgeter.call(
           summary_text: ctx[:summary_text],
@@ -224,9 +236,16 @@ module Dashboard
 
       render json: payload
     rescue StandardError => e
+      if Rails.env.test? && ENV['AI_DEBUG_RAISE_ERRORS'].to_s.strip == '1'
+        return render json: {
+          debug_error_class: e.class.name,
+          debug_error_message: e.message.to_s,
+          debug_backtrace: Array(e.backtrace).take(12)
+        }, status: :internal_server_error
+      end
       latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
       resilience_response = apply_resilience_fallback(e, msg, agent_key, retriever_result, selected_retriever, latency_ms, followup_result: followup_result)
-      render json: resilience_response[:payload], status: :ok
+      render json: resilience_response[:payload], status: :internal_server_error
     end
 
     private

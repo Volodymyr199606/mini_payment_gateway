@@ -99,6 +99,28 @@ RSpec.describe 'Dashboard AI audit trail', type: :request do
 end
 
 RSpec.describe 'API AI audit trail', type: :request do
+  def stub_retrieval_service!
+    allow(Ai::Rag::RetrievalService).to receive(:call).and_return(
+      context_text: 'Stubbed context.',
+      citations: [{ file: 'docs/X.md', heading: 'Y' }],
+      context_truncated: false,
+      final_sections_count: 1
+    )
+  end
+
+  def csrf_token
+    get dashboard_sign_in_path
+    follow_redirect! while response.redirect?
+    response.body[/name="csrf-token" content="([^"]+)"/, 1] || response.body[/name="authenticity_token" value="([^"]+)"/, 1]
+  end
+
+  def post_chat(message)
+    post dashboard_ai_chat_path,
+         params: { message: message },
+         headers: { 'Accept' => 'application/json', 'X-CSRF-Token' => csrf_token },
+         as: :json
+  end
+
   def api_headers(api_key)
     { 'X-API-KEY' => api_key, 'Content-Type' => 'application/json', 'Accept' => 'application/json' }
   end

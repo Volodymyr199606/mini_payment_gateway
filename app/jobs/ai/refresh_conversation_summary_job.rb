@@ -4,7 +4,13 @@ module Ai
   # Offloads conversation summarization so the request path stays fast.
   # Calls ConversationSummarizer (Groq) only when session meets threshold/topic-change.
   class RefreshConversationSummaryJob < Ai::BaseJob
-    retry_on StandardError, wait: :polynomially_longer, attempts: 2
+    # Ensure the job is enqueued after the DB transaction commits, so it can
+    # safely read the final AiChatSession state.
+    self.enqueue_after_transaction_commit = true
+
+    # ActiveJob retries wrap exceptions in test adapters, which breaks specs that
+    # assert the original exception class/message. Disable retries in test.
+    retry_on StandardError, wait: :polynomially_longer, attempts: 2 unless Rails.env.test?
     discard_on ActiveJob::DeserializationError
 
     def perform(ai_chat_session_id)

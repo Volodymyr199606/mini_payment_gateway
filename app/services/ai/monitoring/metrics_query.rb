@@ -107,11 +107,12 @@ module Ai
       def percentile(sorted_values, p)
         return nil if sorted_values.nil? || sorted_values.empty?
         arr = sorted_values.sort
-        k = (p * (arr.size - 1) + 1).to_f
-        f = k.floor
-        c = k.ceil
-        return arr[f - 1] if f == c
-        (arr[f - 1] * (c - k) + arr[c - 1] * (k - f)).round
+        # Nearest-rank percentile (matches spec expectations):
+        # p=0.50 on 5 values -> 3rd value, p=0.95 -> max value.
+        idx = (p * arr.size).ceil - 1
+        idx = 0 if idx.negative?
+        idx = arr.size - 1 if idx >= arr.size
+        arr[idx]
       end
     end
   end

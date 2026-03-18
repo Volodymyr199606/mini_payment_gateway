@@ -41,6 +41,11 @@ module Ai
         !!skip_orchestration
       end
 
+      # Predicate helper used by controllers for conditional retrieval budgeting.
+      def retrieval_budget_reduced?
+        !!retrieval_budget_reduced
+      end
+
       def to_audit_metadata
         {
           execution_mode: execution_mode&.to_s,

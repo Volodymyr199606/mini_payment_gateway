@@ -1,5 +1,7 @@
 # Mini Payment Gateway – Security
 
+For threat model, mitigations, gaps, and hardening plan, see [THREAT_MODEL.md](THREAT_MODEL.md) and [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
+
 ---
 
 ## 1. Authentication
@@ -47,8 +49,8 @@ See `docs/PCI_COMPLIANCE.md` for existing PCI notes.
 
 ## 5. Rate Limiting
 
-- `RateLimiterService` and `ApiRequestStat` track requests per merchant per day.
-- 429 returned when limit exceeded.
+- **AI chat**: 20 requests per 60 seconds per merchant (dashboard + API).
+- **General API**: `RateLimiterService` exists but is not currently invoked by controllers. `ApiRequestStat` records 429 when returned.
 - Counters: `requests_count`, `errors_count`, `rate_limited_count`.
 
 ---

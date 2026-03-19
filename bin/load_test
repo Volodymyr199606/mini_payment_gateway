@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Thin wrapper: bundle exec rake perf:*
+# Usage:
+#   bin/load_test              -> perf:run
+#   bin/load_test payments     -> perf:payments
+#   bin/load_test ai           -> perf:ai
+#   ONLY=payment_capture bin/load_test
+
+APP_ROOT = File.expand_path('..', __dir__)
+Dir.chdir(APP_ROOT)
+
+task = ARGV[0].presence
+rake_task =
+  case task
+  when nil, 'all', 'run' then 'perf:run'
+  when 'payments' then 'perf:payments'
+  when 'webhooks' then 'perf:webhooks'
+  when 'ai' then 'perf:ai'
+  when 'internal' then 'perf:internal'
+  else "perf:#{task}"
+  end
+
+exec(Gem.ruby, '-S', 'bundle', 'exec', 'rake', rake_task, *ARGV[1..])

@@ -57,6 +57,10 @@ A Rails 7+ API learning project that models real payment-platform concepts (Brai
 
 **Vector / hybrid retrieval:** Install the [pgvector](https://github.com/pgvector/pgvector#installation) Postgres extension, run `rails db:migrate`, set an embedding API key, then run `rake ai:backfill_doc_embeddings` to create embeddings for `docs/` sections. Enable with `AI_VECTOR_RAG_ENABLED=true`. See [docs/AI_AGENTS.md](docs/AI_AGENTS.md) for details.
 
+### Load / performance smoke tests
+
+Deterministic local perf scenarios (stubbed processor + Groq, no outbound webhooks): `bundle exec rake perf:run` or `bin/load_test`. See [docs/LOAD_AND_PERFORMANCE_TESTING.md](docs/LOAD_AND_PERFORMANCE_TESTING.md).
+
 ## API Endpoints
 
 All endpoints are under `/api/v1` namespace. Most endpoints require `X-API-KEY` header.

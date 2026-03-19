@@ -19,24 +19,37 @@ class AuthorizeService < BaseService
       return self
     end
 
-    success = false
+    provider_result = nil
     processor_failure_code = nil
     processor_failure_message = nil
     begin
-      success = Timeout.timeout(processor_timeout_seconds) { simulate_processor_authorization }
+      provider_result = Timeout.timeout(processor_timeout_seconds) { payment_provider.authorize(payment_intent: @payment_intent) }
     rescue Timeout::Error
       processor_failure_code = 'timeout'
       processor_failure_message = 'Processor request timed out'
+    rescue Payments::ProviderRequestError => e
+      processor_failure_code = 'provider_error'
+      processor_failure_message = e.message
     end
 
-    failure_code = success ? nil : (processor_failure_code || 'insufficient_funds')
-    failure_message = success ? nil : (processor_failure_message || 'Insufficient funds')
+    success = provider_result&.success? || false
+    failure_code = if success
+      nil
+    else
+      processor_failure_code || provider_result&.failure_code || 'insufficient_funds'
+    end
+    failure_message = if success
+      nil
+    else
+      processor_failure_message || provider_result&.failure_message || 'Insufficient funds'
+    end
 
     ActiveRecord::Base.transaction do
       transaction = @payment_intent.transactions.create!(
         kind: 'authorize',
         status: success ? 'succeeded' : 'failed',
         amount_cents: @payment_intent.amount_cents,
+        processor_ref: provider_result&.processor_ref,
         failure_code: failure_code,
         failure_message: failure_message
       )
@@ -110,11 +123,4 @@ class AuthorizeService < BaseService
     self
   end
 
-  private
-
-  def simulate_processor_authorization
-    # Simulate 90% success rate for sandbox
-    # In production, this would call the actual payment processor
-    rand > 0.1
-  end
 end

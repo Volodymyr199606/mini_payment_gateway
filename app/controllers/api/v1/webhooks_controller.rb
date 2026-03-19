@@ -9,16 +9,10 @@ module Api
       # Receives events from payment processor (simulated)
       def processor
         webhook_event = nil
-        signature = request.headers['X-WEBHOOK-SIGNATURE']
         payload_body = request.body.read
+        provider = Payments::ProviderRegistry.current
 
-        # Verify signature
-        signature_service = WebhookSignatureService.call(
-          payload: payload_body,
-          signature: signature
-        )
-
-        unless signature_service.success?
+        unless provider.verify_webhook_signature(payload: payload_body, headers: request.headers.to_h)
           render_error(
             code: 'invalid_signature',
             message: 'Invalid webhook signature',
@@ -39,8 +33,10 @@ module Api
           return
         end
 
-        event_type = payload['event_type']
-        merchant_id = payload.dig('data', 'merchant_id')
+        normalized = provider.normalize_webhook_event(payload: payload, headers: request.headers.to_h)
+        event_type = normalized[:event_type].to_s
+        merchant_id = normalized[:merchant_id]
+        signature = normalized[:signature]
 
         merchant = merchant_id ? Merchant.find_by(id: merchant_id) : nil
 
@@ -48,7 +44,7 @@ module Api
         webhook_event = WebhookEvent.create!(
           merchant: merchant,
           event_type: event_type,
-          payload: payload,
+          payload: normalized[:payload] || payload,
           delivery_status: 'succeeded', # Already delivered to us
           delivered_at: Time.current,
           signature: signature
@@ -56,7 +52,7 @@ module Api
 
         # Chargeback: set dispute_status on payment intent if identifiable
         if event_type == 'chargeback.opened'
-          pi_id = payload.dig('data', 'payment_intent_id')
+          pi_id = (normalized[:payload] || payload).dig('data', 'payment_intent_id')
           if pi_id && merchant
             pi = merchant.payment_intents.find_by(id: pi_id)
             pi&.update!(dispute_status: 'open')

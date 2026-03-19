@@ -38,6 +38,10 @@ class BaseService
     ENV.fetch('PROCESSOR_TIMEOUT_SECONDS', '3').to_i
   end
 
+  def payment_provider
+    Payments::ProviderRegistry.current
+  end
+
   def log_processor_timeout(merchant_id:, payment_intent_id:, transaction_id:, kind:, timeout_seconds:)
     Rails.logger.info(
       {

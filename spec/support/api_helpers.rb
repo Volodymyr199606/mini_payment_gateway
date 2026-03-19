@@ -23,12 +23,37 @@ module ApiHelpers
   end
 
   # Stub processor simulations so tests get deterministic success.
-  # Uses built-in RSpec; no new gems. Stubs private methods on service instances.
+  # Uses built-in RSpec; no external API dependency in tests.
   def stub_processor_success
-    allow_any_instance_of(AuthorizeService).to receive(:simulate_processor_authorization).and_return(true)
-    allow_any_instance_of(CaptureService).to receive(:simulate_processor_capture).and_return(true)
-    allow_any_instance_of(VoidService).to receive(:simulate_processor_void).and_return(true)
-    allow_any_instance_of(RefundService).to receive(:simulate_processor_refund).and_return(true)
+    adapter = instance_double(
+      Payments::Providers::BaseAdapter,
+      fetch_status: Payments::ProviderResult.new(success: true, provider_status: 'ok'),
+      verify_webhook_signature: true
+    )
+
+    allow(adapter).to receive(:authorize) do
+      Payments::ProviderResult.new(success: true, processor_ref: "sim_auth_#{SecureRandom.hex(8)}")
+    end
+    allow(adapter).to receive(:capture) do
+      Payments::ProviderResult.new(success: true, processor_ref: "sim_cap_#{SecureRandom.hex(8)}")
+    end
+    allow(adapter).to receive(:void) do
+      Payments::ProviderResult.new(success: true, processor_ref: "sim_void_#{SecureRandom.hex(8)}")
+    end
+    allow(adapter).to receive(:refund) do
+      Payments::ProviderResult.new(success: true, processor_ref: "sim_ref_#{SecureRandom.hex(8)}")
+    end
+
+    allow(adapter).to receive(:normalize_webhook_event) do |payload:, headers:|
+      {
+        event_type: payload['event_type'],
+        merchant_id: payload.dig('data', 'merchant_id'),
+        payload: payload,
+        signature: headers['X-WEBHOOK-SIGNATURE']
+      }
+    end
+
+    allow(Payments::ProviderRegistry).to receive(:current).and_return(adapter)
   end
 
   # Prevent webhook delivery from running in tests (avoids HTTP calls).

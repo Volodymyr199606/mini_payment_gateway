@@ -47,7 +47,11 @@ RSpec.describe CaptureService, 'transaction rollback' do
     webhook_count_before = WebhookEvent.count
 
     allow(LedgerService).to receive(:call).and_raise(RuntimeError.new('Simulated ledger failure'))
-    allow_any_instance_of(CaptureService).to receive(:simulate_processor_capture).and_return(true)
+    adapter = instance_double(Payments::Providers::BaseAdapter)
+    allow(adapter).to receive(:capture).and_return(
+      Payments::ProviderResult.new(success: true, processor_ref: "sim_cap_#{SecureRandom.hex(8)}")
+    )
+    allow(Payments::ProviderRegistry).to receive(:current).and_return(adapter)
 
     service = CaptureService.call(payment_intent: payment_intent)
 

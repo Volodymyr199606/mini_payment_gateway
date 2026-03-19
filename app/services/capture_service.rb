@@ -26,24 +26,37 @@ class CaptureService < BaseService
       return self
     end
 
-    success = false
+    provider_result = nil
     processor_failure_code = nil
     processor_failure_message = nil
     begin
-      success = Timeout.timeout(processor_timeout_seconds) { simulate_processor_capture }
+      provider_result = Timeout.timeout(processor_timeout_seconds) { payment_provider.capture(payment_intent: @payment_intent) }
     rescue Timeout::Error
       processor_failure_code = 'timeout'
       processor_failure_message = 'Processor request timed out'
+    rescue Payments::ProviderRequestError => e
+      processor_failure_code = 'provider_error'
+      processor_failure_message = e.message
     end
 
-    failure_code = success ? nil : (processor_failure_code || 'capture_failed')
-    failure_message = success ? nil : (processor_failure_message || 'Capture failed')
+    success = provider_result&.success? || false
+    failure_code = if success
+      nil
+    else
+      processor_failure_code || provider_result&.failure_code || 'capture_failed'
+    end
+    failure_message = if success
+      nil
+    else
+      processor_failure_message || provider_result&.failure_message || 'Capture failed'
+    end
 
     ActiveRecord::Base.transaction do
       transaction = @payment_intent.transactions.create!(
         kind: 'capture',
         status: success ? 'succeeded' : 'failed',
         amount_cents: @payment_intent.amount_cents,
+        processor_ref: provider_result&.processor_ref,
         failure_code: failure_code,
         failure_message: failure_message
       )
@@ -120,10 +133,4 @@ class CaptureService < BaseService
     self
   end
 
-  private
-
-  def simulate_processor_capture
-    # Simulate 95% success rate for sandbox
-    rand > 0.05
-  end
 end

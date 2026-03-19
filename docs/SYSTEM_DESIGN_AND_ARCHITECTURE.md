@@ -4,13 +4,15 @@
 **Rails:** 7.2 | **Ruby:** ≥3.1 | **Database:** PostgreSQL (+ optional pgvector)  
 **Modeled after:** Braintree-style payment lifecycle with an integrated AI assistant layer
 
+> **C4 + sequence package (portfolio-friendly):** see [SYSTEM_DESIGN_SUMMARY.md](SYSTEM_DESIGN_SUMMARY.md), [C4_CONTEXT.md](C4_CONTEXT.md), [C4_CONTAINER.md](C4_CONTAINER.md), [C4_COMPONENTS.md](C4_COMPONENTS.md), and `SEQUENCES_*.md`.
+
 ---
 
 ## Part 1 — What Is Done Overall
 
 ### Scope
 
-- **Payment platform (simulated):** Full Braintree-style lifecycle: customers, payment methods, payment intents, authorize → capture → void/refund, idempotency, ledger (charge/refund/fee), audit logs, and outbound webhooks with signature verification. No real card processor; all processing is simulated in-app.
+- **Payment platform:** Full Braintree-style lifecycle: customers, payment methods, payment intents, authorize → capture → void/refund, idempotency, ledger (charge/refund/fee), audit logs, and outbound webhooks with signature verification. Processing is **adapter-backed**: default **simulated** provider or optional **Stripe sandbox** (`PAYMENTS_PROVIDER` — see [PAYMENT_PROVIDER_SANDBOX.md](PAYMENT_PROVIDER_SANDBOX.md)).
 - **Dual surface:** REST API (`/api/v1`) and merchant dashboard (HTML with Turbo/Stimulus). Shared service layer and domain model; API uses `X-API-KEY`, dashboard uses session (email/password or API key sign-in).
 - **Multi-tenant isolation:** All tenant data is scoped by `merchant_id`. No cross-merchant access; API and dashboard resolve `current_merchant` and scope all queries.
 - **AI subsystem:** Multi-agent chat (operational, reporting, support, security, developer, reconciliation), RAG over project docs (keyword, optional graph expansion, optional hybrid vector), deterministic tools (account, ledger summary, payment intent, transaction, webhook), constrained orchestration (up to 2 tool steps), conversation memory/summary, resilience/fallback, audit trail, streaming, guardrails, and internal tooling (playground, analytics, health, audit drill-down/replay). Config and quality gates are documented and CI-covered.
@@ -18,7 +20,7 @@
 
 ### Not in scope (by design)
 
-- Real payment processor integration (e.g. Braintree/Stripe).
+- Full production acquirer certification / all global payment methods (Stripe sandbox is integrated as an optional path; Braintree adapter not present in repo).
 - Generic feature-flag service or A/B framework beyond env-based AI flags.
 - Separate tenant abstraction (tenancy is merchant_id everywhere).
 

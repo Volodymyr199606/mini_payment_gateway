@@ -59,6 +59,14 @@ module Api
           is_rate_limited: status == 429
         )
       end
+
+      def render_idempotency_conflict!
+        render_error(
+          code: 'idempotency_conflict',
+          message: 'This idempotency key was already used for a different request. Use a new idempotency key for this operation.',
+          status: :conflict
+        )
+      end
     end
   end
 end

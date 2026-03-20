@@ -99,7 +99,12 @@ module Dashboard
         request_params: { payment_intent_id: intent.id, amount_cents: amount_cents }
       )
 
-      if idempotency.result && idempotency.result[:cached]
+      if idempotency.result[:conflict]
+        redirect_to dashboard_payment_intent_path(intent), alert: idempotency_conflict_alert
+        return
+      end
+
+      if idempotency.result[:cached]
         redirect_to dashboard_payment_intent_path(intent), notice: 'Already processed (idempotent)'
         return
       end
@@ -136,7 +141,12 @@ module Dashboard
         request_params: { payment_intent_id: intent.id }
       )
 
-      if idempotency.result && idempotency.result[:cached]
+      if idempotency.result[:conflict]
+        redirect_to dashboard_payment_intent_path(intent), alert: idempotency_conflict_alert
+        return
+      end
+
+      if idempotency.result[:cached]
         redirect_to dashboard_payment_intent_path(intent), notice: 'Already processed (idempotent)'
         return
       end
@@ -158,6 +168,10 @@ module Dashboard
 
     def idempotency_key_for(endpoint, payment_intent_id, extra = nil)
       params[:idempotency_key].presence || SecureRandom.uuid
+    end
+
+    def idempotency_conflict_alert
+      'This idempotency key was already used for a different request. Use a new idempotency key for this operation.'
     end
 
     def parse_refund_amount(refund_params, intent)

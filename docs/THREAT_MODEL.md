@@ -67,7 +67,7 @@ Practical threat model for the mini payment gateway: multi-tenant API + dashboar
 ### Tampering
 - **Payment flows**: State machine in services (Authorize, Capture, Refund, Void). No direct DB writes from API params.
 - **Webhook**: HMAC over raw body. Tampering invalidates signature.
-- **Idempotency**: `request_hash` stored but **not compared on cache hit**; same key with different params returns cached response (see SECURITY_REVIEW gap).
+- **Idempotency**: Fingerprint (v1 canonical + legacy) compared on cache hit; same key with different logical payload returns **409** (see `docs/IDEMPOTENCY.md`).
 - **Ledger**: Written by services; no user-controlled ledger writes.
 - **Audit logs**: Append-only; no update/delete from normal flows.
 
@@ -153,7 +153,7 @@ Practical threat model for the mini payment gateway: multi-tenant API + dashboar
 | Invalid API key | API | BCrypt, 401 | Low | — |
 | Cross-tenant data access | API, dashboard | current_merchant scoping | Low | — |
 | Webhook forgery | Webhooks | HMAC verify | Low | — |
-| Idempotency key reuse, different params | Payments | None (returns cached) | Medium | High |
+| Idempotency key reuse, different params | Payments | 409 + audit log | Medium | Low |
 | General API rate limit | API | None | Medium | Medium |
 | Webhook rate limit | Webhooks | None | Low | Low |
 | AI rate limit | AI | 20/60s | Low | — |

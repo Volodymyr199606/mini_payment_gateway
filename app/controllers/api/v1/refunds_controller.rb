@@ -50,7 +50,12 @@ module Api
             request_params: { payment_intent_id: payment_intent.id, amount_cents: amount_cents }
           )
 
-          if idempotency.result && idempotency.result[:cached]
+          if idempotency.result[:conflict]
+            render_idempotency_conflict!
+            return
+          end
+
+          if idempotency.result[:cached]
             render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
             return
           end

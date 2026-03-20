@@ -19,6 +19,11 @@ module Api
             request_params: payment_intent_params_hash
           )
 
+          if idempotency.result[:conflict]
+            render_idempotency_conflict!
+            return
+          end
+
           if idempotency.result[:cached]
             render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
             return
@@ -112,6 +117,10 @@ module Api
             endpoint: 'authorize',
             request_params: { payment_intent_id: payment_intent.id }
           )
+          if idempotency.result[:conflict]
+            render_idempotency_conflict!
+            return
+          end
           if idempotency.result[:cached]
             render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
             return
@@ -165,6 +174,10 @@ module Api
             endpoint: 'capture',
             request_params: { payment_intent_id: payment_intent.id }
           )
+          if idempotency.result[:conflict]
+            render_idempotency_conflict!
+            return
+          end
           if idempotency.result[:cached]
             render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
             return
@@ -218,6 +231,10 @@ module Api
             endpoint: 'void',
             request_params: { payment_intent_id: payment_intent.id }
           )
+          if idempotency.result[:conflict]
+            render_idempotency_conflict!
+            return
+          end
           if idempotency.result[:cached]
             render json: idempotency.result[:response_body], status: idempotency.result[:status_code]
             return

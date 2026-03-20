@@ -182,7 +182,7 @@ Non-breaking steps to align the codebase with this architecture:
 1. Add `docs/ARCHITECTURE.md` (this file) to the repo and link from README.
 2. Add a short comment block at the top of each service class describing its domain (payments, ledger, webhooks).
 3. Extract shared idempotency logic from `Api::V1::PaymentIntentsController` and `Dashboard::PaymentIntentsController` into a private concern or helper (optional; current duplication is acceptable).
-4. Document the IdempotencyService endpoint names (`authorize`, `capture`, `void`, `refund`, `create_payment_intent`) in a central place (e.g. `IdempotencyService` or a doc).
+4. Idempotency endpoint names and fingerprint rules: **`docs/IDEMPOTENCY.md`** (`authorize`, `capture`, `void`, `refund`, `create_payment_intent`).
 5. Add a `docs/` index (e.g. `docs/README.md`) linking ARCHITECTURE, SEQUENCE_DIAGRAMS, DATA_FLOW, SECURITY, DEPLOYMENT.
 6. Consider adding `payment_intent_id` to `Transaction`-level idempotency `request_params` consistently (already done; verify).
 7. Ensure `LedgerEntry` `entry_type` is always one of `charge`, `refund`, `fee` (already enforced by validation).

@@ -75,11 +75,9 @@ Practical security review and hardening plan for the mini payment gateway. Compl
 
 ### High priority
 
-**Idempotency: no request_hash check on cache hit**  
-- **Issue**: Same idempotency key with different request params returns cached response. Standard semantics (Stripe, etc.) is 409 Conflict when params differ.  
-- **Location**: `IdempotencyService`  
-- **Impact**: Client could receive wrong response; audit trail would show mismatched request/response.  
-- **Recommendation**: On cache hit, compare `Digest::SHA256.hexdigest(@request_params.to_json)` to `existing_record.request_hash`. If different, return 409 with clear message.
+**Idempotency: request fingerprint on cache hit** — **Done**  
+- **Behavior**: Canonical v1 fingerprint (merchant, endpoint, normalized payload) plus legacy `SHA256(request_params.to_json)` for older rows; mismatch → **409** `idempotency_conflict`, structured log + `AuditLog`.  
+- **Location**: `IdempotencyService`, `IdempotencyFingerprint`; see `docs/IDEMPOTENCY.md`.
 
 ### Medium priority
 
@@ -114,7 +112,7 @@ Practical security review and hardening plan for the mini payment gateway. Compl
 
 | Priority | Action | Effort | Impact |
 |----------|--------|--------|--------|
-| **High** | Add request_hash comparison in IdempotencyService cache hit path; return 409 when params differ | Low | Correct idempotency semantics; prevents wrong cached response |
+| **High** | ~~Add request_hash comparison~~ — implemented (canonical fingerprint + 409 + audit) | — | — |
 | **Medium** | Wire RateLimiterService into API base controller; return 429 when limit exceeded | Low | Reduces DoS risk |
 | **Medium** | Add boot-time validation: reject/warn when production uses default webhook secret | Low | Prevents accidental deployment with weak secret |
 | **Low** | Add CSP / HSTS config for production | Medium | Defense in depth |
@@ -127,7 +125,7 @@ Practical security review and hardening plan for the mini payment gateway. Compl
 
 | Threat | Affected subsystem | Current mitigation | Residual risk | Priority | Recommended action |
 |--------|--------------------|--------------------|---------------|----------|--------------------|
-| Idempotency param mismatch | Payments | None | Medium | High | Compare request_hash; return 409 |
+| Idempotency param mismatch | Payments | 409 + audit (fingerprint) | Medium | Low | See `docs/IDEMPOTENCY.md` |
 | API DoS | API | None | Medium | Medium | Enforce RateLimiterService |
 | Default webhook secret in prod | Webhooks | None | Medium | Medium | Boot validation |
 | Cross-tenant access | API, dashboard | Merchant scoping | Low | — | Maintain discipline |

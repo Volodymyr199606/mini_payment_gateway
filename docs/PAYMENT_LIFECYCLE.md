@@ -101,3 +101,25 @@ Aligned with [DATA_FLOW.md](DATA_FLOW.md) and the current implementation:
 2. **Refund:** Client calls refund (full or partial). Simulated processor approves. One **refund** ledger entry (negative amount). Status remains `captured`. Refunds can be repeated until the refundable amount is exhausted.
 
 These examples are conceptual; no PAN, secrets, or raw card data are involved in the lifecycle docs.
+
+---
+
+## Payment invariants test suite
+
+The `spec/invariants/payments/` suite protects core financial and state-transition correctness. Run it with:
+
+```bash
+bundle exec rspec spec/invariants/ --tag invariants
+```
+
+### Why these tests exist
+
+They guard against regressions in the most critical payment rules. Unlike broad controller or service tests, they explicitly assert:
+
+- **Capture:** Amount equals intent; no capture from invalid states; no duplicate capture; exactly one charge ledger entry per capture.
+- **Refund:** Refund ceiling enforced; cumulative refunds cannot exceed captured; refund only from captured; negative ledger semantics.
+- **Void:** Allowed only from created/authorized; rejected from captured; no ledger entry.
+- **Ledger:** Charges positive, refunds negative; net (charges + refunds) consistent; authorize creates no ledger; one ledger entry per capture.
+- **State transitions:** Valid and invalid transitions per the lifecycle matrix.
+- **Idempotency:** Same key + same request → same result; no duplicate transactions or ledger entries on replay.
+- **Multi-tenant:** One merchant cannot affect another's payment intents or ledger records.

@@ -49,9 +49,10 @@ See `docs/PCI_COMPLIANCE.md` for existing PCI notes.
 
 ## 5. Rate Limiting
 
-- **AI chat**: 20 requests per 60 seconds per merchant (dashboard + API).
-- **General API**: `RateLimiterService` exists but is not currently invoked by controllers. `ApiRequestStat` records 429 when returned.
-- Counters: `requests_count`, `errors_count`, `rate_limited_count`.
+- **API v1** (`BaseController`): Category-based limits via `ApiRateLimitable` + `RateLimiterService` + `Rails.cache` (merchant-scoped; IP for webhooks and public merchant POST). See **`docs/API_RATE_LIMITING.md`**.
+- **AI chat (dashboard)**: Separate per-merchant cache counter in `Dashboard::AiController`.
+- **AI chat (API)**: Uses the `ai` category (defaults align with the former 20/min API cap); configurable via env in `config/initializers/api_rate_limits.rb`.
+- **Metrics**: `ApiRequestStat` counts 429 for merchant-authenticated traffic (explicit record on limiter halt + `after_action` when applicable).
 
 ---
 

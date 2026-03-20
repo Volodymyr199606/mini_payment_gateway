@@ -87,13 +87,13 @@ module MiniPaymentGatewayPerf
       end
     end
 
-    # Skip per-merchant AI rate limits during perf runs (default PERF_ITERATIONS can exceed 20/60s).
+    # Skip API rate limits during perf runs (iterations can exceed AI / payment limits).
     module AiRateLimitBypass
-      def ai_rate_limited?
-        false
+      def enforce_prepended_api_rate_limits
+        nil
       end
 
-      def increment_ai_chat_count
+      def enforce_authenticated_api_rate_limits
         nil
       end
     end

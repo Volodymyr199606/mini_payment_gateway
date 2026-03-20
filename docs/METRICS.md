@@ -104,7 +104,7 @@ The dashboard sums rows where `date >= (now - 24h).to_date`. Because we use cale
 
 Metrics are computed by `MetricsService` (`app/services/metrics_service.rb`). The service uses standard ActiveRecord queries and existing indexes. Controllers call `MetricsService.compute(merchant: current_merchant)` and pass the result to the view.
 
-API request metrics use the `ApiRequestStat` model and a daily table keyed by `(merchant_id, date)`. An `after_action` in `Api::V1::BaseController` calls `ApiRequestStat.record_request!` for each authenticated API request with `is_error: response.status >= 500` and `is_rate_limited: response.status == 429`; the method uses a single SQL upsert so increments are atomic. If the update fails, the error is swallowed so API responses are never affected.
+API request metrics use the `ApiRequestStat` model and a daily table keyed by `(merchant_id, date)`. An `after_action` in `Api::V1::BaseController` calls `ApiRequestStat.record_request!` for each authenticated API request with `is_error: response.status >= 500` and `is_rate_limited: response.status == 429`. **HTTP 429 from `ApiRateLimitable` is recorded in the limiter** because `AbstractController` skips `after_action` when a `before_action` halts the chain, so `record_request!` would not run otherwise. The method uses a single SQL upsert so increments are atomic. If the update fails, the error is swallowed so API responses are never affected. See `docs/API_RATE_LIMITING.md`.
 
 ## Reversibility
 

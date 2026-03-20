@@ -107,7 +107,7 @@ The codebase can be mentally grouped into domains. **No refactor required today*
 | **Webhooks** | `models/webhook_event.rb`, `services/`, `jobs/` | WebhookEvent, ProcessorEventService, WebhookDeliveryService, WebhookDeliveryJob |
 | **Idempotency** | `models/idempotency_record.rb`, `services/idempotency_service.rb` | IdempotencyRecord, IdempotencyService |
 | **Auth** | `models/merchant.rb`, `controllers/` | Merchant, ApiAuthenticatable, sessions, registrations |
-| **Observability** | `services/`, `controllers/concerns/` | AuditLogService, MetricsService, RateLimiterService, StructuredLogging |
+| **Observability** | `services/`, `controllers/concerns/` | AuditLogService, MetricsService, RateLimiterService, ApiRateLimitable, StructuredLogging |
 
 **Future:** Could be structured as `app/domains/payments/`, `app/domains/ledger/`, etc., but not required for current scope.
 

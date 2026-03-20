@@ -81,10 +81,8 @@ Practical security review and hardening plan for the mini payment gateway. Compl
 
 ### Medium priority
 
-**General API rate limiting not enforced**  
-- **Issue**: `RateLimiterService` exists but is not called by any controller. `ApiRequestStat` records 429 only if something returns 429; nothing does.  
-- **Impact**: DoS via high request volume per API key.  
-- **Recommendation**: Add `before_action` in `Api::V1::BaseController` (or per-controller) that calls `RateLimiterService` and returns 429 when limited.
+**General API rate limiting** — **Done**  
+- **Behavior**: `ApiRateLimitable` on `Api::V1::BaseController`; category config in `config/initializers/api_rate_limits.rb`; `docs/API_RATE_LIMITING.md`.
 
 **Webhook secret boot validation**  
 - **Issue**: Default dev secret used if unset. No boot-time check that production has explicit `WEBHOOK_SECRET`.  
@@ -113,7 +111,7 @@ Practical security review and hardening plan for the mini payment gateway. Compl
 | Priority | Action | Effort | Impact |
 |----------|--------|--------|--------|
 | **High** | ~~Add request_hash comparison~~ — implemented (canonical fingerprint + 409 + audit) | — | — |
-| **Medium** | Wire RateLimiterService into API base controller; return 429 when limit exceeded | Low | Reduces DoS risk |
+| **Medium** | ~~Wire RateLimiterService~~ — implemented (`ApiRateLimitable`) | — | — |
 | **Medium** | Add boot-time validation: reject/warn when production uses default webhook secret | Low | Prevents accidental deployment with weak secret |
 | **Low** | Add CSP / HSTS config for production | Medium | Defense in depth |
 | **Low** | Document webhook deduplication expectations; optionally add provider_event_id uniqueness | Low–Medium | Reduces duplicate event risk |
@@ -126,7 +124,7 @@ Practical security review and hardening plan for the mini payment gateway. Compl
 | Threat | Affected subsystem | Current mitigation | Residual risk | Priority | Recommended action |
 |--------|--------------------|--------------------|---------------|----------|--------------------|
 | Idempotency param mismatch | Payments | 409 + audit (fingerprint) | Medium | Low | See `docs/IDEMPOTENCY.md` |
-| API DoS | API | None | Medium | Medium | Enforce RateLimiterService |
+| API DoS | API | Category limits + 429 | Medium | Low | See `docs/API_RATE_LIMITING.md` |
 | Default webhook secret in prod | Webhooks | None | Medium | Medium | Boot validation |
 | Cross-tenant access | API, dashboard | Merchant scoping | Low | — | Maintain discipline |
 | Webhook forgery | Webhooks | HMAC | Low | — | Keep secret safe |

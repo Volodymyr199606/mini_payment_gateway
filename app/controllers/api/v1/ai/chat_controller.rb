@@ -4,18 +4,7 @@ module Api
   module V1
     module Ai
       class ChatController < Api::V1::BaseController
-        AI_RATE_LIMIT = 20
-        AI_RATE_WINDOW = 60
-
         def create
-          if ai_rate_limited?
-            return render_error(
-              code: 'rate_limited',
-              message: "AI chat limit: #{AI_RATE_LIMIT} requests per #{AI_RATE_WINDOW} seconds.",
-              status: :too_many_requests
-            )
-          end
-
           message = chat_params[:message].to_s.strip
           if message.blank?
             return render_error(
@@ -43,7 +32,6 @@ module Api
           out = agent.call
 
           latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
-          increment_ai_chat_count
 
           log_ai_request_success(out, message, agent_key, retriever_result, selected_retriever, latency_ms)
 
@@ -238,17 +226,6 @@ module Api
           params.permit(:message)
         end
 
-        def ai_rate_limited?
-          key = "ai_chat:merchant:#{current_merchant.id}"
-          count = (Rails.cache.read(key) || 0).to_i
-          count >= AI_RATE_LIMIT
-        end
-
-        def increment_ai_chat_count
-          key = "ai_chat:merchant:#{current_merchant.id}"
-          count = (Rails.cache.read(key) || 0).to_i
-          Rails.cache.write(key, count + 1, expires_in: AI_RATE_WINDOW.seconds)
-        end
       end
     end
   end

@@ -84,7 +84,7 @@ Practical threat model for the mini payment gateway: multi-tenant API + dashboar
 - **Cache**: Keys include merchant_id (tools) or session_id (memory); retrieval keys use message+agent+doc_version (no tenant in key — retrieval is stateless by design).
 
 ### Denial of service
-- **API**: No global rate limiting in controllers. RateLimiterService exists but is **not invoked**. ApiRequestStat records 429 only if something returns 429.
+- **API**: Category-based rate limits on `Api::V1::BaseController` (`ApiRateLimitable`); merchant-scoped buckets; IP for webhook/public merchant POST. See `docs/API_RATE_LIMITING.md`.
 - **AI**: 20 req/60s per merchant (dashboard + API). Enforced in controllers.
 - **Webhook**: No rate limit on processor endpoint. Replay of valid signed payload → duplicate DB rows.
 - **Background jobs**: Inline in development; queue in production. No job rate limit.

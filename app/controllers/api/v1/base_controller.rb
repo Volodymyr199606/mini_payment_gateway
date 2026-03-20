@@ -5,6 +5,7 @@ module Api
     class BaseController < ActionController::API
       include ApiAuthenticatable
       include StructuredLogging
+      include ApiRateLimitable
 
       after_action :record_api_request_stat
 

@@ -129,6 +129,14 @@ module Payments
             type
           end
 
+        # Provider PI id: from PaymentIntent directly, or from dispute's charge when expanded
+        provider_pi_id = if data_object['object'] == 'payment_intent'
+                          data_object['id']
+                        else
+                          data_object.dig('charge', 'payment_intent') || data_object['payment_intent']
+                        end
+        provider_pi_id = provider_pi_id.is_a?(Hash) ? provider_pi_id['id'] : provider_pi_id
+
         {
           event_type: internal_event_type,
           merchant_id: metadata['merchant_id'],
@@ -139,8 +147,8 @@ module Payments
             created: payload['created'],
             data: {
               merchant_id: metadata['merchant_id'],
-              payment_intent_id: metadata['internal_payment_intent_id'] || data_object['payment_intent'],
-              provider_payment_intent_id: data_object['id'],
+              payment_intent_id: metadata['internal_payment_intent_id'],
+              provider_payment_intent_id: provider_pi_id,
               object: data_object
             }
           },
@@ -191,11 +199,15 @@ module Payments
       def stripe_get(path)
         response = client.get(path)
         parse_response(response)
+      rescue Faraday::Error => e
+        raise ProviderRequestError, "Stripe request failed: #{e.message}"
       end
 
       def stripe_post(path, params)
         response = client.post(path) { |req| req.body = URI.encode_www_form(flatten_params(params)) }
         parse_response(response)
+      rescue Faraday::Error => e
+        raise ProviderRequestError, "Stripe request failed: #{e.message}"
       end
 
       def parse_response(response)
@@ -209,8 +221,11 @@ module Payments
       end
 
       def client
+        timeout = Payments::Config.timeout_seconds
         @client ||= Faraday.new(url: Payments::Config.stripe_base_url) do |faraday|
           faraday.request :url_encoded
+          faraday.options.open_timeout = timeout
+          faraday.options.timeout = timeout
           faraday.adapter Faraday.default_adapter
           faraday.headers['Authorization'] = "Bearer #{Payments::Config.stripe_api_key}"
           faraday.headers['Content-Type'] = 'application/x-www-form-urlencoded'

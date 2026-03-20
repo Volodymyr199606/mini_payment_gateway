@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_16_000000) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_20_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -220,9 +220,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_16_000000) do
     t.integer "attempts", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "provider_event_id"
     t.index ["delivery_status"], name: "index_webhook_events_on_delivery_status"
     t.index ["event_type"], name: "index_webhook_events_on_event_type"
     t.index ["merchant_id"], name: "index_webhook_events_on_merchant_id"
+    t.index ["provider_event_id"], name: "index_webhook_events_on_provider_event_id", unique: true, where: "(provider_event_id IS NOT NULL)"
   end
 
   add_foreign_key "ai_chat_messages", "ai_chat_sessions"

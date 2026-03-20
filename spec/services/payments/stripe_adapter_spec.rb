@@ -46,4 +46,46 @@ RSpec.describe Payments::Providers::StripeAdapter do
     expect(normalized[:merchant_id]).to eq('44')
     expect(normalized[:payload].dig(:data, :payment_intent_id)).to eq('77')
   end
+
+  it 'normalizes charge.dispute.created with provider_payment_intent_id from charge' do
+    payload = {
+      'id' => 'evt_disp',
+      'type' => 'charge.dispute.created',
+      'data' => {
+        'object' => {
+          'id' => 'dp_123',
+          'charge' => { 'payment_intent' => 'pi_stripe_456' }
+        }
+      }
+    }
+    normalized = adapter.normalize_webhook_event(payload: payload, headers: {})
+    expect(normalized[:event_type]).to eq('chargeback.opened')
+    expect(normalized[:payload].dig(:data, :provider_payment_intent_id)).to eq('pi_stripe_456')
+  end
+
+  describe 'provider operations' do
+    it 'capture returns missing_reference_result when no authorize processor_ref' do
+      m = Merchant.create_with_api_key(name: 'T', status: 'active', email: "t_#{SecureRandom.hex(4)}@example.com", password: 'pass123', password_confirmation: 'pass123').first
+      c = Customer.create!(merchant: m, email: "c_#{SecureRandom.hex(4)}@example.com")
+      pm = PaymentMethod.create!(customer: c, method_type: 'card', last4: '4242', token: 'pm_card_visa', brand: 'Visa', exp_month: 12, exp_year: 2026)
+      pi = PaymentIntent.create!(merchant: m, customer: c, payment_method: pm, amount_cents: 5000, currency: 'USD', status: 'created')
+
+      result = adapter.capture(payment_intent: pi)
+
+      expect(result.success?).to be(false)
+      expect(result.failure_code).to eq('missing_processor_reference')
+    end
+
+    it 'void returns missing_reference_result when no authorize processor_ref' do
+      m = Merchant.create_with_api_key(name: 'T', status: 'active', email: "t_#{SecureRandom.hex(4)}@example.com", password: 'pass123', password_confirmation: 'pass123').first
+      c = Customer.create!(merchant: m, email: "c_#{SecureRandom.hex(4)}@example.com")
+      pm = PaymentMethod.create!(customer: c, method_type: 'card', last4: '4242', token: 'pm_card_visa', brand: 'Visa', exp_month: 12, exp_year: 2026)
+      pi = PaymentIntent.create!(merchant: m, customer: c, payment_method: pm, amount_cents: 5000, currency: 'USD', status: 'created')
+
+      result = adapter.void(payment_intent: pi)
+
+      expect(result.success?).to be(false)
+      expect(result.failure_code).to eq('missing_processor_reference')
+    end
+  end
 end

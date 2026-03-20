@@ -37,8 +37,24 @@ module Api
         event_type = normalized[:event_type].to_s
         merchant_id = normalized[:merchant_id]
         signature = normalized[:signature]
+        provider_event_id = normalized[:provider_event_id]&.to_s.presence
 
         merchant = merchant_id ? Merchant.find_by(id: merchant_id) : nil
+
+        # Idempotent: return existing event if already processed (prevents duplicate ingestion)
+        if provider_event_id.present?
+          existing = WebhookEvent.find_by(provider_event_id: provider_event_id)
+          if existing
+            render json: {
+              data: {
+                id: existing.id,
+                event_type: existing.event_type,
+                status: 'already_received'
+              }
+            }, status: :ok
+            return
+          end
+        end
 
         # Create webhook event
         webhook_event = WebhookEvent.create!(
@@ -47,16 +63,14 @@ module Api
           payload: normalized[:payload] || payload,
           delivery_status: 'succeeded', # Already delivered to us
           delivered_at: Time.current,
-          signature: signature
+          signature: signature,
+          provider_event_id: provider_event_id
         )
 
         # Chargeback: set dispute_status on payment intent if identifiable
-        if event_type == 'chargeback.opened'
-          pi_id = (normalized[:payload] || payload).dig('data', 'payment_intent_id')
-          if pi_id && merchant
-            pi = merchant.payment_intents.find_by(id: pi_id)
-            pi&.update!(dispute_status: 'open')
-          end
+        if event_type == 'chargeback.opened' && merchant
+          payment_intent = resolve_chargeback_payment_intent(normalized, merchant)
+          payment_intent&.update!(dispute_status: 'open')
         end
 
         # Queue delivery to merchant (if configured)
@@ -81,6 +95,31 @@ module Api
           message: 'Failed to process webhook',
           status: :internal_server_error
         )
+      end
+
+      private
+
+      # Resolve PaymentIntent for chargeback: internal ID from metadata, or lookup by provider PI id (processor_ref).
+      def resolve_chargeback_payment_intent(normalized, merchant)
+        payload = (normalized[:payload] || {}).with_indifferent_access
+        data = payload[:data] || payload['data'] || {}
+
+        # Internal payment intent ID (from our metadata on Stripe objects)
+        internal_id = data['payment_intent_id'] || data[:payment_intent_id]
+        if internal_id.present?
+          pi = merchant.payment_intents.find_by(id: internal_id)
+          return pi if pi
+        end
+
+        # Provider payment intent ID (Stripe pi_xxx) - lookup via processor_ref on authorize transaction
+        provider_pi_id = data['provider_payment_intent_id'] || data[:provider_payment_intent_id]
+        if provider_pi_id.present?
+          return PaymentIntent.joins(:transactions)
+            .where(merchant: merchant, transactions: { kind: 'authorize', status: 'succeeded', processor_ref: provider_pi_id })
+            .first
+        end
+
+        nil
       end
     end
   end

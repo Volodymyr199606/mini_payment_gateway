@@ -74,6 +74,19 @@ RSpec.describe Ai::Analytics::MetricsBuilder do
         expect(r).not_to have_key(:error_message)
         expect(r).not_to have_key(:parsed_entities)
       end
+
+      it 'aggregates skill_usage when invoked_skills present' do
+        create_audit(invoked_skills: [
+          { 'skill_key' => 'payment_state_explainer', 'invoked' => true, 'success' => true, 'phase' => 'post_tool' },
+          { 'skill_key' => 'payment_state_explainer', 'invoked' => true, 'success' => true, 'phase' => 'post_tool' }
+        ])
+        create_audit(invoked_skills: [{ 'skill_key' => 'followup_rewriter', 'invoked' => true, 'success' => false }])
+        m = described_class.call(AiRequestAudit.all)
+        expect(m[:skill_usage][:skill_invoked_count]).to eq(3)
+        expect(m[:skill_usage][:skill_keys_frequency]['payment_state_explainer']).to eq(2)
+        expect(m[:skill_usage][:skill_keys_frequency]['followup_rewriter']).to eq(1)
+        expect(m[:skill_usage][:success_rate]).to be_within(0.01).of(2.0 / 3)
+      end
     end
   end
 

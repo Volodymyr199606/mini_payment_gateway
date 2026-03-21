@@ -63,10 +63,21 @@
         details.appendChild(summary);
         var content = document.createElement('div');
         content.className = 'ai-debug-content';
+        var skillRows = [];
+        if (debug.invoked_skills && Array.isArray(debug.invoked_skills) && debug.invoked_skills.length > 0) {
+          var keys = debug.invoked_skills.map(function(s) { return s.skill_key || s['skill_key'] || '—'; }).join(', ');
+          skillRows.push(['skills_invoked', keys]);
+          var phases = debug.invoked_skills.map(function(s) { return (s.phase || s['phase'] || '') + ':' + (s.success !== false && s.success !== 'false' ? 'ok' : 'fail'); }).filter(Boolean).join('; ');
+          if (phases) skillRows.push(['phases', phases]);
+          if (debug.skill_affected_response) skillRows.push(['affected_response', 'yes']);
+        } else {
+          skillRows.push(['skills_invoked', 'none']);
+        }
         var sections = [
           { title: 'Routing', rows: [['agent', debug.selected_agent], ['retriever', debug.selected_retriever || debug.retriever], ['graph', bool(debug.graph_enabled)], ['vector', bool(debug.vector_enabled)]] },
           { title: 'Retrieval', rows: [['sections', fmt(debug.retrieved_sections_count || debug.final_sections_count)], ['citations', fmt(debug.citations_count)], ['context_truncated', bool(debug.context_truncated)], ['context_chars', debug.final_context_chars ? debug.final_context_chars + ' chars' : null]].filter(function(r) { return r[1] != null; }) },
           { title: 'Memory', rows: [['memory_used', bool(debug.memory_used)], ['summary_used', bool(debug.summary_used)], ['recent_msgs', fmt(debug.recent_messages_count)], ['current_topic', fmt(debug.current_topic)], ['memory_truncated', bool(debug.memory_truncated)], ['memory_chars', debug.final_memory_chars ? debug.final_memory_chars + ' chars' : null]].filter(function(r) { return r[1] != null; }) },
+          { title: 'Skills', rows: skillRows },
           { title: 'Guardrails', rows: [['fallback_used', bool(debug.fallback_used)], ['citation_reask', bool(debug.citation_reask_used)]] },
           { title: 'Model / timing', rows: [['model', fmt(debug.model_used)], ['latency', fmt(debug.latency_ms) !== '—' ? debug.latency_ms + ' ms' : '—']] }
         ];

@@ -5,6 +5,8 @@ require 'rails_helper'
 RSpec.describe Ai::Skills::InvocationCoordinator do
   include ApiHelpers
 
+  before { allow(Ai::Observability::EventLogger).to receive(:log_skill_invocation) }
+
   let(:merchant) { create_merchant_with_api_key.first }
   let(:customer) { merchant.customers.create!(email: "coord_#{SecureRandom.hex(4)}@example.com") }
 

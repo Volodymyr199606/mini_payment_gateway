@@ -91,5 +91,16 @@ RSpec.describe Ai::AuditTrail::Writer do
       expect { result = described_class.write(base_record) }.not_to raise_error
       expect(result).to be_nil
     end
+
+    it 'persists invoked_skills when provided' do
+      skills = [{ 'skill_key' => 'payment_state_explainer', 'phase' => 'post_tool', 'invoked' => true, 'success' => true }]
+      record = base_record.merge(invoked_skills: skills)
+      described_class.write(record)
+      audit = AiRequestAudit.last
+      expect(audit.invoked_skills).to be_a(Array)
+      expect(audit.invoked_skills.size).to eq(1)
+      expect(audit.invoked_skills.first['skill_key']).to eq('payment_state_explainer')
+      expect(audit.invoked_skills.first).not_to have_key('raw_payload')
+    end
   end
 end

@@ -54,5 +54,28 @@ RSpec.describe Ai::Replay::DiffBuilder do
       flags = described_class.matched_flags(original_summary: orig, replay_summary: repl)
       expect(flags[:matched_policy_decisions]).to be true
     end
+
+    it 'sets matched_skill_usage when skill_keys match' do
+      orig = { skill_keys: %w[payment_state_explainer] }
+      repl = { skill_keys: %w[payment_state_explainer] }
+      flags = described_class.matched_flags(original_summary: orig, replay_summary: repl)
+      expect(flags[:matched_skill_usage]).to be true
+    end
+
+    it 'sets matched_skill_usage false when skill_keys differ' do
+      orig = { skill_keys: %w[payment_state_explainer] }
+      repl = { skill_keys: [] }
+      flags = described_class.matched_flags(original_summary: orig, replay_summary: repl)
+      expect(flags[:matched_skill_usage]).to be false
+    end
+  end
+
+  describe 'skill_keys in diff' do
+    it 'reports difference when skill_keys differ' do
+      orig = { skill_keys: %w[payment_state_explainer] }
+      repl = { skill_keys: %w[followup_rewriter] }
+      diff = described_class.call(original_summary: orig, replay_summary: repl)
+      expect(diff.any? { |d| d[:field] == 'skill_keys' }).to be true
+    end
   end
 end

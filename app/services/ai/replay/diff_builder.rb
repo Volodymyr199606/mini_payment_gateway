@@ -12,6 +12,7 @@ module Ai
         deterministic_explanation_used explanation_type explanation_key
         execution_mode retrieval_skipped memory_skipped
         degraded fallback_mode
+        skill_keys
       ].freeze
 
       def self.call(original_summary:, replay_summary:)
@@ -47,6 +48,7 @@ module Ai
           matched_path: path_match?(orig, repl),
           matched_policy_decisions: policy_match?(orig, repl),
           matched_tool_usage: tool_usage_match?(orig, repl),
+          matched_skill_usage: skill_usage_match?(orig, repl),
           matched_composition_mode: orig[:composition_mode].to_s == repl[:composition_mode].to_s,
           matched_debug_metadata: composition_and_tools_match?(orig, repl)
         }
@@ -68,6 +70,10 @@ module Ai
         def tool_usage_match?(orig, repl)
           Array(orig[:tool_names]).sort == Array(repl[:tool_names]).sort &&
             !!orig[:tool_used] == !!repl[:tool_used]
+        end
+
+        def skill_usage_match?(orig, repl)
+          Array(orig[:skill_keys]).sort == Array(repl[:skill_keys]).sort
         end
 
         def composition_and_tools_match?(orig, repl)

@@ -30,7 +30,8 @@ module Ai
           latency_ms: nil,
           success: true,
           error_class: nil,
-          error_message: nil
+          error_message: nil,
+          invoked_skills: nil
         )
           payload = build_base_payload.merge(
             event: 'ai_request',
@@ -56,7 +57,40 @@ module Ai
           )
           payload[:error_class] = error_class if error_class.present?
           payload[:error_message] = truncate_safe(error_message, 500) if error_message.present?
+          if invoked_skills.is_a?(Array) && invoked_skills.any?
+            payload[:invoked_skills] = invoked_skills.map do |s|
+              next s unless s.is_a?(Hash)
+              s.stringify_keys.slice('skill_key', 'phase', 'success', 'affected_final_response')
+            end
+          end
           log_info(payload)
+        end
+
+        # Log skill invocation. Safe metadata only.
+        def log_skill_invocation(
+          request_id: nil,
+          skill_key: nil,
+          agent_key: nil,
+          phase: nil,
+          invoked: nil,
+          success: nil,
+          reason_code: nil,
+          duration_ms: nil,
+          affected_final_response: nil
+        )
+          payload = build_base_payload.merge(
+            event: 'ai_skill_invocation',
+            request_id: request_id,
+            skill_key: skill_key,
+            agent_key: agent_key,
+            phase: phase,
+            invoked: invoked,
+            success: success,
+            reason_code: reason_code,
+            duration_ms: duration_ms,
+            affected_final_response: affected_final_response
+          )
+          log_info(payload.compact)
         end
 
         # Log retrieval stage. Called from RetrievalService.

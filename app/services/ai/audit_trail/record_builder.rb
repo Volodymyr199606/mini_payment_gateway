@@ -39,7 +39,9 @@ module Ai
         resilience_metadata: nil,
         execution_plan_metadata: nil,
         corpus_version: nil,
-        invoked_skills: nil
+        invoked_skills: nil,
+        skill_affected_reply: false,
+        skill_agent_key: nil
       )
         @request_id = request_id.to_s.strip.presence
         @endpoint = endpoint.to_s.strip.presence
@@ -71,6 +73,8 @@ module Ai
         @execution_plan_metadata = execution_plan_metadata
         @corpus_version = corpus_version.to_s.strip.presence
         @invoked_skills = invoked_skills.is_a?(Array) ? invoked_skills : []
+        @skill_affected_reply = !!skill_affected_reply
+        @skill_agent_key = skill_agent_key.to_s.strip.presence
       end
 
       def call
@@ -129,6 +133,13 @@ module Ai
           out[:explanation_key] = @composition[:explanation_key].to_s.strip.truncate(64).presence if @composition[:explanation_key].present?
         end
         out[:schema_version] = (defined?(Ai::Contracts) && Ai::Contracts::AUDIT_PAYLOAD_VERSION) || '1'
+        if record_accepts_invoked_skills? && @invoked_skills.present?
+          out[:invoked_skills] = ::Ai::Skills::UsageSerializer.normalize(
+            raw: @invoked_skills,
+            agent_key: @skill_agent_key || @agent_key,
+            affected_final_response: @skill_affected_reply
+          )
+        end
         out
       end
 

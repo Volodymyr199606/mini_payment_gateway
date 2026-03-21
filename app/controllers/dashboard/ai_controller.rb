@@ -123,6 +123,8 @@ module Dashboard
           policy_metadata: policy_metadata_from_run(run_result, followup_result),
           execution_plan_metadata: execution_plan.to_audit_metadata,
           invoked_skills: skill_outcome[:invocation_results],
+          skill_affected_reply: skill_outcome[:skill_affected_reply],
+          skill_agent_key: composed[:agent_key]
         )
         enqueue_summary_refresh_if_ok(chat_session)
         payload = build_response_payload(composed)
@@ -176,6 +178,8 @@ module Dashboard
             followup_metadata: followup_metadata_safe(followup_result),
             execution_plan_metadata: execution_plan.to_audit_metadata,
             invoked_skills: rewrite_result[:invocation_results],
+            skill_affected_reply: true,
+            skill_agent_key: composed[:agent_key]
           )
           enqueue_summary_refresh_if_ok(chat_session)
           payload = build_response_payload(composed)
@@ -669,7 +673,14 @@ module Dashboard
       debug.merge!(followup_debug_safe(followup))
       debug.merge!(policy_debug_from_run(run_result, followup))
       debug.merge!(execution_plan.present? && execution_plan.respond_to?(:execution_mode) ? { execution_plan: execution_plan.to_audit_metadata } : {})
-      debug[:invoked_skills] = skill_outcome[:invocation_results] if skill_outcome.is_a?(Hash) && skill_outcome[:invocation_results].present?
+      if skill_outcome.is_a?(Hash) && skill_outcome[:invocation_results].present?
+        debug[:invoked_skills] = ::Ai::Skills::UsageSerializer.normalize(
+          raw: skill_outcome[:invocation_results],
+          agent_key: composed[:agent_key],
+          affected_final_response: skill_outcome[:skill_affected_reply]
+        )
+        debug[:skill_affected_response] = !!skill_outcome[:skill_affected_reply]
+      end
       debug
     end
 
@@ -680,7 +691,14 @@ module Dashboard
       )
       debug.merge!(followup_debug_safe(followup))
       debug[:execution_plan] = execution_plan.to_audit_metadata if execution_plan.respond_to?(:execution_mode)
-      debug[:invoked_skills] = rewrite_result[:invocation_results] if rewrite_result.is_a?(Hash) && rewrite_result[:invocation_results].present?
+      if rewrite_result.is_a?(Hash) && rewrite_result[:invocation_results].present?
+        debug[:invoked_skills] = ::Ai::Skills::UsageSerializer.normalize(
+          raw: rewrite_result[:invocation_results],
+          agent_key: composed[:agent_key],
+          affected_final_response: true
+        )
+        debug[:skill_affected_response] = true
+      end
       debug
     end
 

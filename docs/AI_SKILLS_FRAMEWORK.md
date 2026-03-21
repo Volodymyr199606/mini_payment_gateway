@@ -103,9 +103,18 @@ Agents use skills only when explicitly planned by `InvocationPlanner`. Decision 
 
 ### Audit and debug
 
-- `invoked_skills` (jsonb) on `AiRequestAudit` stores `[{ skill_key, phase, invoked, reason_code, success, deterministic }]`.
-- Debug payloads include `invoked_skills` when skills run.
-- Replay tooling can use this for diagnostics.
+Skill usage is normalized via `Ai::Skills::UsageSerializer` and exposed consistently across audit, debug, replay, and analytics.
+
+**Metadata shape (safe, stable):** `skill_key`, `agent_key`, `phase`, `invoked`, `success`, `deterministic`, `reason_code`, `affected_final_response`, `duration_ms` (when available). Raw inputs, prompts, and sensitive data are **not** persisted or displayed.
+
+**Where it appears:**
+- **Audit trail:** `invoked_skills` (jsonb) on `AiRequestAudit` stores normalized skill usage per request. `RecordBuilder` and `Writer` persist it via the existing flow.
+- **Debug payload / UI:** When debug is enabled, the response includes `invoked_skills` and `skill_affected_response`. The dashboard debug panel shows a "Skills" section (skills invoked, phases, success/failure, whether the skill changed the final response).
+- **Replay:** `RequestReplayer` compares `skill_keys` and `invoked_skills` between original and replayed runs. `DiffBuilder.matched_skill_usage` indicates whether skill usage matches.
+- **Analytics:** `MetricsBuilder.skill_usage` aggregates `skill_keys_frequency`, `by_agent`, `success_rate`, `deterministic_rate`, `affected_response_count`.
+- **Observability:** `EventLogger.log_skill_invocation` emits per-invocation events; `log_ai_request` accepts optional `invoked_skills` for the final request log.
+
+**What is intentionally not persisted/displayed:** raw skill inputs, internal prompts, merchant/account data beyond what existing audit allows, large output blobs (only concise summaries).
 
 ---
 
@@ -129,6 +138,7 @@ Use **explicit** orchestration in `RequestPlanner` / composers if multi-step flo
 
 ## Tests
 
+- `spec/services/ai/skills/usage_serializer_spec.rb` — `UsageSerializer` normalize/summary, safe shape, no unsafe leakage.
 - `spec/services/ai/skills/*` — `SkillResult`, `SkillDefinition`, `Registry`, `Invoker`, agent allowlists.
 - `spec/services/ai/skills/payment_state_explainer_spec.rb` — payment intent and transaction explanation.
 - `spec/services/ai/skills/ledger_period_summary_spec.rb` — ledger summary and presets.

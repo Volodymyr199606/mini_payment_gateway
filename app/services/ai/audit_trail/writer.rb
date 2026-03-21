@@ -78,6 +78,13 @@ module Ai
             h[:deterministic_explanation_used] = !!record[:deterministic_explanation_used] if record.key?(:deterministic_explanation_used)
             h[:explanation_type] = record[:explanation_type].to_s.strip.truncate(64).presence if record.key?(:explanation_type)
             h[:explanation_key] = record[:explanation_key].to_s.strip.truncate(64).presence if record.key?(:explanation_key)
+            if record.key?(:invoked_skills) && record[:invoked_skills].is_a?(Array)
+              safe_keys = ::Ai::Skills::UsageSerializer::SAFE_KEYS
+              h[:invoked_skills] = record[:invoked_skills].map do |s|
+                next {} unless s.is_a?(Hash)
+                s.stringify_keys.slice(*safe_keys)
+              end.reject { |x| x['skill_key'].blank? }
+            end
           end
         end
       end

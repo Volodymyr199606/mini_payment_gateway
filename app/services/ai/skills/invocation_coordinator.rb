@@ -35,6 +35,7 @@ module Ai
           if planned
             inv_result = InvocationExecutor.call(planned: planned, context: context)
             invocation_results << inv_result.to_audit_hash
+            log_skill_invocation(inv_result, context)
 
             # Only replace reply when single-step; multi-step runner reply already combines both
             if inv_result.invoked && inv_result.success && inv_result.explanation.present? && tool_names.size <= 1
@@ -75,6 +76,7 @@ module Ai
           return nil unless planned
 
           inv_result = InvocationExecutor.call(planned: planned, context: context)
+          log_skill_invocation(inv_result, context)
 
           if inv_result.invoked && inv_result.success && inv_result.explanation.present?
             {
@@ -84,6 +86,21 @@ module Ai
           else
             nil
           end
+        end
+
+        def log_skill_invocation(inv_result, context)
+          return unless inv_result.respond_to?(:to_audit_hash)
+          h = inv_result.to_audit_hash
+          ::Ai::Observability::EventLogger.log_skill_invocation(
+            request_id: Thread.current[:ai_request_id],
+            skill_key: h[:skill_key],
+            agent_key: context&.agent_key,
+            phase: h[:phase],
+            invoked: h[:invoked],
+            success: h[:success],
+            reason_code: h[:reason_code],
+            affected_final_response: h[:invoked] && h[:success]
+          )
         end
 
         def resolve_skill_agent(agent_key, tool_names)

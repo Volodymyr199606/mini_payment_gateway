@@ -22,6 +22,7 @@ module Ai
           by_agent: by_agent,
           by_composition_mode: by_composition_mode,
           tool_usage: tool_usage,
+          skill_usage: skill_usage,
           fallback: fallback_metrics,
           policy: policy_metrics,
           followup: followup_metrics,
@@ -47,6 +48,7 @@ module Ai
           by_agent: [],
           by_composition_mode: [],
           tool_usage: {},
+          skill_usage: {},
           fallback: {},
           policy: {},
           followup: {},
@@ -91,6 +93,32 @@ module Ai
           tool_used_count: tool_count,
           tool_usage_rate: total.positive? ? (tool_count.to_f / total).round(3) : 0,
           tool_names_frequency: freq
+        }
+      end
+
+      def skill_usage
+        return {} unless AiRequestAudit.column_names.include?('invoked_skills')
+
+        total = @scope.count
+        raw = @scope.pluck(:invoked_skills).compact.reject { |a| a.blank? || (a.is_a?(Array) && a.empty?) }
+        all_skills = raw.flatten.compact
+        return { skill_invoked_count: 0, skill_usage_rate: 0, skill_keys_frequency: {}, by_agent: {}, success_rate: nil } if all_skills.empty?
+
+        invoked = all_skills.select { |s| s['invoked'] || s[:invoked] }
+        failed = invoked.reject { |s| s['success'] || s[:success] }
+        deterministic_count = invoked.count { |s| s['deterministic'] || s[:deterministic] }
+        affected_count = all_skills.count { |s| s['affected_final_response'] || s[:affected_final_response] }
+        skill_keys_freq = invoked.map { |s| s['skill_key'] || s[:skill_key] }.compact.tally.sort_by { |_, v| -v }.to_h
+        by_agent = invoked.group_by { |s| s['agent_key'] || s[:agent_key] }.transform_values(&:size)
+
+        {
+          skill_invoked_count: invoked.size,
+          skill_usage_rate: total.positive? ? (raw.size.to_f / total).round(3) : 0,
+          skill_keys_frequency: skill_keys_freq,
+          by_agent: by_agent,
+          success_rate: invoked.any? ? (1 - failed.size.to_f / invoked.size).round(3) : nil,
+          deterministic_rate: invoked.any? ? (deterministic_count.to_f / invoked.size).round(3) : nil,
+          affected_response_count: affected_count
         }
       end
 

@@ -237,5 +237,32 @@ RSpec.describe Ai::AuditTrail::RecordBuilder do
       expect(result).not_to have_key(:explanation_type)
       expect(result).not_to have_key(:explanation_key)
     end
+
+    it 'records invoked_skills when column exists and skills provided' do
+      raw = [{ skill_key: 'payment_state_explainer', phase: 'post_tool', invoked: true, success: true }]
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'dashboard',
+        agent_key: 'tool:get_payment_intent',
+        invoked_skills: raw,
+        skill_affected_reply: true,
+        skill_agent_key: 'operational'
+      )
+      expect(result[:invoked_skills]).to be_a(Array)
+      expect(result[:invoked_skills].size).to eq(1)
+      expect(result[:invoked_skills].first['skill_key']).to eq('payment_state_explainer')
+      expect(result[:invoked_skills].first['affected_final_response']).to be(true)
+    end
+
+    it 'omits invoked_skills when column does not exist' do
+      allow(AiRequestAudit).to receive(:column_names).and_return(%w[id request_id endpoint])
+      result = described_class.call(
+        request_id: 'r',
+        endpoint: 'dashboard',
+        agent_key: 'operational',
+        invoked_skills: [{ skill_key: 'x', phase: 'p', invoked: true }]
+      )
+      expect(result).not_to have_key(:invoked_skills)
+    end
   end
 end

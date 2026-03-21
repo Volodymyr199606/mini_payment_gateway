@@ -6,11 +6,12 @@ How to inspect AI request audits, run replay, and use metadata to investigate is
 
 - **Model**: `AiRequestAudit` stores one record per AI request. No prompts or secrets; only metadata (request_id, endpoint, merchant_id, agent_key, composition, tool_used, tool_names, latency_ms, execution_plan, policy flags, etc.).
 - **List**: Dev route `ai_audits`. Use **QueryBuilder** filters: date range (`from`, `to`), `merchant_id`, `agent_key`, `composition_mode`, `degraded_only`, `fallback_only`, `policy_blocked_only`, `tool_used`, `request_id`, `failed_only`, `high_latency_only`, `min_latency_ms`.
-- **Detail**: Dev route `ai_audits/:id`. **DetailPresenter** groups safe fields into sections: request, context, parsing, execution_plan, tool_usage, orchestration, retrieval, memory, composition, policy, resilience, timing. Use this to see why a request took the path it did and whether policy or resilience intervened.
+- **Detail**: Dev route `ai_audits/:id`. **DetailPresenter** groups safe fields into sections: request, context, parsing, execution_plan, tool_usage, orchestration, **skills** (invoked_skills), retrieval, memory, composition, policy, resilience, timing. Use this to see why a request took the path it did and whether policy or resilience intervened.
 
 **Useful fields when investigating**:
 - `execution_mode`, `retrieval_skipped`, `memory_skipped`, `retrieval_budget_reduced` → what the planner decided.
 - `tool_used`, `tool_names`, `orchestration_used`, `orchestration_step_count` → deterministic path vs agent path.
+- `invoked_skills` → which skills ran, phase, success/failure, whether they affected the final response (see [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md)).
 - `authorization_denied`, `tool_blocked_by_policy`, `followup_inheritance_blocked`, `policy_reason_code` → policy blocks.
 - `fallback_used`, `degraded`, `failure_stage`, `fallback_mode` → resilience path.
 - `parsed_entities`, `parsed_intent_hints` → what intent/follow-up resolution produced (used by replay).
@@ -23,7 +24,7 @@ How to inspect AI request audits, run replay, and use metadata to investigate is
   - Audit represents a **tool path**: `tool_used?` and `tool_names` present.
   - For the first tool in `tool_names`, args can be reconstructed from `parsed_entities` and `parsed_intent_hints` (e.g. payment_intent_id, transaction_id, from/to for ledger).
 - **Re-run**: Replayer calls **ConstrainedRunner** with the reconstructed `message` and `resolved_intent` (same merchant, new request_id). No agent, no RAG, no memory—only the deterministic tool path.
-- **Compare**: **DiffBuilder** compares original audit summary vs replayed run summary on a fixed set of keys (agent_key, composition_mode, tool_used, tool_names, orchestration_used, orchestration_step_count, success, policy flags, execution_mode, etc.). **ReplayResult** holds differences and matched flags (path, policy, tool usage, composition mode, debug metadata).
+- **Compare**: **DiffBuilder** compares original audit summary vs replayed run summary on a fixed set of keys (agent_key, composition_mode, tool_used, tool_names, orchestration_used, orchestration_step_count, success, policy flags, execution_mode, **skill_keys**, etc.). **ReplayResult** holds differences and matched flags (path, policy, tool usage, **skill usage**, composition mode, debug metadata).
 
 ## What replay can and cannot do
 
@@ -51,7 +52,8 @@ How to inspect AI request audits, run replay, and use metadata to investigate is
 | Why tool path vs agent path? | Audit: `intent` (not stored directly; infer from `tool_used` + `tool_names` + `parsed_entities`/`parsed_intent_hints`). Execution plan: `execution_mode`. |
 | Why was retrieval/memory skipped? | Audit: `execution_plan_metadata` (reason_codes, retrieval_skipped, memory_skipped). Agent definition: supports_retrieval, supports_memory. |
 | Why was tool blocked? | Audit: `authorization_denied`, `tool_blocked_by_policy`, `policy_reason_code`. Policy::Authorization. |
-| Did replay match? | ReplayResult: `matched_path`, `matched_policy_decisions`, `matched_tool_usage`, `differences`. |
+| Did replay match? | ReplayResult: `matched_path`, `matched_policy_decisions`, `matched_tool_usage`, `matched_skill_usage`, `differences`. |
+| Which skills ran? | Audit: `invoked_skills`. Debug payload: `invoked_skills`, `skill_affected_response`. |
 | What was the composition? | Audit: `composition_mode`, `deterministic_explanation_used`, `explanation_type`, `explanation_key`. |
 
 ## Replay flow summary

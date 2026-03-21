@@ -6,6 +6,7 @@ Rails.application.config.after_initialize do
   next unless Rails.env.development? || Rails.env.test?
 
   begin
+    Ai::Skills::Registry.validate!
     Ai::AgentRegistry.validate!
     Ai::Tools::Registry.validate!
   rescue ArgumentError => e

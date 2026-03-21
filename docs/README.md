@@ -40,6 +40,7 @@
 | [DIAGRAMS.md](DIAGRAMS.md) | System context, containers, state machine, ERD |
 
 **Additional docs:**
+- [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md) – Bounded skill registry, agent allowlists, `SkillResult`, `Invoker`
 - [AI_CI_QUALITY_GATES.md](AI_CI_QUALITY_GATES.md) – CI jobs for AI contracts, scenarios, adversarial tests
 - [LOAD_AND_PERFORMANCE_TESTING.md](LOAD_AND_PERFORMANCE_TESTING.md) – Load/perf harness
 - [AI_AGENTS.md](AI_AGENTS.md) – AI chat endpoint, agents, RAG, env vars, safety

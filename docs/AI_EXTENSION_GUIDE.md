@@ -6,8 +6,9 @@ This guide describes how to add new **agents** and **tools** to the payment gate
 
 ## Overview
 
-- **Agent registry** (`Ai::AgentRegistry`): Registers agents with metadata (key, class, description, supports_retrieval, supports_memory, etc.). Used by the Router, RequestPlanner, and retrieval/memory flows.
+- **Agent registry** (`Ai::AgentRegistry`): Registers agents with metadata (key, class, description, supports_retrieval, supports_memory, **allowed_skill_keys**, etc.). Used by the Router, RequestPlanner, and retrieval/memory flows.
 - **Tool registry** (`Ai::Tools::Registry`): Registers deterministic tools with metadata (key, class, description, read_only, cacheable, etc.). Used by the Executor, CachePolicy, and policy layer.
+- **Skill registry** (`Ai::Skills::Registry`): Bounded reusable capabilities (`Ai::Skills::BaseSkill` subclasses). Invoked via `Ai::Skills::Invoker` (agent allowlist only; no recursive chains). See [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md).
 
 Validations run at boot in development/test: duplicate keys, missing classes, and invalid capability combinations (e.g. tools must be `read_only`) cause fail-fast errors.
 

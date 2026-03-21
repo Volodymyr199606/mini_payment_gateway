@@ -55,6 +55,7 @@ RSpec.describe Ai::AgentRegistry do
       expect(d.debug_label).to eq('Support FAQ')
       expect(d.supports_retrieval?).to be true
       expect(d.supports_memory?).to be true
+      expect(d.allowed_skill_keys).to include(:docs_lookup, :payment_state_explainer, :followup_rewriter)
     end
 
     it 'returns definition for reporting_calculation with supports_retrieval false' do

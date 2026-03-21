@@ -20,7 +20,8 @@ module Ai
         description: 'Support/FAQ agent. Answers refunds, payment statuses, API usage.',
         supports_retrieval: true,
         supports_memory: true,
-        debug_label: 'Support FAQ'
+        debug_label: 'Support FAQ',
+        allowed_skill_keys: %i[docs_lookup payment_state_explainer followup_rewriter]
       ),
       security_compliance: Agents::AgentDefinition.new(
         key: :security_compliance,
@@ -28,7 +29,8 @@ module Ai
         description: 'Security/compliance. PCI, tokenization, webhook signatures.',
         supports_retrieval: true,
         supports_memory: false,
-        debug_label: 'Security'
+        debug_label: 'Security',
+        allowed_skill_keys: %i[docs_lookup payment_state_explainer]
       ),
       developer_onboarding: Agents::AgentDefinition.new(
         key: :developer_onboarding,
@@ -36,7 +38,8 @@ module Ai
         description: 'Developer onboarding. Integration, idempotency, webhooks, API.',
         supports_retrieval: true,
         supports_memory: false,
-        debug_label: 'Developer'
+        debug_label: 'Developer',
+        allowed_skill_keys: %i[docs_lookup followup_rewriter]
       ),
       operational: Agents::AgentDefinition.new(
         key: :operational,
@@ -44,7 +47,8 @@ module Ai
         description: 'Operational. Payment lifecycle, statuses, chargebacks.',
         supports_retrieval: true,
         supports_memory: false,
-        debug_label: 'Operational'
+        debug_label: 'Operational',
+        allowed_skill_keys: %i[webhook_trace_explainer payment_state_explainer failure_summary]
       ),
       reconciliation_analyst: Agents::AgentDefinition.new(
         key: :reconciliation_analyst,
@@ -52,7 +56,8 @@ module Ai
         description: 'Reconciliation design guidance. Not implemented yet.',
         supports_retrieval: true,
         supports_memory: false,
-        debug_label: 'Reconciliation'
+        debug_label: 'Reconciliation',
+        allowed_skill_keys: %i[ledger_period_summary discrepancy_detector transaction_trace]
       ),
       reporting_calculation: Agents::AgentDefinition.new(
         key: :reporting_calculation,
@@ -62,7 +67,8 @@ module Ai
         supports_memory: false,
         supports_orchestration: false,
         preferred_execution_modes: [:deterministic_only],
-        debug_label: 'Reporting'
+        debug_label: 'Reporting',
+        allowed_skill_keys: %i[ledger_period_summary time_range_resolution report_explainer]
       )
     }.freeze
 
@@ -108,6 +114,11 @@ module Ai
         raise ArgumentError, "AgentRegistry: DEFINITIONS keys must match REGISTRY" if DEFINITIONS.keys.sort != REGISTRY.keys.sort
         DEFINITIONS.each_value do |defn|
           raise ArgumentError, "AgentRegistry: definition key #{defn.key} missing class_name" if defn.class_name.blank?
+          defn.allowed_skill_keys.each do |sk|
+            unless Ai::Skills::Registry.known?(sk)
+              raise ArgumentError, "AgentRegistry: agent #{defn.key} references unknown skill #{sk.inspect}"
+            end
+          end
         end
         true
       end

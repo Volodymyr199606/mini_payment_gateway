@@ -8,7 +8,7 @@ module Ai
 
       attr_reader :key, :class_name, :description, :allowed_paths,
                   :supports_retrieval, :supports_memory, :supports_orchestration,
-                  :preferred_execution_modes, :debug_label
+                  :preferred_execution_modes, :debug_label, :allowed_skill_keys
 
       def initialize(
         key:,
@@ -19,7 +19,8 @@ module Ai
         supports_memory: true,
         supports_orchestration: false,
         preferred_execution_modes: [:agent_full],
-        debug_label: nil
+        debug_label: nil,
+        allowed_skill_keys: []
       )
         @key = key.to_sym
         @class_name = class_name.to_s
@@ -30,6 +31,7 @@ module Ai
         @supports_orchestration = !!supports_orchestration
         @preferred_execution_modes = Array(preferred_execution_modes).map(&:to_sym).freeze
         @debug_label = (debug_label || key.to_s).to_s
+        @allowed_skill_keys = Array(allowed_skill_keys).map(&:to_sym).freeze
       end
 
       def supports_retrieval?
@@ -44,6 +46,10 @@ module Ai
         @supports_orchestration
       end
 
+      def allowed_skill?(skill_key)
+        @allowed_skill_keys.include?(skill_key.to_sym)
+      end
+
       def to_h
         {
           key: @key,
@@ -54,7 +60,8 @@ module Ai
           supports_memory: @supports_memory,
           supports_orchestration: @supports_orchestration,
           preferred_execution_modes: @preferred_execution_modes,
-          debug_label: @debug_label
+          debug_label: @debug_label,
+          allowed_skill_keys: @allowed_skill_keys
         }
       end
     end

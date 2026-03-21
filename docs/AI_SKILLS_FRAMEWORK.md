@@ -4,6 +4,18 @@ This document describes the **bounded skill layer** under `Ai::Skills`: reusable
 
 ---
 
+## Phase 1 status (complete)
+
+| Outcome | Status |
+|---------|--------|
+| 1. Bounded skill framework foundation | ✓ BaseSkill, Registry, SkillResult, SkillDefinition, Invoker |
+| 2. Refactored domain behaviors into skills | ✓ payment_state_explainer, ledger_period_summary, webhook_trace_explainer, followup_rewriter, discrepancy_detector |
+| 3. Controlled skill invocation | ✓ InvocationPlanner, InvocationCoordinator, phases (pre_retrieval, pre_tool, post_tool, pre_composition) |
+| 4. Skill usage in audit/debug/replay/analytics | ✓ invoked_skills, UsageSerializer, DiffBuilder.matched_skill_usage |
+| 5. Skill evaluation and quality gates | ✓ skill_scenarios.yml, SkillScenarioRunner, invocation/safety/bounded specs |
+
+---
+
 ## What a skill is
 
 A **skill** is a named, auditable unit of work implemented by a class inheriting `Ai::Skills::BaseSkill`, registered in `Ai::Skills::Registry`, and optionally allowed per agent via `AgentDefinition#allowed_skill_keys`.
@@ -85,8 +97,10 @@ Agents use skills only when explicitly planned by `InvocationPlanner`. Decision 
 
 | Phase | When | Example skills |
 |-------|------|----------------|
-| `pre_composition` | Before final response; concise_rewrite path | `followup_rewriter` |
+| `pre_retrieval` | Before retrieval (no skills wired yet) | — |
+| `pre_tool` | Before tool execution (no skills wired yet) | — |
 | `post_tool` | After deterministic tool(s) return | `payment_state_explainer`, `webhook_trace_explainer`, `ledger_period_summary`, `discrepancy_detector` |
+| `pre_composition` | Before final response; concise_rewrite path | `followup_rewriter` |
 
 ### Decision rules (rule-based, explicit)
 

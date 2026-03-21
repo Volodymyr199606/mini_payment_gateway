@@ -40,6 +40,14 @@ module Ai
         @intent = intent
       end
 
+      def self.for_pre_retrieval(agent_key:, merchant_id:, message:)
+        new(phase: :pre_retrieval, agent_key: agent_key, merchant_id: merchant_id, message: message)
+      end
+
+      def self.for_pre_tool(agent_key:, merchant_id:, message:, intent: nil)
+        new(phase: :pre_tool, agent_key: agent_key, merchant_id: merchant_id, message: message, intent: intent)
+      end
+
       def self.for_pre_composition(agent_key:, merchant_id:, message:, followup:, prior_assistant_content:, execution_plan: nil)
         new(
           phase: :pre_composition,

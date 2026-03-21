@@ -8,9 +8,12 @@ module Ai
       MAX_INVOCATIONS_PER_REQUEST = 2
       INVOCATIONS_PER_PHASE = 1
 
+      # All four phases supported; pre_retrieval/pre_tool have no skills yet (extensible).
       PHASE_SKILL_RULES = {
-        pre_composition: %i[followup_rewriter],
-        post_tool: %i[payment_state_explainer webhook_trace_explainer ledger_period_summary discrepancy_detector]
+        pre_retrieval: [],
+        pre_tool: [],
+        post_tool: %i[payment_state_explainer webhook_trace_explainer ledger_period_summary discrepancy_detector],
+        pre_composition: %i[followup_rewriter]
       }.freeze
 
       class << self

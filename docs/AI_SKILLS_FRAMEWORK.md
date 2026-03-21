@@ -16,7 +16,21 @@ Skills are **not** the same as:
 | **Agents** (`Ai::Agents::*`) | Specialist prompts + routing; choose retrieval/orchestration path. |
 | **Skills** | Declarative capability labels + bounded execution hook for future orchestration (docs explain, ledger summarize, etc.). |
 
-Skills complement tools: a skill may *orchestrate* tools + retrieval later; today many skills are **stubs** returning a deterministic `SkillResult` until wired into `RequestPlanner` / composition.
+Skills complement tools: a skill may *orchestrate* tools, reuse domain services, or call existing logic. Five skills are fully implemented and wrap domain behavior; others remain stubs until orchestration wires them.
+
+---
+
+## Implemented skills (first set)
+
+| Skill | Purpose | Domain logic reused | Agents |
+|-------|---------|---------------------|--------|
+| `payment_state_explainer` | Explain payment intent or transaction status in domain-aware language | `Ai::Explanations::Renderer`, `TemplateRegistry` (PAYMENT_INTENT, TRANSACTION) | support_faq, operational, security_compliance, reconciliation_analyst |
+| `ledger_period_summary` | Summarize ledger totals for a time range | `Reporting::LedgerSummary`, `Ai::Explanations::Renderer`, `TimeRangeParser` | reporting_calculation, reconciliation_analyst |
+| `webhook_trace_explainer` | Explain webhook event delivery status and lifecycle | `Ai::Explanations::Renderer`, `TemplateRegistry` (WEBHOOK) | operational |
+| `followup_rewriter` | Rewrite prior response for simpler/shorter/bullet points without full retrieval | `Followups::Resolver` response_style patterns | support_faq, developer_onboarding |
+| `discrepancy_detector` | Rule-based reconciliation checks (refunds vs charges, PI vs transactions) | `Reporting::LedgerSummary`, domain models | reconciliation_analyst |
+
+These skills are **bounded**: they perform a single domain job, have clear inputs/outputs, do not spawn subagents, and do not recursively invoke other skills. Results expose stable metadata (`skill_key`, `deterministic`, `success`) for audit, debug, replay, and analytics.
 
 ---
 
@@ -53,7 +67,7 @@ Each `Ai::Agents::AgentDefinition` includes `allowed_skill_keys: []`. Only liste
 | `support_faq` | `docs_lookup`, `payment_state_explainer`, `followup_rewriter` |
 | `operational` | `webhook_trace_explainer`, `payment_state_explainer`, `failure_summary` |
 | `reporting_calculation` | `ledger_period_summary`, `time_range_resolution`, `report_explainer` |
-| `reconciliation_analyst` | `ledger_period_summary`, `discrepancy_detector`, `transaction_trace` |
+| `reconciliation_analyst` | `ledger_period_summary`, `discrepancy_detector`, `payment_state_explainer`, `transaction_trace` |
 
 `Ai::AgentRegistry.validate!` ensures every referenced skill key exists in `Ai::Skills::Registry`.
 
@@ -80,6 +94,11 @@ Use **explicit** orchestration in `RequestPlanner` / composers if multi-step flo
 ## Tests
 
 - `spec/services/ai/skills/*` — `SkillResult`, `SkillDefinition`, `Registry`, `Invoker`, agent allowlists.
+- `spec/services/ai/skills/payment_state_explainer_spec.rb` — payment intent and transaction explanation.
+- `spec/services/ai/skills/ledger_period_summary_spec.rb` — ledger summary and presets.
+- `spec/services/ai/skills/webhook_trace_explainer_spec.rb` — webhook delivery status.
+- `spec/services/ai/skills/followup_rewriter_spec.rb` — rewrite modes (bullet, shorter, only_important).
+- `spec/services/ai/skills/discrepancy_detector_spec.rb` — aligned vs inconsistent records.
 
 ---
 

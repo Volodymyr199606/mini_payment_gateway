@@ -19,6 +19,11 @@ RSpec.describe Ai::Explanations::TemplateRegistry do
         key = described_class.select_key('get_payment_intent', { status: 'captured', dispute_status: 'open' })
         expect(key).to eq('disputed_open')
       end
+
+      it 'selects refunded for status refunded' do
+        key = described_class.select_key('get_payment_intent', { status: 'refunded' })
+        expect(key).to eq('refunded')
+      end
     end
 
     context 'get_transaction' do

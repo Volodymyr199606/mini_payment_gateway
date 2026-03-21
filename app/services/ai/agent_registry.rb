@@ -53,11 +53,11 @@ module Ai
       reconciliation_analyst: Agents::AgentDefinition.new(
         key: :reconciliation_analyst,
         class_name: 'Ai::Agents::ReconciliationAgent',
-        description: 'Reconciliation design guidance. Not implemented yet.',
+        description: 'Reconciliation design guidance. Ledger summary, discrepancy detection.',
         supports_retrieval: true,
         supports_memory: false,
         debug_label: 'Reconciliation',
-        allowed_skill_keys: %i[ledger_period_summary discrepancy_detector transaction_trace]
+        allowed_skill_keys: %i[ledger_period_summary discrepancy_detector payment_state_explainer transaction_trace]
       ),
       reporting_calculation: Agents::AgentDefinition.new(
         key: :reporting_calculation,

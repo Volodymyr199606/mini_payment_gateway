@@ -6,7 +6,7 @@ RSpec.describe Ai::Skills::Registry do
   describe '.fetch' do
     it 'returns skill class for known keys' do
       expect(described_class.fetch(:docs_lookup)).to eq(Ai::Skills::Builtins::DocsLookupSkill)
-      expect(described_class.fetch(:ledger_period_summary)).to eq(Ai::Skills::Builtins::LedgerPeriodSummarySkill)
+      expect(described_class.fetch(:ledger_period_summary)).to eq(Ai::Skills::LedgerPeriodSummary)
     end
 
     it 'raises UnknownSkillError for unknown keys' do

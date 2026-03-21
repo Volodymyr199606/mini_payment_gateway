@@ -6,14 +6,14 @@ module Ai
     class Registry
       SKILLS = {
         docs_lookup: Builtins::DocsLookupSkill,
-        payment_state_explainer: Builtins::PaymentStateExplainerSkill,
-        followup_rewriter: Builtins::FollowupRewriterSkill,
-        webhook_trace_explainer: Builtins::WebhookTraceExplainerSkill,
+        payment_state_explainer: PaymentStateExplainer,
+        followup_rewriter: FollowupRewriter,
+        webhook_trace_explainer: WebhookTraceExplainer,
         failure_summary: Builtins::FailureSummarySkill,
-        ledger_period_summary: Builtins::LedgerPeriodSummarySkill,
+        ledger_period_summary: LedgerPeriodSummary,
         time_range_resolution: Builtins::TimeRangeResolutionSkill,
         report_explainer: Builtins::ReportExplainerSkill,
-        discrepancy_detector: Builtins::DiscrepancyDetectorSkill,
+        discrepancy_detector: DiscrepancyDetector,
         transaction_trace: Builtins::TransactionTraceSkill
       }.freeze
 

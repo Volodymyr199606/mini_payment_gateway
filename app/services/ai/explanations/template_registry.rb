@@ -90,6 +90,7 @@ module Ai
           when 'authorized' then 'authorized'
           when 'requires_capture' then 'requires_capture'
           when 'captured' then 'captured'
+          when 'refunded' then 'refunded'
           when 'canceled' then 'canceled'
           when 'failed' then 'failed'
           else 'created' # fallback

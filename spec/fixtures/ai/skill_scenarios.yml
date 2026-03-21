@@ -1,0 +1,66 @@
+# Skill-specific evaluation scenarios.
+# Validates correct skill invocation, output quality, and impact on response.
+# Uses same runner as main scenarios; expected_skill_keys and expected_skill_affected_response assert skill behavior.
+
+skill_scenarios:
+  # --- payment_state_explainer ---
+  - id: skill-pi-explainer
+    description: "Payment intent lookup invokes payment_state_explainer and affects response"
+    user_message: "What is payment intent {{payment_intent_id}}?"
+    entity_refs: [payment_intent]
+    expected_path: tool_only
+    expected_agent: "tool:get_payment_intent"
+    expected_tool_names: [get_payment_intent]
+    expected_skill_keys: [payment_state_explainer]
+    expected_skill_affected_response: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+
+  - id: skill-txn-explainer
+    description: "Transaction lookup invokes payment_state_explainer after orchestration"
+    user_message: "transaction id {{transaction_id}}"
+    entity_refs: [payment_intent, transaction]
+    expected_path: orchestration
+    expected_agent: orchestration
+    expected_tool_names: [get_transaction, get_payment_intent]
+    expected_skill_keys: [payment_state_explainer]
+    expected_skill_affected_response: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+
+  # --- webhook_trace_explainer ---
+  - id: skill-webhook-explainer
+    description: "Webhook event lookup invokes webhook_trace_explainer"
+    user_message: "What happened to webhook event {{webhook_event_id}}?"
+    entity_refs: [webhook_event]
+    expected_path: tool_only
+    expected_agent: "tool:get_webhook_event"
+    expected_tool_names: [get_webhook_event]
+    expected_skill_keys: [webhook_trace_explainer]
+    expected_skill_affected_response: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+
+  # --- ledger_period_summary ---
+  - id: skill-ledger-summary
+    description: "Ledger summary triggers ledger_period_summary skill"
+    user_message: "What is my net volume for the last 7 days?"
+    expected_path: tool_only
+    expected_agent: "tool:get_ledger_summary"
+    expected_tool_names: [get_ledger_summary]
+    expected_skill_keys: [ledger_period_summary]
+    expected_skill_affected_response: true
+    expected_response_must_include: [Charges, Net]
+    expected_response_must_not_include: []
+
+  # --- No skill (get_merchant_account) ---
+  - id: skill-no-skill-account
+    description: "Account info does not invoke any skill"
+    user_message: "Show my account info"
+    expected_path: tool_only
+    expected_agent: "tool:get_merchant_account"
+    expected_tool_names: [get_merchant_account]
+    expected_skill_keys: []
+    expected_skill_affected_response: false
+    expected_response_must_include: []
+    expected_response_must_not_include: []

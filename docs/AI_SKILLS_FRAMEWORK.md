@@ -148,6 +148,26 @@ Use **explicit** orchestration in `RequestPlanner` / composers if multi-step flo
 
 ---
 
+## Skill evaluation and quality gates
+
+Skill quality is evaluated via:
+
+- **Skill scenarios** (`spec/fixtures/ai/skill_scenarios.yml`): YAML scenarios with `expected_skill_keys` and `expected_skill_affected_response`. Run via `Ai::Evals::Skills::SkillScenarioRunner` and `spec/ai/evals/skills/skill_scenarios_spec.rb`.
+- **Invocation correctness** (`spec/ai/evals/skills/invocation_correctness_spec.rb`): InvocationPlanner rules, agent allowlist, phase selection.
+- **Safety** (`spec/ai/evals/skills/skill_safety_spec.rb`): Merchant scoping, policy boundaries, output safety (UsageSerializer, QualityMetadata).
+- **Bounded invocation** (`spec/ai/evals/skills/skill_bounded_invocation_spec.rb`): MAX_INVOCATIONS_PER_REQUEST, audit metadata presence.
+
+**Correctness per skill:**
+- `payment_state_explainer`: Invoked when post_tool + payment/transaction data; agent allows it. Deterministic template output.
+- `webhook_trace_explainer`: Invoked when post_tool + webhook data; operational agent. Deterministic.
+- `ledger_period_summary`: Invoked when post_tool + ledger data; reporting_calculation agent. Deterministic.
+- `followup_rewriter`: Invoked when pre_composition + concise_rewrite + prior content; support_faq allows it. Not deterministic.
+- `discrepancy_detector`: Invoked when post_tool + ledger data; reconciliation_analyst allows it.
+
+**Quality metadata** (`Ai::Evals::Skills::QualityMetadata`): `skill_expected`, `skill_invoked`, `skill_helpful`, `skill_blocked_by_policy`, `skill_unnecessary`, `skill_affected_response`, `skill_quality_notes`. Used for tests and replay comparison.
+
+---
+
 ## References
 
 - Tools: [AI_AGENTS.md](AI_AGENTS.md), `app/services/ai/tools/registry.rb`

@@ -16,7 +16,7 @@ module Ai
         # @param affected_final_response [Boolean] whether skill output changed the reply
         # @return [Array<Hash>] array of safe, normalized skill usage hashes
         def normalize(raw:, agent_key: nil, affected_final_response: false)
-          items = Array(raw)
+          items = raw.is_a?(Hash) ? [raw] : Array(raw)
           items.map do |item|
             normalize_one(item, agent_key: agent_key, affected_final_response: affected_final_response)
           end.compact

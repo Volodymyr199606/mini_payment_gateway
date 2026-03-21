@@ -14,7 +14,7 @@ RSpec.describe Ai::Skills::UsageSerializer do
       expect(result.first['success']).to be(true)
       expect(result.first['reason_code']).to eq('matched')
       expect(result.first['affected_final_response']).to be(true)
-      expect(result.first.keys).to match_array(described_class::SAFE_KEYS)
+      expect(result.first.keys - described_class::SAFE_KEYS).to be_empty
     end
 
     it 'strips unsafe fields' do

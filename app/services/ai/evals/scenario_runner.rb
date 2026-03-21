@@ -12,12 +12,14 @@ module Ai
 
       class << self
         # Load scenarios from YAML. Returns array of hashes with symbol keys.
-        def load_scenarios(path = nil)
+        # @param path [String, Pathname] fixture path
+        # @param scenarios_key [String, Symbol] top-level key (default: scenarios)
+        def load_scenarios(path = nil, scenarios_key: 'scenarios')
           path = path || DEFAULT_FIXTURE_PATH
           return [] unless path.to_s.present? && File.exist?(path.to_s)
 
           raw = YAML.load_file(path.to_s)
-          list = raw.is_a?(Hash) ? (raw['scenarios'] || raw[:scenarios] || []) : Array(raw)
+          list = raw.is_a?(Hash) ? (raw[scenarios_key.to_s] || raw[scenarios_key.to_sym] || []) : Array(raw)
           list.map { |s| normalize_scenario(s) }
         end
 
@@ -90,7 +92,9 @@ module Ai
             expected_response_must_include: Array(h[:expected_response_must_include]),
             expected_response_must_not_include: Array(h[:expected_response_must_not_include]),
             expected_audit_fields: Array(h[:expected_audit_fields]),
-            expected_debug_fields: Array(h[:expected_debug_fields])
+            expected_debug_fields: Array(h[:expected_debug_fields]),
+            expected_skill_keys: Array(h[:expected_skill_keys]).map(&:to_s),
+            expected_skill_affected_response: h.key?(:expected_skill_affected_response) ? !!h[:expected_skill_affected_response] : nil
           }
         end
 
@@ -112,17 +116,27 @@ module Ai
           )
 
           if run_result.orchestration_used?
-            return collect_orchestration_result(run_result, request_id, merchant_id)
+            return collect_orchestration_result(run_result, msg, request_id, merchant_id)
           end
 
           # 2. Agent path: Router -> Retrieval -> Agent
           collect_agent_path_result(msg, merchant_id: merchant_id, request_id: request_id)
         end
 
-        def collect_orchestration_result(run_result, request_id, merchant_id)
+        def collect_orchestration_result(run_result, msg, request_id, merchant_id)
           agent_key = run_result.step_count > 1 ? 'orchestration' : "tool:#{run_result.tool_names.first}"
+          planned_agent = Ai::Router.new(msg).call
+          skill_outcome = Ai::Skills::InvocationCoordinator.post_tool(
+            agent_key: planned_agent,
+            merchant_id: merchant_id,
+            message: msg,
+            tool_names: run_result.tool_names.to_a,
+            deterministic_data: run_result.deterministic_data,
+            run_result: run_result,
+            intent: nil
+          )
           composed = Ai::ResponseComposer.call(
-            reply_text: run_result.reply_text,
+            reply_text: skill_outcome[:reply_text],
             citations: [],
             agent_key: agent_key,
             model_used: nil,
@@ -130,7 +144,8 @@ module Ai
             data: run_result.deterministic_data,
             tool_name: run_result.tool_names.first,
             tool_result: run_result.deterministic_data,
-            memory_used: false
+            memory_used: false,
+            explanation_metadata: run_result.explanation_metadata
           )
           audit_record = write_and_capture_audit(
             request_id: request_id,
@@ -145,7 +160,10 @@ module Ai
             success: run_result.success?,
             orchestration_used: true,
             orchestration_step_count: run_result.step_count,
-            orchestration_halted_reason: run_result.halted_reason
+            orchestration_halted_reason: run_result.halted_reason,
+            invoked_skills: skill_outcome[:invocation_results],
+            skill_affected_reply: skill_outcome[:skill_affected_reply],
+            skill_agent_key: composed[:agent_key]
           )
           {
             path: run_result.step_count > 1 ? 'orchestration' : 'tool_only',
@@ -155,11 +173,14 @@ module Ai
             reply_text: composed[:reply],
             citations: composed[:citations],
             citations_count: 0,
+            skill_outcome: skill_outcome,
             audit: audit_record,
             debug: {
               tool_used: run_result.tool_names.first,
               orchestration_used: true,
-              orchestration_step_count: run_result.step_count
+              orchestration_step_count: run_result.step_count,
+              invoked_skills: skill_outcome[:invocation_results],
+              skill_affected_response: skill_outcome[:skill_affected_reply]
             }
           }
         end
@@ -245,6 +266,7 @@ module Ai
           passed_not_include = check_must_not_include(result[:reply_text], scenario[:expected_response_must_not_include])
           passed_citations = scenario[:require_citations] ? (result[:citations_count].to_i >= 1) : true
           passed_audit = audit_fields_present?(result[:audit], scenario[:expected_audit_fields])
+          passed_skill = skill_expectations_met?(result, scenario)
 
           result[:passed_path] = passed_path
           result[:passed_agent] = passed_agent
@@ -253,8 +275,28 @@ module Ai
           result[:passed_not_include] = passed_not_include
           result[:passed_citations] = passed_citations
           result[:passed_audit] = passed_audit
+          result[:passed_skill] = passed_skill
 
-          passed_path && passed_agent && passed_tools && passed_include && passed_not_include && passed_citations && passed_audit
+          passed_path && passed_agent && passed_tools && passed_include && passed_not_include && passed_citations && passed_audit && passed_skill
+        end
+
+        def skill_expectations_met?(result, scenario)
+          return true if scenario[:expected_skill_keys].blank? && scenario[:expected_skill_affected_response].nil?
+
+          outcome = result[:skill_outcome]
+          return false unless outcome.is_a?(Hash)
+
+          inv = Array(outcome[:invocation_results])
+          actual_keys = inv.select { |r| r[:invoked] || r['invoked'] }.map { |r| (r[:skill_key] || r['skill_key']).to_s }
+          actual_affected = outcome[:skill_affected_reply]
+
+          keys_ok = scenario[:expected_skill_keys].blank? || (
+            Array(scenario[:expected_skill_keys]).map(&:to_s).sort == actual_keys.sort
+          )
+          affected_ok = scenario[:expected_skill_affected_response].nil? || (
+            !!actual_affected == !!scenario[:expected_skill_affected_response]
+          )
+          keys_ok && affected_ok
         end
 
         def path_matches?(actual, expected)
@@ -321,6 +363,7 @@ module Ai
           parts << 'contains forbidden content' unless result[:passed_not_include]
           parts << 'citations required' unless result[:passed_citations]
           parts << 'audit fields missing' unless result[:passed_audit]
+          parts << "skill: expected #{scenario[:expected_skill_keys]}, got #{result[:skill_outcome]&.dig(:invocation_results)&.map { |r| r[:skill_key] }}" unless result[:passed_skill]
           parts.join('; ')
         end
       end

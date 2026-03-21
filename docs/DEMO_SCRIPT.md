@@ -2,6 +2,8 @@
 
 This document provides a repeatable demo script for the payment gateway: core product flow, dashboard, AI tools, hybrid docs+tool answers, follow-ups, and internal tooling. Use it for portfolio walkthroughs and internal validation.
 
+**Time-boxed interview paths** (what to show first, story beats): [INTERVIEW_DEMO_GUIDE.md](INTERVIEW_DEMO_GUIDE.md).
+
 **Prerequisites:** Run demo seed once so IDs and data exist:
 
 ```bash

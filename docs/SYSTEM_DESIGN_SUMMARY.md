@@ -2,6 +2,8 @@
 
 **Mini Payment Gateway** — Rails 7.2 monolith: payment lifecycle API + dashboard, webhooks, ledger, idempotency, audit logs, and an integrated AI platform (agents, tools, RAG, memory, policy, observability).
 
+**Portfolio / interviews:** For a concise narrative, demo timing, and resume blurbs, see [PORTFOLIO_OVERVIEW.md](PORTFOLIO_OVERVIEW.md), [INTERVIEW_DEMO_GUIDE.md](INTERVIEW_DEMO_GUIDE.md), and [PROJECT_BLURBS.md](PROJECT_BLURBS.md).
+
 ## Quick facts
 
 | Aspect | Implementation |

@@ -1,10 +1,22 @@
 # Mini Payment Gateway
 
-A Rails 7+ API learning project that models real payment-platform concepts (Braintree-style).
+A **Rails 7.2** monolith that models a **merchant-scoped payment platform**: REST API, dashboard, full **authorize → capture → void/refund** lifecycle, **ledger**, **idempotency**, **webhooks**, **audit logging**, and an optional **AI assistant** (deterministic tools, RAG, policy, observability, replay). Default payment **processor is simulated**; **Stripe test mode** is optional via adapters.
+
+### Portfolio & interviews
+
+| Doc | Purpose |
+|-----|---------|
+| [docs/PORTFOLIO_OVERVIEW.md](docs/PORTFOLIO_OVERVIEW.md) | What it is, why it’s technically interesting, highlights, trade-offs |
+| [docs/PROJECT_AT_A_GLANCE.md](docs/PROJECT_AT_A_GLANCE.md) | One-page architecture summary |
+| [docs/INTERVIEW_DEMO_GUIDE.md](docs/INTERVIEW_DEMO_GUIDE.md) | 5- and 10–15-minute demo paths |
+| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Detailed demo steps, prompts, multi-tenant |
+| [docs/PROJECT_BLURBS.md](docs/PROJECT_BLURBS.md) | Resume / LinkedIn / interview blurbs |
+
+---
 
 ## Tech Stack
 
-- Rails 7.1+ (API + Dashboard)
+- Rails 7.2 (API + Dashboard)
 - PostgreSQL
 - bcrypt (for API key hashing)
 - kaminari (for pagination)

@@ -1,0 +1,145 @@
+# frozen_string_literal: true
+
+module Ai
+  module Skills
+    # Immutable context passed to InvocationPlanner for skill selection.
+    # Holds phase-relevant request and execution state. Safe for audit.
+    class InvocationContext
+      PHASES = %i[pre_retrieval pre_tool post_tool pre_composition].freeze
+
+      attr_reader :phase, :agent_key, :merchant_id, :message,
+                  :tool_names, :tool_result, :deterministic_data,
+                  :run_result, :execution_plan, :followup,
+                  :prior_assistant_content, :intent
+
+      def initialize(
+        phase:,
+        agent_key: nil,
+        merchant_id: nil,
+        message: nil,
+        tool_names: [],
+        tool_result: nil,
+        deterministic_data: nil,
+        run_result: nil,
+        execution_plan: nil,
+        followup: nil,
+        prior_assistant_content: nil,
+        intent: nil
+      )
+        @phase = phase.to_sym
+        @agent_key = (agent_key || infer_agent_from_tool).to_s.to_sym
+        @merchant_id = merchant_id
+        @message = message.to_s.strip.presence
+        @tool_names = Array(tool_names).map(&:to_s)
+        @tool_result = tool_result
+        @deterministic_data = deterministic_data.is_a?(Hash) ? deterministic_data : {}
+        @run_result = run_result
+        @execution_plan = execution_plan
+        @followup = followup.is_a?(Hash) ? followup : {}
+        @prior_assistant_content = prior_assistant_content.to_s.strip.presence
+        @intent = intent
+      end
+
+      def self.for_pre_composition(agent_key:, merchant_id:, message:, followup:, prior_assistant_content:, execution_plan: nil)
+        new(
+          phase: :pre_composition,
+          agent_key: agent_key,
+          merchant_id: merchant_id,
+          message: message,
+          followup: followup,
+          prior_assistant_content: prior_assistant_content,
+          execution_plan: execution_plan
+        )
+      end
+
+      def self.for_post_tool(agent_key:, merchant_id:, message:, tool_names:, deterministic_data:, run_result: nil, intent: nil)
+        new(
+          phase: :post_tool,
+          agent_key: agent_key,
+          merchant_id: merchant_id,
+          message: message,
+          tool_names: tool_names,
+          deterministic_data: deterministic_data || {},
+          run_result: run_result,
+          intent: intent
+        )
+      end
+
+      def followup_rewrite?
+        @followup[:followup_type] == :explanation_rewrite
+      end
+
+      def concise_rewrite_mode?
+        @execution_plan&.execution_mode == :concise_rewrite_only
+      end
+
+      def has_payment_data?
+        @tool_names.include?('get_payment_intent') || @tool_names.include?('get_transaction') ||
+          extract_entity(:payment_intent).present? || extract_entity(:transaction).present?
+      end
+
+      def has_webhook_data?
+        @tool_names.include?('get_webhook_event') || extract_entity(:webhook_event).present?
+      end
+
+      def has_ledger_data?
+        @tool_names.include?('get_ledger_summary') || extract_entity(:ledger_summary).present?
+      end
+
+      def extract_entity(key)
+        data = @deterministic_data || {}
+        data[key] || data[key.to_s]
+      end
+
+      def primary_tool
+        @tool_names.first
+      end
+
+      def to_skill_context
+        base = {
+          merchant_id: @merchant_id,
+          message: @message,
+          agent_key: @agent_key
+        }
+        case @phase
+        when :pre_composition
+          base.merge(
+            prior_assistant_content: @prior_assistant_content,
+            response_style: @followup[:response_style_adjustments],
+            response_style_adjustments: @followup[:response_style_adjustments]
+          )
+        when :post_tool
+          data = @deterministic_data || {}
+          pi = extract_entity(:payment_intent) || (primary_tool == 'get_payment_intent' && data.present? ? data : nil)
+          txn = extract_entity(:transaction) || (primary_tool == 'get_transaction' && data.present? ? data : nil)
+          webhook = extract_entity(:webhook_event) || (primary_tool == 'get_webhook_event' && data.present? ? data : nil)
+          ledger = extract_entity(:ledger_summary) || (primary_tool == 'get_ledger_summary' && data.present? ? data : nil)
+          base.merge(
+            payment_intent_id: pi&.dig(:id) || pi&.dig('id'),
+            payment_intent: pi,
+            transaction_id: txn&.dig(:id) || txn&.dig('id'),
+            transaction: txn,
+            webhook_event_id: webhook&.dig(:id) || webhook&.dig('id'),
+            webhook_event: webhook,
+            ledger_summary: ledger
+          )
+        else
+          base
+        end.compact
+      end
+
+      private
+
+      def infer_agent_from_tool
+        return nil unless primary_tool.present?
+
+        case primary_tool.to_s
+        when 'get_ledger_summary' then :reporting_calculation
+        when 'get_webhook_event' then :operational
+        when 'get_payment_intent', 'get_transaction' then :operational
+        else :support_faq
+        end
+      end
+    end
+  end
+end

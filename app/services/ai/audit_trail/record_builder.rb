@@ -38,7 +38,8 @@ module Ai
         policy_metadata: nil,
         resilience_metadata: nil,
         execution_plan_metadata: nil,
-        corpus_version: nil
+        corpus_version: nil,
+        invoked_skills: nil
       )
         @request_id = request_id.to_s.strip.presence
         @endpoint = endpoint.to_s.strip.presence
@@ -69,6 +70,7 @@ module Ai
         @resilience_metadata = resilience_metadata
         @execution_plan_metadata = execution_plan_metadata
         @corpus_version = corpus_version.to_s.strip.presence
+        @invoked_skills = invoked_skills.is_a?(Array) ? invoked_skills : []
       end
 
       def call
@@ -131,6 +133,10 @@ module Ai
       end
 
       private
+
+      def record_accepts_invoked_skills?
+        AiRequestAudit.column_names.include?('invoked_skills')
+      end
 
       def normalize_json_input(val)
         return {} if val.nil?

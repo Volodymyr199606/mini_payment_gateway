@@ -76,8 +76,17 @@ module Dashboard
       if run_result.orchestration_used?
         latency_ms = run_result.metadata[:latency_ms] || ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
         agent_key = run_result.step_count > 1 ? 'orchestration' : "tool:#{run_result.tool_names.first}"
+        skill_outcome = ::Ai::Skills::InvocationCoordinator.post_tool(
+          agent_key: planned_agent,
+          merchant_id: current_merchant.id,
+          message: msg,
+          tool_names: run_result.tool_names.to_a,
+          deterministic_data: run_result.deterministic_data,
+          run_result: run_result,
+          intent: intent_resolution[:intent]
+        )
         composed = ::Ai::ResponseComposer.call(
-          reply_text: run_result.reply_text,
+          reply_text: skill_outcome[:reply_text],
           citations: [],
           agent_key: agent_key,
           model_used: nil,
@@ -113,16 +122,68 @@ module Dashboard
           followup_metadata: followup_metadata_safe(followup_result),
           policy_metadata: policy_metadata_from_run(run_result, followup_result),
           execution_plan_metadata: execution_plan.to_audit_metadata,
-          # Explanation details are persisted via `composition:` fields
-          # (deterministic_explanation_used / explanation_type / explanation_key).
+          invoked_skills: skill_outcome[:invocation_results],
         )
         enqueue_summary_refresh_if_ok(chat_session)
         payload = build_response_payload(composed)
-        payload[:debug] = apply_debug_policy(build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup_result, execution_plan)) if ai_debug?
+        payload[:debug] = apply_debug_policy(build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup_result, execution_plan, skill_outcome)) if ai_debug?
         return render json: payload
       end
 
+      # Pre-composition skill: try followup_rewriter for concise_rewrite path before agent
       ctx = ::Ai::Performance::CachedConversationContextBuilder.call(chat_session, max_turns: ::Ai::Conversation::MemoryBudgeter.max_recent_messages)
+      if execution_plan.execution_mode == :concise_rewrite_only
+        prior_content = ctx[:recent_messages].select { |m| m[:role].to_s == 'assistant' }.last&.dig(:content)
+        rewrite_result = ::Ai::Skills::InvocationCoordinator.try_pre_composition_rewrite(
+          agent_key: planned_agent,
+          merchant_id: current_merchant.id,
+          message: msg,
+          followup: followup_result,
+          prior_assistant_content: prior_content,
+          execution_plan: execution_plan
+        )
+        if rewrite_result
+          composed = ::Ai::ResponseComposer.call(
+            reply_text: rewrite_result[:reply_text],
+            citations: [],
+            agent_key: planned_agent.to_s,
+            model_used: nil,
+            fallback_used: false,
+            data: nil,
+            tool_name: nil,
+            tool_result: nil,
+            memory_used: false
+          )
+          AiChatMessage.create!(
+            ai_chat_session: chat_session,
+            merchant_id: current_merchant.id,
+            role: 'assistant',
+            content: composed[:reply],
+            agent: composed[:agent_key]
+          )
+          increment_ai_chat_count
+          latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
+          write_ai_audit(
+            request_id: request.request_id,
+            endpoint: 'dashboard',
+            merchant_id: current_merchant.id,
+            agent_key: composed[:agent_key],
+            composition: composed[:composition],
+            tool_used: false,
+            citations_count: 0,
+            latency_ms: latency_ms,
+            success: true,
+            followup_metadata: followup_metadata_safe(followup_result),
+            execution_plan_metadata: execution_plan.to_audit_metadata,
+            invoked_skills: rewrite_result[:invocation_results],
+          )
+          enqueue_summary_refresh_if_ok(chat_session)
+          payload = build_response_payload(composed)
+          payload[:debug] = apply_debug_policy(build_debug_payload_for_rewrite(composed, rewrite_result, latency_ms, followup_result, execution_plan)) if ai_debug?
+          return render json: payload
+        end
+      end
+
       memory_result = if execution_plan.memory_skipped?
         {
           memory_text: '',
@@ -592,7 +653,7 @@ module Dashboard
       )
     end
 
-    def build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup = nil, execution_plan = nil)
+    def build_debug_payload_for_orchestration(composed, run_result, latency_ms, followup = nil, execution_plan = nil, skill_outcome = nil)
       debug = merge_composition_debug(
         {
           tool_used: run_result.tool_names.join(','),
@@ -608,6 +669,19 @@ module Dashboard
       debug.merge!(followup_debug_safe(followup))
       debug.merge!(policy_debug_from_run(run_result, followup))
       debug.merge!(execution_plan.present? && execution_plan.respond_to?(:execution_mode) ? { execution_plan: execution_plan.to_audit_metadata } : {})
+      debug[:invoked_skills] = skill_outcome[:invocation_results] if skill_outcome.is_a?(Hash) && skill_outcome[:invocation_results].present?
+      debug
+    end
+
+    def build_debug_payload_for_rewrite(composed, rewrite_result, latency_ms, followup = nil, execution_plan = nil)
+      debug = merge_composition_debug(
+        { latency_ms: latency_ms, skill_rewrite_used: true },
+        composed[:composition]
+      )
+      debug.merge!(followup_debug_safe(followup))
+      debug[:execution_plan] = execution_plan.to_audit_metadata if execution_plan.respond_to?(:execution_mode)
+      debug[:invoked_skills] = rewrite_result[:invocation_results] if rewrite_result.is_a?(Hash) && rewrite_result[:invocation_results].present?
+      debug
     end
 
     def policy_metadata_from_run(run_result, followup_result)

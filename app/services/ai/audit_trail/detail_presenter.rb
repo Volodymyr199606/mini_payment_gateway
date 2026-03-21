@@ -17,6 +17,7 @@ module Ai
         orchestration_used orchestration_step_count orchestration_halted_reason
         degraded failure_stage fallback_mode success_after_fallback
         execution_mode retrieval_skipped memory_skipped retrieval_budget_reduced
+        invoked_skills
       ].freeze
 
       SECTION_GROUPS = {
@@ -26,6 +27,7 @@ module Ai
         execution_plan: %w[execution_mode retrieval_skipped memory_skipped retrieval_budget_reduced],
         tool_usage: %w[tool_used tool_names],
         orchestration: %w[orchestration_used orchestration_step_count orchestration_halted_reason],
+        skills: %w[invoked_skills],
         retrieval: %w[retrieved_sections_count citations_count corpus_version],
         memory: %w[memory_used summary_used],
         composition: %w[composition_mode deterministic_explanation_used explanation_type explanation_key],
@@ -92,6 +94,8 @@ module Ai
         steps << { label: 'Memory used', value: attrs['memory_used'] ? 'Yes' : 'No' }
         steps << { label: 'Citations included', value: attrs['citations_count'].to_i.positive? ? attrs['citations_count'] : 'No' }
         steps << { label: 'Deterministic explanation', value: attrs['deterministic_explanation_used'] ? "#{attrs['explanation_type']} / #{attrs['explanation_key']}" : 'No' }
+        inv = Array(attrs['invoked_skills'])
+        steps << { label: 'Skills invoked', value: inv.any? ? inv.map { |s| (s['skill_key'] || s[:skill_key]).to_s }.join(', ') : 'No' }
         steps << { label: 'Fallback path', value: attrs['fallback_used'] ? 'Yes' : 'No' }
         steps
       end

@@ -43,6 +43,10 @@ These skills are **bounded**: they perform a single domain job, have clear input
 | `Ai::Skills::SkillResult` | Stable payload: `skill_key`, `success`, `data`, `explanation`, `metadata`, `safe_for_composition`, `deterministic`, optional `error_code` / `error_message`. |
 | `Ai::Skills::Registry` | Explicit `SKILLS` hash (symbol → class). `validate!` checks subclasses of `BaseSkill` and definition consistency. |
 | `Ai::Skills::Invoker` | **Single** invocation: `Invoker.call(agent_key:, skill_key:, context:)` — checks agent allows skill, then `execute`. No chains. |
+| `Ai::Skills::InvocationContext` | Phase-specific request state for planning: `for_pre_composition`, `for_post_tool`. |
+| `Ai::Skills::InvocationPlanner` | Rule-based: `plan(context:, already_invoked:)` → `{ skill_key:, reason_code: }` or nil. |
+| `Ai::Skills::InvocationExecutor` | Runs planned skill via `Invoker`; returns `InvocationResult`. |
+| `Ai::Skills::InvocationCoordinator` | Pipeline integration: `post_tool`, `try_pre_composition_rewrite`. |
 
 ---
 
@@ -70,6 +74,38 @@ Each `Ai::Agents::AgentDefinition` includes `allowed_skill_keys: []`. Only liste
 | `reconciliation_analyst` | `ledger_period_summary`, `discrepancy_detector`, `payment_state_explainer`, `transaction_trace` |
 
 `Ai::AgentRegistry.validate!` ensures every referenced skill key exists in `Ai::Skills::Registry`.
+
+---
+
+## Skill invocation layer
+
+Agents use skills only when explicitly planned by `InvocationPlanner`. Decision rules are phase-based and capability-checked.
+
+### Invocation phases
+
+| Phase | When | Example skills |
+|-------|------|----------------|
+| `pre_composition` | Before final response; concise_rewrite path | `followup_rewriter` |
+| `post_tool` | After deterministic tool(s) return | `payment_state_explainer`, `webhook_trace_explainer`, `ledger_period_summary`, `discrepancy_detector` |
+
+### Decision rules (rule-based, explicit)
+
+- **followup_rewriter (pre_composition):** When `execution_mode == :concise_rewrite_only`, `followup_type == :explanation_rewrite`, and `prior_assistant_content` present. Agent must allow `followup_rewriter`.
+- **payment_state_explainer (post_tool):** When tool returned payment intent or transaction data. Agent must allow it (e.g. `operational`, `support_faq`).
+- **webhook_trace_explainer (post_tool):** When tool returned webhook event data. Agent must allow it (`operational`).
+- **ledger_period_summary (post_tool):** When tool returned ledger data. Agent must allow it (`reporting_calculation`, `reconciliation_analyst`).
+- **discrepancy_detector (post_tool):** When ledger data present and agent allows it (`reconciliation_analyst`).
+
+### Invocation limits
+
+- Max **2** skill invocations per request (configurable via `InvocationPlanner::MAX_INVOCATIONS_PER_REQUEST`).
+- No recursive planning, no skill-calls-skill, no agent spawning subagents.
+
+### Audit and debug
+
+- `invoked_skills` (jsonb) on `AiRequestAudit` stores `[{ skill_key, phase, invoked, reason_code, success, deterministic }]`.
+- Debug payloads include `invoked_skills` when skills run.
+- Replay tooling can use this for diagnostics.
 
 ---
 

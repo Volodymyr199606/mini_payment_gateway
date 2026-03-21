@@ -7,7 +7,7 @@ module Ai
       attr_reader :original_audit_id, :replay_possible, :replay_mode_used,
                   :original_summary, :replay_summary, :differences,
                   :matched_path, :matched_policy_decisions, :matched_tool_usage,
-                  :matched_composition_mode, :matched_debug_metadata,
+                  :matched_skill_usage, :matched_composition_mode, :matched_debug_metadata,
                   :notes, :reason_codes, :duration_ms, :replay_failure
 
       def initialize(
@@ -20,6 +20,7 @@ module Ai
         matched_path: nil,
         matched_policy_decisions: nil,
         matched_tool_usage: nil,
+        matched_skill_usage: nil,
         matched_composition_mode: nil,
         matched_debug_metadata: nil,
         notes: [],
@@ -36,6 +37,7 @@ module Ai
         @matched_path = matched_path
         @matched_policy_decisions = matched_policy_decisions
         @matched_tool_usage = matched_tool_usage
+        @matched_skill_usage = matched_skill_usage
         @matched_composition_mode = matched_composition_mode
         @matched_debug_metadata = matched_debug_metadata
         @notes = notes.to_a
@@ -55,6 +57,7 @@ module Ai
           matched_path: @matched_path,
           matched_policy_decisions: @matched_policy_decisions,
           matched_tool_usage: @matched_tool_usage,
+          matched_skill_usage: @matched_skill_usage,
           matched_composition_mode: @matched_composition_mode,
           matched_debug_metadata: @matched_debug_metadata,
           notes: @notes,

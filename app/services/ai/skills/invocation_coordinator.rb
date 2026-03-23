@@ -49,7 +49,9 @@ module Ai
           composition = CompositionPlanner.plan(
             reply_text: base_reply,
             invocation_results: invocation_results,
-            agent_key: skill_agent
+            agent_key: skill_agent,
+            tool_names: tool_names,
+            orchestration_step_count: run_result&.step_count
           )
           skill_affected = invocation_results.any? { |r| r[:invoked] && r[:success] }
 

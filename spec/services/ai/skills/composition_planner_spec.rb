@@ -25,6 +25,49 @@ RSpec.describe Ai::Skills::CompositionPlanner do
       expect(r.contributing_skills).to be_empty
     end
 
+    it 'preserves combined orchestration reply when multiple tools ran (does not replace with single skill)' do
+      combined = "Transaction #1 succeeded.\n\nPayment Intent #2 is **created**."
+      results = [
+        {
+          skill_key: 'payment_state_explainer',
+          invoked: true,
+          success: true,
+          deterministic: true,
+          explanation: 'Payment Intent #2 is in **created** status.'
+        }
+      ]
+      r = described_class.plan(
+        reply_text: combined,
+        invocation_results: results,
+        agent_key: :operational,
+        tool_names: %w[get_transaction get_payment_intent]
+      )
+      expect(r.reply_text).to eq(combined)
+      expect(r.composition_mode).to eq('multi_step_tool_reply_preserved')
+    end
+
+    it 'preserves combined reply when step_count > 1 even if tool_names lists only one tool' do
+      combined = "Transaction #1 succeeded.\n\nPayment Intent #2 is **created**."
+      results = [
+        {
+          skill_key: 'payment_state_explainer',
+          invoked: true,
+          success: true,
+          deterministic: true,
+          explanation: 'Payment Intent #2 is in **created** status.'
+        }
+      ]
+      r = described_class.plan(
+        reply_text: combined,
+        invocation_results: results,
+        agent_key: :operational,
+        tool_names: %w[get_payment_intent],
+        orchestration_step_count: 2
+      )
+      expect(r.reply_text).to eq(combined)
+      expect(r.composition_mode).to eq('multi_step_tool_reply_preserved')
+    end
+
     it 'appends supporting analysis when slot is additive' do
       results = [
         {

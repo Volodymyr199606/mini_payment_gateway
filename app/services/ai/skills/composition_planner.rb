@@ -50,18 +50,23 @@ module Ai
                       text.presence || tool_reply
                     end
             filled = { slot.to_s => { skill_key: skill_key, text: text || tool_reply } }
+            det = r[:deterministic] != false && r[:deterministic] != 'false'
+            style_applied = ResponseSlots.style_only?(slot)
             CompositionResult.new(
               reply_text: reply,
               filled_slots: filled,
               contributing_skills: [skill_key],
-              composition_mode: 'skill_primary'
+              composition_mode: 'skill_primary',
+              style_transform_applied: style_applied,
+              deterministic_primary: det && !style_applied
             )
           else
             CompositionResult.new(
               reply_text: tool_reply,
-              filled_slots: tool_reply.present? ? { 'primary_explanation' => { skill_key: 'tool_renderer', text: tool_reply } } : {},
+              filled_slots: tool_reply.present? ? { 'primary_explanation' => { 'skill_key' => 'tool_renderer', 'text' => tool_reply, 'deterministic' => true } } : {},
               contributing_skills: [],
-              composition_mode: 'tool_only'
+              composition_mode: 'tool_only',
+              deterministic_primary: tool_reply.present?
             )
           end
         end
@@ -73,9 +78,12 @@ module Ai
             filled_slots: filled,
             contributing_skills: resolved[:contributing],
             suppressed_skills: resolved[:suppressed],
+            suppressed_reason_codes: resolved[:suppressed_reasons] || [],
             conflict_resolutions: resolved[:resolutions],
             precedence_rules_applied: resolved[:rules_applied],
-            composition_mode: resolved[:contributing].any? ? 'skill_composed' : 'tool_only'
+            composition_mode: resolved[:contributing].any? ? 'skill_composed' : 'tool_only',
+            style_transform_applied: resolved[:style_transform_applied] || false,
+            deterministic_primary: resolved[:deterministic_primary] || false
           )
         end
       end

@@ -23,12 +23,27 @@ This document describes the **bounded skill layer** under `Ai::Skills`: reusable
 | Skill composition | `CompositionPlanner`, `CompositionResult`, `ConflictResolver`, `ResponseSlots` |
 | Precedence | Deterministic skill output over generic phrasing; `followup_rewriter` style-only slot; additive slots (`supporting_analysis`, `warnings`, `next_steps`) append without replacing deterministic totals |
 | Response slots | `primary_explanation`, `supporting_analysis`, `docs_clarification`, `style_transform`, `warnings`, `next_steps` — mapped per skill in `ResponseSlots::SKILL_TO_SLOT` |
-| Composition metadata | `contributing_skills`, `suppressed_skills`, `conflict_resolutions`, `filled_response_slots`, `precedence_rules_applied`, `final_skill_composition_mode` — merged into `ResponseComposer`’s `composition` hash (safe; no raw payloads) |
+| Composition metadata | `contributing_skills`, `suppressed_skills`, `suppressed_reason_codes` (per-skill `reason_code`), `conflict_resolutions`, `filled_response_slots`, `precedence_rules_applied`, `final_skill_composition_mode`, `style_transform_applied`, `deterministic_primary` — merged into `ResponseComposer`’s `composition` hash (safe; no raw payloads) |
 | Multi-skill post_tool | `InvocationCoordinator` runs up to `min(agent.max_skills_per_request, MAX_INVOCATIONS_PER_REQUEST)` skills per request; `CompositionPlanner` merges outputs |
 | New domain skills | `refund_eligibility_explainer` (after `payment_state` + refund keywords), `authorization_vs_capture_explainer` (after `payment_state` + auth/capture keywords) |
 | Per-agent tuning | `AgentDefinition#max_skills_per_request` (default 2); e.g. `security_compliance` uses 1 |
 
 **Out of scope (unchanged):** autonomous subagents, recursive planning, unbounded skill chains.
+
+### Skill composition model (Phase 2+)
+
+1. **`ResponseSlots`** — Each registered skill maps to one slot (`SKILL_TO_SLOT`). Slots include `primary_explanation`, `supporting_analysis`, `docs_clarification`, `style_transform`, `warnings`, `next_steps`. Additive slots append text; they do not replace deterministic totals or PI/ledger state.
+
+2. **`ConflictResolver`** — Explicit, testable rules in `ConflictResolver::PRECEDENCE_RULES`:
+   - **Deterministic over generic:** If two skills both target `primary_explanation` and one is deterministic and one is not, the deterministic skill wins; the other is suppressed with reason `deterministic_over_generic`.
+   - **Canonical primary:** If multiple **deterministic** skills both target `primary_explanation`, one winner is chosen using `ResponseSlots::CANONICAL_PRIMARY_ORDER` (payment state → webhook trace → ledger → …). Losers are suppressed with `canonical_primary_precedence`.
+   - **Non-deterministic duplicates:** If multiple non-deterministic skills compete for primary, the first wins; others get `no_duplicate_primary_slot`.
+   - **Style only:** `followup_rewriter` fills `style_transform`; the composed reply uses style output as the visible line only when present; it does not replace underlying factual primary content in the resolver’s merge order (primary + supporting + style overlay).
+   - **Docs clarification:** `docs_clarification` is additive; if text would duplicate the primary line exactly, it is skipped (`docs_clarification_supports_not_replaces_primary`).
+
+3. **`CompositionPlanner`** — Takes tool `reply_text` plus successful `invocation_results` (with optional `explanation` for merging). Produces **`CompositionResult`** with final `reply_text` and metadata for `ResponseComposer`.
+
+4. **Bounded patterns (not autonomous):** Examples the design supports: ledger primary + discrepancy supporting; payment primary + refund eligibility supporting; tool renderer output + single deterministic explainer; pre-composition rewrite as style-only path.
 
 ---
 

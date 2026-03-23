@@ -25,14 +25,27 @@ module Ai
         authorization_vs_capture_explainer: :supporting_analysis,
         payment_failure_summary: :primary_explanation,
         merchant_account_status_summary: :primary_explanation,
-        webhook_retry_summary: :supporting_analysis
+        webhook_retry_summary: :supporting_analysis,
+        docs_citation_summarizer: :docs_clarification,
+        report_explainer: :primary_explanation
       }.freeze
+
+      # When multiple skills both target :primary_explanation and are deterministic,
+      # lower index wins (canonical single explanation path).
+      CANONICAL_PRIMARY_ORDER = %i[
+        payment_state_explainer
+        webhook_trace_explainer
+        ledger_period_summary
+        merchant_account_status_summary
+        payment_failure_summary
+        report_explainer
+      ].freeze
 
       # Slots that must not override deterministic factual content.
       STYLE_ONLY_SLOTS = %i[style_transform].freeze
 
       # Slots that may add to but not replace primary_explanation.
-      ADDITIVE_SLOTS = %i[supporting_analysis warnings next_steps].freeze
+      ADDITIVE_SLOTS = %i[supporting_analysis warnings next_steps docs_clarification].freeze
 
       class << self
         def slot_for(skill_key)
@@ -45,6 +58,11 @@ module Ai
 
         def additive?(slot)
           ADDITIVE_SLOTS.include?(slot&.to_sym)
+        end
+
+        def canonical_primary_rank(skill_key)
+          idx = CANONICAL_PRIMARY_ORDER.index(skill_key.to_sym)
+          idx.nil? ? 999 : idx
         end
       end
     end

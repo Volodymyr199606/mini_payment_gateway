@@ -145,7 +145,8 @@ module Ai
             tool_name: run_result.tool_names.first,
             tool_result: run_result.deterministic_data,
             memory_used: false,
-            explanation_metadata: run_result.explanation_metadata
+            explanation_metadata: run_result.explanation_metadata,
+            skill_composition_metadata: skill_outcome[:composition_result]
           )
           audit_record = write_and_capture_audit(
             request_id: request_id,

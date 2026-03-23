@@ -21,7 +21,10 @@ module Ai
         supports_retrieval: true,
         supports_memory: true,
         debug_label: 'Support FAQ',
-        allowed_skill_keys: %i[docs_lookup payment_state_explainer followup_rewriter]
+        allowed_skill_keys: %i[
+          docs_lookup payment_state_explainer followup_rewriter
+          refund_eligibility_explainer authorization_vs_capture_explainer
+        ]
       ),
       security_compliance: Agents::AgentDefinition.new(
         key: :security_compliance,
@@ -30,7 +33,8 @@ module Ai
         supports_retrieval: true,
         supports_memory: false,
         debug_label: 'Security',
-        allowed_skill_keys: %i[docs_lookup payment_state_explainer]
+        allowed_skill_keys: %i[docs_lookup payment_state_explainer authorization_vs_capture_explainer],
+        max_skills_per_request: 1
       ),
       developer_onboarding: Agents::AgentDefinition.new(
         key: :developer_onboarding,
@@ -57,7 +61,10 @@ module Ai
         supports_retrieval: true,
         supports_memory: false,
         debug_label: 'Reconciliation',
-        allowed_skill_keys: %i[ledger_period_summary discrepancy_detector payment_state_explainer transaction_trace]
+        allowed_skill_keys: %i[
+          ledger_period_summary discrepancy_detector payment_state_explainer transaction_trace
+          refund_eligibility_explainer authorization_vs_capture_explainer
+        ]
       ),
       reporting_calculation: Agents::AgentDefinition.new(
         key: :reporting_calculation,

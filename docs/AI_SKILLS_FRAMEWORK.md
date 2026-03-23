@@ -16,6 +16,22 @@ This document describes the **bounded skill layer** under `Ai::Skills`: reusable
 
 ---
 
+## Phase 2 (composition, more skills, agent tuning)
+
+| Area | Implementation |
+|------|----------------|
+| Skill composition | `CompositionPlanner`, `CompositionResult`, `ConflictResolver`, `ResponseSlots` |
+| Precedence | Deterministic skill output over generic phrasing; `followup_rewriter` style-only slot; additive slots (`supporting_analysis`, `warnings`, `next_steps`) append without replacing deterministic totals |
+| Response slots | `primary_explanation`, `supporting_analysis`, `docs_clarification`, `style_transform`, `warnings`, `next_steps` — mapped per skill in `ResponseSlots::SKILL_TO_SLOT` |
+| Composition metadata | `contributing_skills`, `suppressed_skills`, `conflict_resolutions`, `filled_response_slots`, `precedence_rules_applied`, `final_skill_composition_mode` — merged into `ResponseComposer`’s `composition` hash (safe; no raw payloads) |
+| Multi-skill post_tool | `InvocationCoordinator` runs up to `min(agent.max_skills_per_request, MAX_INVOCATIONS_PER_REQUEST)` skills per request; `CompositionPlanner` merges outputs |
+| New domain skills | `refund_eligibility_explainer` (after `payment_state` + refund keywords), `authorization_vs_capture_explainer` (after `payment_state` + auth/capture keywords) |
+| Per-agent tuning | `AgentDefinition#max_skills_per_request` (default 2); e.g. `security_compliance` uses 1 |
+
+**Out of scope (unchanged):** autonomous subagents, recursive planning, unbounded skill chains.
+
+---
+
 ## What a skill is
 
 A **skill** is a named, auditable unit of work implemented by a class inheriting `Ai::Skills::BaseSkill`, registered in `Ai::Skills::Registry`, and optionally allowed per agent via `AgentDefinition#allowed_skill_keys`.
@@ -28,7 +44,7 @@ Skills are **not** the same as:
 | **Agents** (`Ai::Agents::*`) | Specialist prompts + routing; choose retrieval/orchestration path. |
 | **Skills** | Declarative capability labels + bounded execution hook for future orchestration (docs explain, ledger summarize, etc.). |
 
-Skills complement tools: a skill may *orchestrate* tools, reuse domain services, or call existing logic. Five skills are fully implemented and wrap domain behavior; others remain stubs until orchestration wires them.
+Skills complement tools: a skill may *orchestrate* tools, reuse domain services, or call existing logic. Core skills wrap domain behavior; builtins remain stubs where noted.
 
 ---
 
@@ -41,6 +57,8 @@ Skills complement tools: a skill may *orchestrate* tools, reuse domain services,
 | `webhook_trace_explainer` | Explain webhook event delivery status and lifecycle | `Ai::Explanations::Renderer`, `TemplateRegistry` (WEBHOOK) | operational |
 | `followup_rewriter` | Rewrite prior response for simpler/shorter/bullet points without full retrieval | `Followups::Resolver` response_style patterns | support_faq, developer_onboarding |
 | `discrepancy_detector` | Rule-based reconciliation checks (refunds vs charges, PI vs transactions) | `Reporting::LedgerSummary`, domain models | reconciliation_analyst |
+| `refund_eligibility_explainer` | Remaining refundable amount from `PaymentIntent#refundable_cents` | Domain model (merchant-scoped) | support_faq, operational, reconciliation_analyst |
+| `authorization_vs_capture_explainer` | Short lifecycle clarification from PI status | Domain states + templates | support_faq, operational, security_compliance, reconciliation_analyst |
 
 These skills are **bounded**: they perform a single domain job, have clear inputs/outputs, do not spawn subagents, and do not recursively invoke other skills. Results expose stable metadata (`skill_key`, `deterministic`, `success`) for audit, debug, replay, and analytics.
 
@@ -59,6 +77,10 @@ These skills are **bounded**: they perform a single domain job, have clear input
 | `Ai::Skills::InvocationPlanner` | Rule-based: `plan(context:, already_invoked:)` → `{ skill_key:, reason_code: }` or nil. |
 | `Ai::Skills::InvocationExecutor` | Runs planned skill via `Invoker`; returns `InvocationResult`. |
 | `Ai::Skills::InvocationCoordinator` | Pipeline integration: `post_tool`, `try_pre_composition_rewrite`. |
+| `Ai::Skills::CompositionPlanner` | Merges tool reply + skill `invocation_results` → `CompositionResult` + final `reply_text`. |
+| `Ai::Skills::CompositionResult` | Stable composition metadata: slots filled, contributing/suppressed skills, precedence applied. |
+| `Ai::Skills::ConflictResolver` | Explicit precedence when multiple skills target the same slot (see `PRECEDENCE_RULES`). |
+| `Ai::Skills::ResponseSlots` | Maps skill keys → slot names; additive vs style-only slots. |
 
 ---
 
@@ -76,7 +98,7 @@ There is **no** autoload discovery: all registrations are explicit.
 
 ## Agent → skill mapping
 
-Each `Ai::Agents::AgentDefinition` includes `allowed_skill_keys: []`. Only listed skills may be invoked via `Invoker` for that agent. Example mappings:
+Each `Ai::Agents::AgentDefinition` includes `allowed_skill_keys: []` and `max_skills_per_request` (default 2, capped by `InvocationPlanner::MAX_INVOCATIONS_PER_REQUEST`). Only listed skills may be invoked via `Invoker` for that agent. Example mappings:
 
 | Agent | Example allowed skills |
 |-------|-------------------------|

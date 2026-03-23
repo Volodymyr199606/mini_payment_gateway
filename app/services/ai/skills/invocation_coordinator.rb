@@ -29,24 +29,35 @@ module Ai
           )
 
           invocation_results = []
-          reply_text = run_result.reply_text
+          already_invoked = []
+          base_reply = run_result.reply_text
+          defn = AgentRegistry.definition(skill_agent)
+          max_inv = [defn&.max_skills_per_request || InvocationPlanner::MAX_INVOCATIONS_PER_REQUEST, InvocationPlanner::MAX_INVOCATIONS_PER_REQUEST].min
 
-          planned = InvocationPlanner.plan(context: context, already_invoked: [])
-          if planned
+          loop do
+            break if already_invoked.size >= max_inv
+
+            planned = InvocationPlanner.plan(context: context, already_invoked: already_invoked)
+            break unless planned
+
             inv_result = InvocationExecutor.call(planned: planned, context: context)
             invocation_results << inv_result.to_audit_hash
             log_skill_invocation(inv_result, context)
-
-            # Only replace reply when single-step; multi-step runner reply already combines both
-            if inv_result.invoked && inv_result.success && inv_result.explanation.present? && tool_names.size <= 1
-              reply_text = inv_result.explanation
-            end
+            already_invoked << planned[:skill_key]
           end
 
-          {
-            reply_text: reply_text,
+          composition = CompositionPlanner.plan(
+            reply_text: base_reply,
             invocation_results: invocation_results,
-            skill_affected_reply: invocation_results.any? { |r| r[:invoked] && r[:success] }
+            agent_key: skill_agent
+          )
+          skill_affected = invocation_results.any? { |r| r[:invoked] && r[:success] }
+
+          {
+            reply_text: composition.reply_text,
+            invocation_results: invocation_results,
+            skill_affected_reply: skill_affected,
+            composition_result: composition
           }
         end
 

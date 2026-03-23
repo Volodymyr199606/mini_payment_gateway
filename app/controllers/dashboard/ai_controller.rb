@@ -95,7 +95,8 @@ module Dashboard
           tool_name: run_result.tool_names.first,
           tool_result: run_result.deterministic_data,
           memory_used: false,
-          explanation_metadata: run_result.explanation_metadata
+          explanation_metadata: run_result.explanation_metadata,
+          skill_composition_metadata: skill_outcome[:composition_result]
         )
         AiChatMessage.create!(
           ai_chat_session: chat_session,

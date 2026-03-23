@@ -57,7 +57,7 @@ module Ai
       end
 
       def to_audit_hash
-        {
+        h = {
           skill_key: @skill_key.to_s,
           phase: @phase,
           invoked: @invoked,
@@ -65,6 +65,11 @@ module Ai
           success: @success,
           deterministic: @deterministic
         }.merge(@metadata).compact
+        if @invoked && @skill_result.respond_to?(:explanation)
+          ex = @skill_result.explanation
+          h[:explanation] = ex if ex.present?
+        end
+        h
       end
     end
   end

@@ -86,6 +86,28 @@ module Ai
           extract_entity(:payment_intent).present? || extract_entity(:transaction).present?
       end
 
+      def has_payment_intent_data?
+        @tool_names.include?('get_payment_intent') || extract_entity(:payment_intent).present?
+      end
+
+      def captured_payment_intent_with_refund_context?
+        pi = extract_entity(:payment_intent) || (@tool_names.include?('get_payment_intent') ? @deterministic_data : nil)
+        return false unless pi.is_a?(Hash)
+
+        status = (pi[:status] || pi['status']).to_s
+        status == 'captured'
+      end
+
+      def authorization_vs_capture_message?
+        msg = @message.to_s.downcase
+        msg.match?(/\b(authorization|authorised|capture|settle|hold)\b/) ||
+          msg.include?('authorized vs') || msg.include?('auth vs capture')
+      end
+
+      def refund_eligibility_message?
+        @message.to_s.match?(/\b(refund|refundable|remaining|partial refund)\b/i)
+      end
+
       def has_webhook_data?
         @tool_names.include?('get_webhook_event') || extract_entity(:webhook_event).present?
       end

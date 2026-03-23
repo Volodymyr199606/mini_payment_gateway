@@ -14,7 +14,9 @@ module Ai
         time_range_resolution: Builtins::TimeRangeResolutionSkill,
         report_explainer: Builtins::ReportExplainerSkill,
         discrepancy_detector: DiscrepancyDetector,
-        transaction_trace: Builtins::TransactionTraceSkill
+        transaction_trace: Builtins::TransactionTraceSkill,
+        refund_eligibility_explainer: RefundEligibilityExplainer,
+        authorization_vs_capture_explainer: AuthorizationVsCaptureExplainer
       }.freeze
 
       DEFINITIONS = SKILLS.transform_values { |klass| klass.definition }.freeze

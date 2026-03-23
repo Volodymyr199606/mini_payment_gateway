@@ -8,7 +8,8 @@ module Ai
 
       attr_reader :key, :class_name, :description, :allowed_paths,
                   :supports_retrieval, :supports_memory, :supports_orchestration,
-                  :preferred_execution_modes, :debug_label, :allowed_skill_keys
+                  :preferred_execution_modes, :debug_label, :allowed_skill_keys,
+                  :max_skills_per_request
 
       def initialize(
         key:,
@@ -20,7 +21,8 @@ module Ai
         supports_orchestration: false,
         preferred_execution_modes: [:agent_full],
         debug_label: nil,
-        allowed_skill_keys: []
+        allowed_skill_keys: [],
+        max_skills_per_request: 2
       )
         @key = key.to_sym
         @class_name = class_name.to_s
@@ -32,6 +34,7 @@ module Ai
         @preferred_execution_modes = Array(preferred_execution_modes).map(&:to_sym).freeze
         @debug_label = (debug_label || key.to_s).to_s
         @allowed_skill_keys = Array(allowed_skill_keys).map(&:to_sym).freeze
+        @max_skills_per_request = [max_skills_per_request.to_i, 1].max
       end
 
       def supports_retrieval?
@@ -61,7 +64,8 @@ module Ai
           supports_orchestration: @supports_orchestration,
           preferred_execution_modes: @preferred_execution_modes,
           debug_label: @debug_label,
-          allowed_skill_keys: @allowed_skill_keys
+          allowed_skill_keys: @allowed_skill_keys,
+          max_skills_per_request: @max_skills_per_request
         }
       end
     end

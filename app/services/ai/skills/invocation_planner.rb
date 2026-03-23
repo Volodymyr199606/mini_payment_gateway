@@ -12,7 +12,10 @@ module Ai
       PHASE_SKILL_RULES = {
         pre_retrieval: [],
         pre_tool: [],
-        post_tool: %i[payment_state_explainer webhook_trace_explainer ledger_period_summary discrepancy_detector],
+        post_tool: %i[
+          payment_state_explainer webhook_trace_explainer ledger_period_summary discrepancy_detector
+          refund_eligibility_explainer authorization_vs_capture_explainer
+        ],
         pre_composition: %i[followup_rewriter]
       }.freeze
 
@@ -29,7 +32,7 @@ module Ai
           rules.each do |skill_key|
             next if already_invoked.include?(skill_key)
 
-            reason = should_invoke?(context, skill_key)
+            reason = should_invoke?(context, skill_key, already_invoked: already_invoked)
             next unless reason
 
             return { skill_key: skill_key, reason_code: reason }
@@ -54,7 +57,7 @@ module Ai
 
         private
 
-        def should_invoke?(context, skill_key)
+        def should_invoke?(context, skill_key, already_invoked: [])
           return nil unless agent_allows?(context.agent_key, skill_key)
 
           case skill_key
@@ -68,6 +71,10 @@ module Ai
             rule_ledger_period_summary(context)
           when :discrepancy_detector
             rule_discrepancy_detector(context)
+          when :refund_eligibility_explainer
+            rule_refund_eligibility_explainer(context, already_invoked: already_invoked)
+          when :authorization_vs_capture_explainer
+            rule_authorization_vs_capture_explainer(context, already_invoked: already_invoked)
           else
             nil
           end
@@ -113,6 +120,26 @@ module Ai
           return nil unless context.has_ledger_data?
 
           'ledger_data_for_reconciliation'
+        end
+
+        def rule_refund_eligibility_explainer(context, already_invoked:)
+          return nil unless context.phase == :post_tool
+          return nil unless already_invoked.include?(:payment_state_explainer)
+          return nil unless context.has_payment_intent_data?
+          return nil unless context.captured_payment_intent_with_refund_context?
+          return nil if context.authorization_vs_capture_message?
+          return nil unless context.refund_eligibility_message?
+
+          'refund_eligibility_context'
+        end
+
+        def rule_authorization_vs_capture_explainer(context, already_invoked:)
+          return nil unless context.phase == :post_tool
+          return nil unless already_invoked.include?(:payment_state_explainer)
+          return nil unless context.has_payment_intent_data?
+          return nil unless context.authorization_vs_capture_message?
+
+          'auth_capture_clarification'
         end
       end
     end

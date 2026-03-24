@@ -24,8 +24,10 @@ module Ai
         refund_eligibility_explainer: :supporting_analysis,
         authorization_vs_capture_explainer: :supporting_analysis,
         payment_failure_summary: :primary_explanation,
-        merchant_account_status_summary: :primary_explanation,
         webhook_retry_summary: :supporting_analysis,
+        reporting_trend_summary: :supporting_analysis,
+        reconciliation_action_summary: :next_steps,
+        merchant_account_status_summary: :primary_explanation,
         docs_citation_summarizer: :docs_clarification,
         report_explainer: :primary_explanation
       }.freeze

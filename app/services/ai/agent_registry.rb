@@ -23,7 +23,7 @@ module Ai
         debug_label: 'Support FAQ',
         allowed_skill_keys: %i[
           docs_lookup payment_state_explainer followup_rewriter
-          refund_eligibility_explainer authorization_vs_capture_explainer
+          refund_eligibility_explainer authorization_vs_capture_explainer payment_failure_summary
         ]
       ),
       security_compliance: Agents::AgentDefinition.new(
@@ -43,7 +43,7 @@ module Ai
         supports_retrieval: true,
         supports_memory: false,
         debug_label: 'Developer',
-        allowed_skill_keys: %i[docs_lookup followup_rewriter]
+        allowed_skill_keys: %i[docs_lookup followup_rewriter authorization_vs_capture_explainer]
       ),
       operational: Agents::AgentDefinition.new(
         key: :operational,
@@ -52,7 +52,7 @@ module Ai
         supports_retrieval: true,
         supports_memory: false,
         debug_label: 'Operational',
-        allowed_skill_keys: %i[webhook_trace_explainer payment_state_explainer failure_summary]
+        allowed_skill_keys: %i[webhook_trace_explainer payment_state_explainer payment_failure_summary webhook_retry_summary]
       ),
       reconciliation_analyst: Agents::AgentDefinition.new(
         key: :reconciliation_analyst,
@@ -64,6 +64,7 @@ module Ai
         allowed_skill_keys: %i[
           ledger_period_summary discrepancy_detector payment_state_explainer transaction_trace
           refund_eligibility_explainer authorization_vs_capture_explainer
+          reporting_trend_summary reconciliation_action_summary
         ]
       ),
       reporting_calculation: Agents::AgentDefinition.new(
@@ -75,7 +76,7 @@ module Ai
         supports_orchestration: false,
         preferred_execution_modes: [:deterministic_only],
         debug_label: 'Reporting',
-        allowed_skill_keys: %i[ledger_period_summary time_range_resolution report_explainer]
+        allowed_skill_keys: %i[ledger_period_summary time_range_resolution report_explainer reporting_trend_summary]
       )
     }.freeze
 

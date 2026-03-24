@@ -25,10 +25,10 @@ This document describes the **bounded skill layer** under `Ai::Skills`: reusable
 | Response slots | `primary_explanation`, `supporting_analysis`, `docs_clarification`, `style_transform`, `warnings`, `next_steps` — mapped per skill in `ResponseSlots::SKILL_TO_SLOT` |
 | Composition metadata | `contributing_skills`, `suppressed_skills`, `suppressed_reason_codes` (per-skill `reason_code`), `conflict_resolutions`, `filled_response_slots`, `precedence_rules_applied`, `final_skill_composition_mode`, `style_transform_applied`, `deterministic_primary` — merged into `ResponseComposer`’s `composition` hash (safe; no raw payloads) |
 | Multi-skill post_tool | `InvocationCoordinator` runs up to `min(agent.max_skills_per_request, MAX_INVOCATIONS_PER_REQUEST)` skills per request; `CompositionPlanner` merges outputs |
-| New domain skills | `refund_eligibility_explainer` (after `payment_state` + refund keywords), `authorization_vs_capture_explainer` (after `payment_state` + auth/capture keywords) |
+| New domain skills | `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `payment_failure_summary`, `webhook_retry_summary`, `reporting_trend_summary`, `reconciliation_action_summary` |
 | Per-agent tuning | `AgentDefinition#max_skills_per_request` (default 2); e.g. `security_compliance` uses 1 |
 
-**Out of scope (unchanged):** autonomous subagents, recursive planning, unbounded skill chains.
+**Out of scope (unchanged):** autonomous subagents, recursive planning, unbounded skill chains. `reporting_trend_summary` does not invent trends without explicit comparative ledger inputs; `reconciliation_action_summary` does not execute actions.
 
 ### Skill composition model (Phase 2+)
 
@@ -63,17 +63,21 @@ Skills complement tools: a skill may *orchestrate* tools, reuse domain services,
 
 ---
 
-## Implemented skills (first set)
+## Implemented skills
 
-| Skill | Purpose | Domain logic reused | Agents |
-|-------|---------|---------------------|--------|
-| `payment_state_explainer` | Explain payment intent or transaction status in domain-aware language | `Ai::Explanations::Renderer`, `TemplateRegistry` (PAYMENT_INTENT, TRANSACTION) | support_faq, operational, security_compliance, reconciliation_analyst |
-| `ledger_period_summary` | Summarize ledger totals for a time range | `Reporting::LedgerSummary`, `Ai::Explanations::Renderer`, `TimeRangeParser` | reporting_calculation, reconciliation_analyst |
-| `webhook_trace_explainer` | Explain webhook event delivery status and lifecycle | `Ai::Explanations::Renderer`, `TemplateRegistry` (WEBHOOK) | operational |
-| `followup_rewriter` | Rewrite prior response for simpler/shorter/bullet points without full retrieval | `Followups::Resolver` response_style patterns | support_faq, developer_onboarding |
-| `discrepancy_detector` | Rule-based reconciliation checks (refunds vs charges, PI vs transactions) | `Reporting::LedgerSummary`, domain models | reconciliation_analyst |
-| `refund_eligibility_explainer` | Remaining refundable amount from `PaymentIntent#refundable_cents` | Domain model (merchant-scoped) | support_faq, operational, reconciliation_analyst |
-| `authorization_vs_capture_explainer` | Short lifecycle clarification from PI status | Domain states + templates | support_faq, operational, security_compliance, reconciliation_analyst |
+| Skill | Purpose | Slot | Domain logic reused | Agents |
+|-------|---------|------|---------------------|--------|
+| `payment_state_explainer` | Explain payment intent or transaction status in domain-aware language | primary_explanation | `Ai::Explanations::Renderer`, `TemplateRegistry` (PAYMENT_INTENT, TRANSACTION) | support_faq, operational, security_compliance, reconciliation_analyst |
+| `ledger_period_summary` | Summarize ledger totals for a time range | primary_explanation | `Reporting::LedgerSummary`, `Ai::Explanations::Renderer`, `TimeRangeParser` | reporting_calculation, reconciliation_analyst |
+| `webhook_trace_explainer` | Explain webhook event delivery status and lifecycle | primary_explanation | `Ai::Explanations::Renderer`, `TemplateRegistry` (WEBHOOK) | operational |
+| `followup_rewriter` | Rewrite prior response for simpler/shorter/bullet points without full retrieval | style_transform | `Followups::Resolver` response_style patterns | support_faq, developer_onboarding |
+| `discrepancy_detector` | Rule-based reconciliation checks (refunds vs charges, PI vs transactions) | supporting_analysis | `Reporting::LedgerSummary`, domain models | reconciliation_analyst |
+| `refund_eligibility_explainer` | Explain remaining refundable amount from captured PI | supporting_analysis | `PaymentIntent#refundable_cents`, `total_refunded_cents` | support_faq, operational, reconciliation_analyst |
+| `authorization_vs_capture_explainer` | Clarify authorization vs capture lifecycle from PI status | supporting_analysis | Domain states + templates | support_faq, operational, security_compliance, reconciliation_analyst |
+| `payment_failure_summary` | Summarize what failed and where in the payment lifecycle | primary_explanation | PI/transaction status, domain states | support_faq, operational |
+| `webhook_retry_summary` | Summarize webhook delivery retry status and operational meaning | supporting_analysis | `WebhookDeliveryService` (attempts, delivery_status), webhook event data | operational |
+| `reporting_trend_summary` | Summarize short-term trends from comparative ledger data | supporting_analysis | `Reporting::LedgerSummary` (current vs previous period) | reporting_calculation, reconciliation_analyst |
+| `reconciliation_action_summary` | Suggest bounded next steps for reconciliation follow-up | next_steps | Ledger consistency checks, discrepancy patterns | reconciliation_analyst |
 
 These skills are **bounded**: they perform a single domain job, have clear inputs/outputs, do not spawn subagents, and do not recursively invoke other skills. Results expose stable metadata (`skill_key`, `deterministic`, `success`) for audit, debug, replay, and analytics.
 
@@ -117,10 +121,11 @@ Each `Ai::Agents::AgentDefinition` includes `allowed_skill_keys: []` and `max_sk
 
 | Agent | Example allowed skills |
 |-------|-------------------------|
-| `support_faq` | `docs_lookup`, `payment_state_explainer`, `followup_rewriter` |
-| `operational` | `webhook_trace_explainer`, `payment_state_explainer`, `failure_summary` |
-| `reporting_calculation` | `ledger_period_summary`, `time_range_resolution`, `report_explainer` |
-| `reconciliation_analyst` | `ledger_period_summary`, `discrepancy_detector`, `payment_state_explainer`, `transaction_trace` |
+| `support_faq` | `docs_lookup`, `payment_state_explainer`, `followup_rewriter`, `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `payment_failure_summary` |
+| `developer_onboarding` | `docs_lookup`, `followup_rewriter`, `authorization_vs_capture_explainer` |
+| `operational` | `webhook_trace_explainer`, `payment_state_explainer`, `payment_failure_summary`, `webhook_retry_summary` |
+| `reporting_calculation` | `ledger_period_summary`, `time_range_resolution`, `report_explainer`, `reporting_trend_summary` |
+| `reconciliation_analyst` | `ledger_period_summary`, `discrepancy_detector`, `payment_state_explainer`, `transaction_trace`, `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `reporting_trend_summary`, `reconciliation_action_summary` |
 
 `Ai::AgentRegistry.validate!` ensures every referenced skill key exists in `Ai::Skills::Registry`.
 
@@ -136,7 +141,7 @@ Agents use skills only when explicitly planned by `InvocationPlanner`. Decision 
 |-------|------|----------------|
 | `pre_retrieval` | Before retrieval (no skills wired yet) | — |
 | `pre_tool` | Before tool execution (no skills wired yet) | — |
-| `post_tool` | After deterministic tool(s) return | `payment_state_explainer`, `webhook_trace_explainer`, `ledger_period_summary`, `discrepancy_detector` |
+| `post_tool` | After deterministic tool(s) return | `payment_state_explainer`, `webhook_trace_explainer`, `ledger_period_summary`, `discrepancy_detector`, `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `payment_failure_summary`, `webhook_retry_summary`, `reporting_trend_summary`, `reconciliation_action_summary` |
 | `pre_composition` | Before final response; concise_rewrite path | `followup_rewriter` |
 
 ### Decision rules (rule-based, explicit)
@@ -146,6 +151,12 @@ Agents use skills only when explicitly planned by `InvocationPlanner`. Decision 
 - **webhook_trace_explainer (post_tool):** When tool returned webhook event data. Agent must allow it (`operational`).
 - **ledger_period_summary (post_tool):** When tool returned ledger data. Agent must allow it (`reporting_calculation`, `reconciliation_analyst`).
 - **discrepancy_detector (post_tool):** When ledger data present and agent allows it (`reconciliation_analyst`).
+- **refund_eligibility_explainer (post_tool):** After `payment_state_explainer`, when captured PI + refund keywords. Agent must allow it.
+- **authorization_vs_capture_explainer (post_tool):** After `payment_state_explainer`, when auth/capture keywords. Agent must allow it.
+- **payment_failure_summary (post_tool):** When payment/transaction data indicates failure (failed PI, failed txn). Agent must allow it.
+- **webhook_retry_summary (post_tool):** When tool returned webhook event data. Agent must allow it (`operational`).
+- **reporting_trend_summary (post_tool):** When ledger data present. Agent must allow it (`reporting_calculation`, `reconciliation_analyst`).
+- **reconciliation_action_summary (post_tool):** When ledger data present. Agent must allow it (`reconciliation_analyst`).
 
 ### Invocation limits
 
@@ -196,6 +207,10 @@ Use **explicit** orchestration in `RequestPlanner` / composers if multi-step flo
 - `spec/services/ai/skills/webhook_trace_explainer_spec.rb` — webhook delivery status.
 - `spec/services/ai/skills/followup_rewriter_spec.rb` — rewrite modes (bullet, shorter, only_important).
 - `spec/services/ai/skills/discrepancy_detector_spec.rb` — aligned vs inconsistent records.
+- `spec/services/ai/skills/payment_failure_summary_spec.rb` — failed PI/txn summaries.
+- `spec/services/ai/skills/webhook_retry_summary_spec.rb` — webhook retry/delivery status.
+- `spec/services/ai/skills/reporting_trend_summary_spec.rb` — comparative ledger trends.
+- `spec/services/ai/skills/reconciliation_action_summary_spec.rb` — next-step guidance.
 
 ---
 
@@ -211,7 +226,11 @@ Skill quality is evaluated via:
 **Correctness per skill:**
 - `payment_state_explainer`: Invoked when post_tool + payment/transaction data; agent allows it. Deterministic template output.
 - `webhook_trace_explainer`: Invoked when post_tool + webhook data; operational agent. Deterministic.
+- `webhook_retry_summary`: Invoked when post_tool + webhook data; operational agent. Deterministic.
 - `ledger_period_summary`: Invoked when post_tool + ledger data; reporting_calculation agent. Deterministic.
+- `reporting_trend_summary`: Invoked when post_tool + ledger data; reporting_calculation/reconciliation_analyst. Deterministic.
+- `reconciliation_action_summary`: Invoked when post_tool + ledger data; reconciliation_analyst. Deterministic.
+- `payment_failure_summary`: Invoked when post_tool + failed PI/txn data; support_faq/operational. Deterministic.
 - `followup_rewriter`: Invoked when pre_composition + concise_rewrite + prior content; support_faq allows it. Not deterministic.
 - `discrepancy_detector`: Invoked when post_tool + ledger data; reconciliation_analyst allows it.
 

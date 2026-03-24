@@ -116,6 +116,17 @@ module Ai
         @tool_names.include?('get_ledger_summary') || extract_entity(:ledger_summary).present?
       end
 
+      def has_payment_failure_data?
+        return false unless has_payment_data?
+
+        pi = extract_entity(:payment_intent) || (primary_tool == 'get_payment_intent' ? @deterministic_data : nil)
+        txn = extract_entity(:transaction) || (primary_tool == 'get_transaction' ? @deterministic_data : nil)
+        return true if pi.present? && %w[failed canceled].include?((pi[:status] || pi['status']).to_s)
+        return true if txn.present? && (txn[:status] || txn['status']).to_s.downcase != 'succeeded'
+
+        false
+      end
+
       def extract_entity(key)
         data = @deterministic_data || {}
         data[key] || data[key.to_s]
@@ -144,6 +155,7 @@ module Ai
           txn = extract_entity(:transaction) || (primary_tool == 'get_transaction' && data.present? ? data : nil)
           webhook = extract_entity(:webhook_event) || (primary_tool == 'get_webhook_event' && data.present? ? data : nil)
           ledger = extract_entity(:ledger_summary) || (primary_tool == 'get_ledger_summary' && data.present? ? data : nil)
+          preset = (data[:preset] || data['preset'] || intent&.dig(:preset)).to_s.presence
           base.merge(
             payment_intent_id: pi&.dig(:id) || pi&.dig('id'),
             payment_intent: pi,
@@ -151,7 +163,10 @@ module Ai
             transaction: txn,
             webhook_event_id: webhook&.dig(:id) || webhook&.dig('id'),
             webhook_event: webhook,
-            ledger_summary: ledger
+            ledger_summary: ledger,
+            preset: preset,
+            from: ledger&.dig(:from) || ledger&.dig('from'),
+            to: ledger&.dig(:to) || ledger&.dig('to')
           )
         else
           base

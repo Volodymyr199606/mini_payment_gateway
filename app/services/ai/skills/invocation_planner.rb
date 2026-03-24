@@ -15,6 +15,7 @@ module Ai
         post_tool: %i[
           payment_state_explainer webhook_trace_explainer ledger_period_summary discrepancy_detector
           refund_eligibility_explainer authorization_vs_capture_explainer
+          payment_failure_summary webhook_retry_summary reporting_trend_summary reconciliation_action_summary
         ],
         pre_composition: %i[followup_rewriter]
       }.freeze
@@ -75,6 +76,14 @@ module Ai
             rule_refund_eligibility_explainer(context, already_invoked: already_invoked)
           when :authorization_vs_capture_explainer
             rule_authorization_vs_capture_explainer(context, already_invoked: already_invoked)
+          when :payment_failure_summary
+            rule_payment_failure_summary(context)
+          when :webhook_retry_summary
+            rule_webhook_retry_summary(context)
+          when :reporting_trend_summary
+            rule_reporting_trend_summary(context)
+          when :reconciliation_action_summary
+            rule_reconciliation_action_summary(context)
           else
             nil
           end
@@ -140,6 +149,34 @@ module Ai
           return nil unless context.authorization_vs_capture_message?
 
           'auth_capture_clarification'
+        end
+
+        def rule_payment_failure_summary(context)
+          return nil unless context.phase == :post_tool
+          return nil unless context.has_payment_failure_data?
+
+          'payment_failure_detected'
+        end
+
+        def rule_webhook_retry_summary(context)
+          return nil unless context.phase == :post_tool
+          return nil unless context.has_webhook_data?
+
+          'webhook_retry_status'
+        end
+
+        def rule_reporting_trend_summary(context)
+          return nil unless context.phase == :post_tool
+          return nil unless context.has_ledger_data?
+
+          'ledger_data_for_trends'
+        end
+
+        def rule_reconciliation_action_summary(context)
+          return nil unless context.phase == :post_tool
+          return nil unless context.has_ledger_data?
+
+          'ledger_data_for_reconciliation_actions'
         end
       end
     end

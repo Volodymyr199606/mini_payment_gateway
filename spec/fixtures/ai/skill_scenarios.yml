@@ -28,27 +28,27 @@ skill_scenarios:
     expected_response_must_include: []
     expected_response_must_not_include: []
 
-  # --- webhook_trace_explainer ---
+  # --- webhook_trace_explainer + webhook_retry_summary ---
   - id: skill-webhook-explainer
-    description: "Webhook event lookup invokes webhook_trace_explainer"
+    description: "Webhook event lookup invokes webhook_trace_explainer and webhook_retry_summary"
     user_message: "What happened to webhook event {{webhook_event_id}}?"
     entity_refs: [webhook_event]
     expected_path: tool_only
     expected_agent: "tool:get_webhook_event"
     expected_tool_names: [get_webhook_event]
-    expected_skill_keys: [webhook_trace_explainer]
+    expected_skill_keys: [webhook_trace_explainer, webhook_retry_summary]
     expected_skill_affected_response: true
     expected_response_must_include: []
     expected_response_must_not_include: []
 
-  # --- ledger_period_summary ---
+  # --- ledger_period_summary + reporting_trend_summary ---
   - id: skill-ledger-summary
-    description: "Ledger summary triggers ledger_period_summary skill"
+    description: "Ledger summary triggers ledger_period_summary and reporting_trend_summary"
     user_message: "What is my net volume for the last 7 days?"
     expected_path: tool_only
     expected_agent: "tool:get_ledger_summary"
     expected_tool_names: [get_ledger_summary]
-    expected_skill_keys: [ledger_period_summary]
+    expected_skill_keys: [ledger_period_summary, reporting_trend_summary]
     expected_skill_affected_response: true
     expected_response_must_include: [Charges, Net]
     expected_response_must_not_include: []

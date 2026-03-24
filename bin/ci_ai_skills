@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+# Skill-layer quality gates (regression, contracts, drift, perf smoke). Requires test DB.
+# Usage: bin/ci_ai_skills   or   RAILS_ENV=test bundle exec rake ai:skills:ci
+# See docs/AI_SKILLS_FRAMEWORK.md
+
+APP_ROOT = File.expand_path('..', __dir__)
+Dir.chdir(APP_ROOT) do
+  ENV['RAILS_ENV'] = 'test'
+  exec('bundle', 'exec', 'rake', 'ai:skills:ci')
+end

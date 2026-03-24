@@ -94,7 +94,12 @@ module Ai
             expected_audit_fields: Array(h[:expected_audit_fields]),
             expected_debug_fields: Array(h[:expected_debug_fields]),
             expected_skill_keys: Array(h[:expected_skill_keys]).map(&:to_s),
-            expected_skill_affected_response: h.key?(:expected_skill_affected_response) ? !!h[:expected_skill_affected_response] : nil
+            expected_skill_affected_response: h.key?(:expected_skill_affected_response) ? !!h[:expected_skill_affected_response] : nil,
+            # Skill regression / boundedness gates (optional; see docs/AI_SKILLS_FRAMEWORK.md)
+            must_include_skills: Array(h[:must_include_skills]).map(&:to_s),
+            must_not_include_skills: Array(h[:must_not_include_skills]).map(&:to_s),
+            max_invoked_skills: h.key?(:max_invoked_skills) ? h[:max_invoked_skills].to_i : nil,
+            max_heavy_skills: h.key?(:max_heavy_skills) ? h[:max_heavy_skills].to_i : nil
           }
         end
 
@@ -268,6 +273,7 @@ module Ai
           passed_citations = scenario[:require_citations] ? (result[:citations_count].to_i >= 1) : true
           passed_audit = audit_fields_present?(result[:audit], scenario[:expected_audit_fields])
           passed_skill = skill_expectations_met?(result, scenario)
+          passed_regression = regression_rules_met?(result, scenario)
 
           result[:passed_path] = passed_path
           result[:passed_agent] = passed_agent
@@ -277,8 +283,9 @@ module Ai
           result[:passed_citations] = passed_citations
           result[:passed_audit] = passed_audit
           result[:passed_skill] = passed_skill
+          result[:passed_regression] = passed_regression
 
-          passed_path && passed_agent && passed_tools && passed_include && passed_not_include && passed_citations && passed_audit && passed_skill
+          passed_path && passed_agent && passed_tools && passed_include && passed_not_include && passed_citations && passed_audit && passed_skill && passed_regression
         end
 
         def skill_expectations_met?(result, scenario)
@@ -298,6 +305,45 @@ module Ai
             !!actual_affected == !!scenario[:expected_skill_affected_response]
           )
           keys_ok && affected_ok
+        end
+
+        # Boundedness / selectivity gates (optional YAML fields). Independent of exact expected_skill_keys.
+        def regression_rules_met?(result, scenario)
+          return true unless regression_rules_present?(scenario)
+
+          outcome = result[:skill_outcome]
+          return false unless outcome.is_a?(Hash)
+
+          inv = Array(outcome[:invocation_results])
+          actual_keys = inv.select { |r| r[:invoked] || r['invoked'] }.map { |r| (r[:skill_key] || r['skill_key']).to_s }
+
+          if scenario[:must_not_include_skills].present?
+            bad = actual_keys & scenario[:must_not_include_skills]
+            return false if bad.any?
+          end
+
+          if scenario[:must_include_skills].present?
+            missing = scenario[:must_include_skills] - actual_keys
+            return false if missing.any?
+          end
+
+          unless scenario[:max_invoked_skills].nil?
+            return false if actual_keys.size > scenario[:max_invoked_skills].to_i
+          end
+
+          unless scenario[:max_heavy_skills].nil?
+            heavy = Ai::Skills::SkillWeights.heavy_skills_count(actual_keys.map(&:to_sym))
+            return false if heavy > scenario[:max_heavy_skills].to_i
+          end
+
+          true
+        end
+
+        def regression_rules_present?(scenario)
+          scenario[:must_not_include_skills].present? ||
+            scenario[:must_include_skills].present? ||
+            !scenario[:max_invoked_skills].nil? ||
+            !scenario[:max_heavy_skills].nil?
         end
 
         def path_matches?(actual, expected)
@@ -365,7 +411,33 @@ module Ai
           parts << 'citations required' unless result[:passed_citations]
           parts << 'audit fields missing' unless result[:passed_audit]
           parts << "skill: expected #{scenario[:expected_skill_keys]}, got #{result[:skill_outcome]&.dig(:invocation_results)&.map { |r| r[:skill_key] }}" unless result[:passed_skill]
+          parts << "regression: #{regression_failure_detail(result, scenario)}" unless result[:passed_regression]
           parts.join('; ')
+        end
+
+        def regression_failure_detail(result, scenario)
+          outcome = result[:skill_outcome]
+          return 'no skill_outcome' unless outcome.is_a?(Hash)
+
+          inv = Array(outcome[:invocation_results])
+          actual_keys = inv.select { |r| r[:invoked] || r['invoked'] }.map { |r| (r[:skill_key] || r['skill_key']).to_s }
+          parts = []
+          if scenario[:must_not_include_skills].present?
+            bad = actual_keys & scenario[:must_not_include_skills]
+            parts << "disallowed skills invoked: #{bad.join(', ')}" if bad.any?
+          end
+          if scenario[:must_include_skills].present?
+            missing = scenario[:must_include_skills] - actual_keys
+            parts << "missing skills: #{missing.join(', ')}" if missing.any?
+          end
+          if !scenario[:max_invoked_skills].nil? && actual_keys.size > scenario[:max_invoked_skills].to_i
+            parts << "too many skills: #{actual_keys.size} > #{scenario[:max_invoked_skills]}"
+          end
+          unless scenario[:max_heavy_skills].nil?
+            heavy = Ai::Skills::SkillWeights.heavy_skills_count(actual_keys.map(&:to_sym))
+            parts << "too many heavy skills: #{heavy} > #{scenario[:max_heavy_skills]}" if heavy > scenario[:max_heavy_skills].to_i
+          end
+          parts.presence&.join('; ') || 'regression rules failed'
         end
       end
     end

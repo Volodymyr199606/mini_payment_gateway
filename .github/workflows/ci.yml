@@ -1,5 +1,5 @@
 # CI for mini_payment_gateway: full test suite with dedicated AI quality gates.
-# AI gates: contracts, scenarios, adversarial, policy, internal tooling, docs. Optional: demo seed.
+# AI gates: contracts, scenarios, adversarial, policy, internal tooling, docs, skills. Optional: demo seed.
 # No external API calls; all AI tests use stubs/fakes. Deterministic and self-contained.
 
 name: CI
@@ -306,7 +306,7 @@ jobs:
   # Remaining specs (excludes AI gate paths already run above)
   spec_rest:
     name: Spec (rest)
-    needs: [setup, ai_contracts, ai_scenarios, ai_adversarial, ai_policy, ai_internal_tooling, ai_docs]
+    needs: [setup, ai_contracts, ai_scenarios, ai_adversarial, ai_policy, ai_internal_tooling, ai_docs, ai_skills_quality]
     runs-on: ubuntu-latest
     services:
       postgres:

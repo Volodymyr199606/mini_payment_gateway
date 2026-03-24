@@ -3,7 +3,7 @@
 # Run the same AI quality gates as CI locally. No external APIs; deterministic.
 # See docs/AI_CI_QUALITY_GATES.md for what each gate protects.
 namespace :ai do
-  desc 'Run AI quality gates (contracts, scenarios, adversarial, policy, internal tooling, docs). Same as CI.'
+  desc 'Run AI quality gates (contracts, scenarios, adversarial, policy, internal tooling, docs, skills). Same as CI.'
   task ci: :environment do
     abort 'Use RAILS_ENV=test. Example: RAILS_ENV=test bundle exec rake ai:ci' unless Rails.env.test?
 
@@ -16,7 +16,8 @@ namespace :ai do
       ['AI adversarial', 'spec/ai/adversarial_scenarios_spec.rb'],
       ['AI policy', 'spec/ai/authorization_policy_spec.rb'],
       ['AI internal tooling', 'spec/requests/dev/ai_analytics_spec.rb spec/requests/dev/ai_health_spec.rb spec/requests/dev/ai_audits_spec.rb spec/requests/dev/ai_audits_replay_spec.rb spec/requests/dev/ai_playground_spec.rb'],
-      ['AI docs', 'spec/docs/ai_platform_docs_spec.rb']
+      ['AI docs', 'spec/docs/ai_platform_docs_spec.rb'],
+      ['AI skills quality', 'spec/ai/skills/ spec/ai/evals/skills/']
     ]
 
     failed = []
@@ -76,5 +77,13 @@ namespace :ai do
   desc 'Run AI docs consistency checks only'
   task 'ci:docs' => :environment do
     exit RSpec::Core::Runner.run(['spec/docs/ai_platform_docs_spec.rb', '--format', 'documentation']) == 0 ? 0 : 1
+  end
+
+  desc 'Run AI skill-layer quality gates only (same as ai:skills:ci)'
+  task 'ci:skills' => :environment do
+    abort 'Use RAILS_ENV=test' unless Rails.env.test?
+    exit RSpec::Core::Runner.run(
+      %w[spec/ai/skills/ spec/ai/evals/skills/ --format documentation]
+    ) == 0 ? 0 : 1
   end
 end

@@ -16,6 +16,10 @@ This project includes a **lightweight Ruby perf harness** under `perf/lib/` (no 
 
 Optional future modes could document `PERF_LIVE_GROQ=1` etc.; they are **not** implemented by default.
 
+### AI skill path comparisons (bounded layer)
+
+For **relative** median wall-time ratios between two skill scenario runs (same machine, no absolute SLA), use `RUN_PERF_LOCAL=1 bundle exec rake ai:skills:perf:local` or the `:perf_local` example in `spec/ai/skills/performance/`. Baseline caps live in `spec/fixtures/ai/skill_perf_baselines.yml`; reports may be written under `tmp/ai_skills/`. This is **optional** and not required for default CI (CI runs structural skill perf smoke only). See [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md).
+
 ## Scenarios (by group)
 
 | Group | Scenario | What it measures |

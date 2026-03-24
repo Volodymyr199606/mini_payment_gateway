@@ -20,6 +20,7 @@ The CI workflow (`.github/workflows/ci.yml`) runs **AI-focused gates** as separa
 | **AI policy** | `ai_policy` | `spec/ai/authorization_policy_spec.rb` | Authorization and allow_record? behavior for tools and entities |
 | **AI internal tooling** | `ai_internal_tooling` | `spec/requests/dev/ai_analytics_spec.rb`, `ai_health_spec.rb`, `ai_audits_spec.rb`, `ai_audits_replay_spec.rb`, `ai_playground_spec.rb` | AI analytics, health, audit drill-down, replay, playground entrypoints (route/controller sanity) |
 | **AI docs** | `ai_docs` | `spec/docs/ai_platform_docs_spec.rb` | Required AI platform docs exist (AI_PLATFORM.md, AI_REQUEST_FLOW.md, AI_EXTENSION_GUIDE.md, AI_OPERATIONS.md, AI_SAFETY_AND_POLICY.md, AI_DEBUGGING_AND_REPLAY.md, AI_DEPLOYMENT_AND_RELEASE_SAFETY.md) |
+| **AI skills quality** | `ai_skills_quality` | `spec/ai/skills/`, `spec/ai/evals/skills/` | Skill regression YAML (`skill_regression_scenarios.yml`), boundedness, metadata contracts, agent drift expectations, noise rules, perf smoke (no external APIs; no LLM text assertions) |
 | **Demo seed (smoke)** | `demo_seed` | `spec/seeds/demo_seed_spec.rb` | Demo seed runs and creates expected core records; optional, lightweight |
 
 After all AI gates pass, the **Spec (rest)** job runs the remaining RSpec specs (excluding the AI gate paths) so the full suite is covered without re-running AI specs.
@@ -65,6 +66,17 @@ After all AI gates pass, the **Spec (rest)** job runs the remaining RSpec specs 
 - Required internal AI platform docs exist.
 - Keeps doc set discoverable and referenced by DEMO_SCRIPT and runbooks.
 
+### ai_skills_quality
+
+- **Regression:** `skill_regression_scenarios.yml` — must/must-not skill keys, max invoked/heavy skills; catches planner/profile/composition drift.
+- **Contracts:** `SkillMetadataContract` vs `InvocationResult`, `UsageSerializer`, `CompositionResult` shapes.
+- **Drift:** `agent_skill_expectations.yml` vs `AgentProfiles` (`must_allow` / `must_not_allow`).
+- **Noise:** `SkillNoiseRules` predicates (rewriter without style path, etc.).
+- **Evals:** Existing skill scenarios, invocation correctness, safety, bounded invocation under `spec/ai/evals/skills/`.
+- **Perf smoke:** Planner caps and relative metrics helpers; deeper wall-clock ratios are `:perf_local` only (`RUN_PERF_LOCAL=1`).
+
+See [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md) for commands (`bin/ci_ai_skills`, `rake ai:skills:*`).
+
 ### demo_seed (optional)
 
 - Demo seed task creates demo merchant, scoping merchant, and key records.
@@ -86,6 +98,14 @@ or:
 RAILS_ENV=test bundle exec rake ai:ci
 ```
 
+**Skill layer only:**
+
+```bash
+bin/ci_ai_skills
+```
+
+or `RAILS_ENV=test bundle exec rake ai:skills:ci` (see [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md)).
+
 Ensure the test database is prepared:
 
 ```bash
@@ -101,6 +121,7 @@ RAILS_ENV=test bundle exec rake ai:ci:adversarial
 RAILS_ENV=test bundle exec rake ai:ci:policy
 RAILS_ENV=test bundle exec rake ai:ci:internal_tooling
 bundle exec rake ai:ci:docs
+RAILS_ENV=test bundle exec rake ai:ci:skills
 ```
 
 (`ai:ci:docs` does not require the DB; others do.)

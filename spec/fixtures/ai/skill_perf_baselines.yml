@@ -1,0 +1,9 @@
+# Local / optional perf comparisons — median ratios (not absolute ms).
+# Used when RUN_PERF_LOCAL=1. CI uses structural smoke only by default.
+
+comparisons:
+  account_vs_ledger:
+    scenario_a_id: skill-no-skill-account
+    scenario_b_id: skill-ledger-summary
+    median_ratio_max: 30.0
+    iterations: 5

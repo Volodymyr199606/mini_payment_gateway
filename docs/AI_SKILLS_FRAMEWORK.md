@@ -248,9 +248,30 @@ Use **explicit** orchestration in `RequestPlanner` / composers if multi-step flo
 Skill quality is evaluated via:
 
 - **Skill scenarios** (`spec/fixtures/ai/skill_scenarios.yml`): YAML scenarios with `expected_skill_keys` and `expected_skill_affected_response`. Run via `Ai::Evals::Skills::SkillScenarioRunner` and `spec/ai/evals/skills/skill_scenarios_spec.rb`.
+- **Skill regression scenarios** (`spec/fixtures/ai/skill_regression_scenarios.yml`): Same runner pipeline with extra **boundedness** fields on each scenario: `must_include_skills`, `must_not_include_skills`, `max_invoked_skills`, `max_heavy_skills`. Assertions run inside `Ai::Evals::ScenarioRunner` (`passed_regression`). Use `Ai::Evals::Skills::SkillRegressionRunner` or `spec/ai/skills/regression/skill_regression_scenarios_spec.rb`.
 - **Invocation correctness** (`spec/ai/evals/skills/invocation_correctness_spec.rb`): InvocationPlanner rules, agent allowlist, phase selection.
 - **Safety** (`spec/ai/evals/skills/skill_safety_spec.rb`): Merchant scoping, policy boundaries, output safety (UsageSerializer, QualityMetadata).
 - **Bounded invocation** (`spec/ai/evals/skills/skill_bounded_invocation_spec.rb`): MAX_INVOCATIONS_PER_REQUEST, audit metadata presence.
+- **Metadata contracts** (`spec/ai/skills/contracts/`): Stable keys on `InvocationResult#to_audit_hash`, `UsageSerializer`, `CompositionResult#to_audit_hash`; `Ai::Evals::Skills::SkillMetadataContract`.
+- **Agent drift** (`spec/fixtures/ai/agent_skill_expectations.yml`, `spec/ai/skills/drift/`): `must_allow` / `must_not_allow` per agent vs `AgentProfiles` allowlists.
+- **Noise rules** (`Ai::Evals::Skills::SkillNoiseRules`, `spec/ai/skills/noise/`): Explicit predicates (e.g. rewriter without style path, heavy skills on trivial support).
+- **Performance smoke** (`spec/ai/skills/performance/`): Structural checks (planner caps, `MetricSamples`, relative median ratio helpers). **Wall-clock ratio** scenarios are tagged `:perf_local` and run with `RUN_PERF_LOCAL=1` or `rake ai:skills:perf:local` (reports under `tmp/ai_skills/`). CI runs non-local perf smoke only.
+
+### CI and local commands
+
+| Command | What it runs |
+|---------|----------------|
+| `bin/ci_ai_skills` / `rake ai:skills:ci` | All skill gate specs: `spec/ai/skills/`, `spec/ai/evals/skills/` |
+| `rake ai:skills:regression` | Regression YAML scenarios only |
+| `rake ai:skills:contracts` | Contract specs only |
+| `rake ai:skills:perf` | Perf smoke (excludes `:perf_local`) |
+| `rake ai:skills:drift` | Drift + noise specs |
+| `rake ai:skills:perf:local` | Median ratio regression (optional; not default in CI) |
+| `bin/ci_ai` / `rake ai:ci` | Full AI gates **including** skill quality (same paths as CI) |
+
+**Drift / regression:** Failing `must_not_include_skills` or `max_heavy_skills` usually means invocation planner, profile, or composition changed selectivity. Failing `agent_skill_expectations.yml` means an agent allowlist drifted against documented role boundaries. Update YAML and docs when behavior changes **by design**.
+
+**No LLM wording:** Scenarios do not assert on free-form model text; they assert on skill keys, invocation counts, composition metadata, and tool/path expectations only.
 
 **Correctness per skill:**
 - `payment_state_explainer`: Invoked when post_tool + payment/transaction data; agent allows it. Deterministic template output.

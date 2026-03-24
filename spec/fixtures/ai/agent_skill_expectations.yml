@@ -1,0 +1,35 @@
+# Explicit per-agent skill role expectations for drift detection.
+# See Ai::Evals::Skills::AgentSkillExpectations and spec/ai/skills/drift/
+
+agent_skill_expectations:
+  support_faq:
+    must_not_allow:
+      - discrepancy_detector
+      - reporting_trend_summary
+      - ledger_period_summary
+      - reconciliation_action_summary
+      - webhook_trace_explainer
+  reporting_calculation:
+    must_not_allow:
+      - discrepancy_detector
+      - followup_rewriter
+    must_allow:
+      - ledger_period_summary
+  operational:
+    must_allow:
+      - webhook_trace_explainer
+      - payment_state_explainer
+  reconciliation_analyst:
+    must_not_allow:
+      - followup_rewriter
+    must_allow:
+      - discrepancy_detector
+      - ledger_period_summary
+  developer_onboarding:
+    must_not_allow:
+      - discrepancy_detector
+      - webhook_trace_explainer
+  security_compliance:
+    must_not_allow:
+      - discrepancy_detector
+      - webhook_trace_explainer

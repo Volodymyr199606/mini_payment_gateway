@@ -1,0 +1,86 @@
+# Skill regression scenarios: same shape as skill_scenarios.yml plus boundedness / selectivity gates.
+# Run via Ai::Evals::Skills::SkillRegressionRunner and spec/ai/skills/regression/
+
+skill_regression_scenarios:
+  - id: reg-support-pi-explainer
+    description: "PI lookup uses explainer only; no reconciliation/reporting heavy skills"
+    user_message: "What is payment intent {{payment_intent_id}}?"
+    entity_refs: [payment_intent]
+    expected_path: tool_only
+    expected_agent: "tool:get_payment_intent"
+    expected_tool_names: [get_payment_intent]
+    expected_skill_keys: [payment_state_explainer]
+    expected_skill_affected_response: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    must_not_include_skills:
+      - discrepancy_detector
+      - reporting_trend_summary
+      - ledger_period_summary
+      - webhook_trace_explainer
+    max_invoked_skills: 2
+    max_heavy_skills: 0
+
+  - id: reg-reporting-ledger
+    description: "Reporting ledger path invokes ledger_period_summary only (bounded)"
+    user_message: "What is my net volume for the last 7 days?"
+    expected_path: tool_only
+    expected_agent: "tool:get_ledger_summary"
+    expected_tool_names: [get_ledger_summary]
+    expected_skill_keys: [ledger_period_summary]
+    expected_skill_affected_response: true
+    expected_response_must_include: [Charges, Net]
+    expected_response_must_not_include: []
+    must_not_include_skills:
+      - discrepancy_detector
+      - followup_rewriter
+      - payment_state_explainer
+    max_invoked_skills: 1
+    max_heavy_skills: 0
+
+  - id: reg-operational-webhook
+    description: "Webhook lookup stays on webhook explainer; no ledger skills"
+    user_message: "What happened to webhook event {{webhook_event_id}}?"
+    entity_refs: [webhook_event]
+    expected_path: tool_only
+    expected_agent: "tool:get_webhook_event"
+    expected_tool_names: [get_webhook_event]
+    expected_skill_keys: [webhook_trace_explainer]
+    expected_skill_affected_response: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    must_not_include_skills:
+      - ledger_period_summary
+      - discrepancy_detector
+    max_invoked_skills: 2
+    max_heavy_skills: 0
+
+  - id: reg-no-skill-account
+    description: "Simple account query invokes zero skills"
+    user_message: "Show my account info"
+    expected_path: tool_only
+    expected_agent: "tool:get_merchant_account"
+    expected_tool_names: [get_merchant_account]
+    expected_skill_keys: []
+    expected_skill_affected_response: false
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    max_invoked_skills: 0
+    max_heavy_skills: 0
+
+  - id: reg-txn-orchestration
+    description: "Multi-step transaction lookup stays bounded"
+    user_message: "transaction id {{transaction_id}}"
+    entity_refs: [payment_intent, transaction]
+    expected_path: orchestration
+    expected_agent: orchestration
+    expected_tool_names: [get_transaction, get_payment_intent]
+    expected_skill_keys: [payment_state_explainer]
+    expected_skill_affected_response: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    must_not_include_skills:
+      - discrepancy_detector
+      - reporting_trend_summary
+    max_invoked_skills: 2
+    max_heavy_skills: 0

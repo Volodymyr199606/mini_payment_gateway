@@ -151,7 +151,8 @@ module Ai
             tool_result: run_result.deterministic_data,
             memory_used: false,
             explanation_metadata: run_result.explanation_metadata,
-            skill_composition_metadata: skill_outcome[:composition_result]
+            skill_composition_metadata: skill_outcome[:composition_result],
+            workflow_metadata: skill_outcome[:workflow_result]
           )
           audit_record = write_and_capture_audit(
             request_id: request_id,
@@ -169,7 +170,8 @@ module Ai
             orchestration_halted_reason: run_result.halted_reason,
             invoked_skills: skill_outcome[:invocation_results],
             skill_affected_reply: skill_outcome[:skill_affected_reply],
-            skill_agent_key: composed[:agent_key]
+            skill_agent_key: composed[:agent_key],
+            skill_workflow_metadata: skill_outcome[:workflow_result]&.to_audit_hash
           )
           {
             path: run_result.step_count > 1 ? 'orchestration' : 'tool_only',

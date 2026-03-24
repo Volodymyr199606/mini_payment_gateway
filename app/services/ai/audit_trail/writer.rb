@@ -85,6 +85,15 @@ module Ai
                 s.stringify_keys.slice(*safe_keys)
               end.reject { |x| x['skill_key'].blank? }
             end
+            if record.key?(:skill_workflow_metadata) && record[:skill_workflow_metadata].is_a?(Hash)
+              wf = record[:skill_workflow_metadata].stringify_keys.slice(
+                *%w[
+                  workflow_key workflow_selected steps_attempted steps_completed contributing_skills
+                  skipped_skills stop_reason success affected_final_response duration_ms
+                ]
+              )
+              h[:skill_workflow_metadata] = wf if wf['workflow_key'].present?
+            end
           end
         end
       end

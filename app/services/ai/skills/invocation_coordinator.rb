@@ -28,6 +28,21 @@ module Ai
             intent: intent
           )
 
+          wf_def = Workflows::Selector.select_post_tool(
+            routing_agent_key: agent_key,
+            skill_agent: skill_agent,
+            context: context
+          )
+
+          if wf_def
+            return Workflows::Executor.run_post_tool(
+              workflow_def: wf_def,
+              context: context,
+              run_result: run_result,
+              routing_agent_key: agent_key
+            )
+          end
+
           invocation_results = []
           already_invoked = []
           base_reply = run_result.reply_text
@@ -59,7 +74,8 @@ module Ai
             reply_text: composition.reply_text,
             invocation_results: invocation_results,
             skill_affected_reply: skill_affected,
-            composition_result: composition
+            composition_result: composition,
+            workflow_result: nil
           }
         end
 
@@ -92,9 +108,21 @@ module Ai
           log_skill_invocation(inv_result, context)
 
           if inv_result.invoked && inv_result.success && inv_result.explanation.present?
+            wf = Workflows::Selector.select_pre_composition(
+              routing_agent_key: agent_key,
+              execution_plan: execution_plan,
+              followup: followup,
+              prior_assistant_content: prior_assistant_content
+            )
+            workflow_result = wf ? Workflows::Executor.attach_rewrite_metadata(
+              invocation_results: [inv_result.to_audit_hash],
+              routing_agent_key: agent_key
+            ) : nil
+
             {
               reply_text: inv_result.explanation,
-              invocation_results: [inv_result.to_audit_hash]
+              invocation_results: [inv_result.to_audit_hash],
+              workflow_result: workflow_result
             }
           else
             nil
@@ -116,6 +144,7 @@ module Ai
           )
         end
 
+        # Exposed for Workflows::Executor (tool-based skill agent resolution).
         def resolve_skill_agent(agent_key, tool_names)
           primary = tool_names.first.to_s
           case primary

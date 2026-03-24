@@ -17,7 +17,7 @@ module Ai
         orchestration_used orchestration_step_count orchestration_halted_reason
         degraded failure_stage fallback_mode success_after_fallback
         execution_mode retrieval_skipped memory_skipped retrieval_budget_reduced
-        invoked_skills
+        invoked_skills skill_workflow_metadata
       ].freeze
 
       SECTION_GROUPS = {
@@ -27,7 +27,7 @@ module Ai
         execution_plan: %w[execution_mode retrieval_skipped memory_skipped retrieval_budget_reduced],
         tool_usage: %w[tool_used tool_names],
         orchestration: %w[orchestration_used orchestration_step_count orchestration_halted_reason],
-        skills: %w[invoked_skills],
+        skills: %w[invoked_skills skill_workflow_metadata],
         retrieval: %w[retrieved_sections_count citations_count corpus_version],
         memory: %w[memory_used summary_used],
         composition: %w[composition_mode deterministic_explanation_used explanation_type explanation_key],

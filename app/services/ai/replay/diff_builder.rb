@@ -12,7 +12,7 @@ module Ai
         deterministic_explanation_used explanation_type explanation_key
         execution_mode retrieval_skipped memory_skipped
         degraded fallback_mode
-        skill_keys
+        skill_keys workflow_key
       ].freeze
 
       def self.call(original_summary:, replay_summary:)

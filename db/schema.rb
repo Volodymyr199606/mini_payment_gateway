@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_21_100000) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_24_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -72,6 +72,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_21_100000) do
     t.string "explanation_type"
     t.string "explanation_key"
     t.jsonb "invoked_skills", default: [], null: false
+    t.jsonb "skill_workflow_metadata"
     t.index ["agent_key"], name: "index_ai_request_audits_on_agent_key"
     t.index ["created_at"], name: "index_ai_request_audits_on_created_at"
     t.index ["merchant_id"], name: "index_ai_request_audits_on_merchant_id"

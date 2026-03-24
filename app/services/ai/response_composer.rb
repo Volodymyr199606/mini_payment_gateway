@@ -22,7 +22,8 @@ module Ai
       tool_result: nil,
       memory_used: false,
       explanation_metadata: nil,
-      skill_composition_metadata: nil
+      skill_composition_metadata: nil,
+      workflow_metadata: nil
     )
       @reply_text = reply_text.to_s
       @citations = citations.to_a
@@ -35,6 +36,7 @@ module Ai
       @memory_used = !!memory_used
       @explanation_metadata = explanation_metadata.is_a?(Hash) ? explanation_metadata : nil
       @skill_composition_metadata = skill_composition_metadata
+      @workflow_metadata = workflow_metadata
     end
 
     def call
@@ -70,6 +72,9 @@ module Ai
       }
       composition.merge!(@explanation_metadata) if @explanation_metadata.present?
       composition.merge!(@skill_composition_metadata.to_audit_hash) if @skill_composition_metadata.respond_to?(:to_audit_hash)
+      if @workflow_metadata.respond_to?(:to_audit_hash)
+        composition[:skill_workflow] = @workflow_metadata.to_audit_hash
+      end
       composition
     end
 

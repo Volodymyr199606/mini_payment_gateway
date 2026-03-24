@@ -29,6 +29,7 @@ module Ai
         reconciliation_action_summary: :next_steps,
         merchant_account_status_summary: :primary_explanation,
         docs_citation_summarizer: :docs_clarification,
+        docs_lookup: :docs_clarification,
         report_explainer: :primary_explanation
       }.freeze
 

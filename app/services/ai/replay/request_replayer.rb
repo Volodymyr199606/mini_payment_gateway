@@ -62,9 +62,9 @@ module Ai
         )
 
         skill_outcome = if run_result.orchestration_used? && run_result.tool_names.any?
-          agent_key = run_result.step_count > 1 ? 'orchestration' : "tool:#{run_result.tool_names.first}"
+          planned_agent = ::Ai::Router.new(input.message).call
           ::Ai::Skills::InvocationCoordinator.post_tool(
-            agent_key: agent_key,
+            agent_key: planned_agent,
             merchant_id: input.merchant_id,
             message: input.message,
             tool_names: run_result.tool_names.to_a,
@@ -127,7 +127,8 @@ module Ai
           fallback_mode: audit.try(:fallback_mode),
           latency_ms: audit.latency_ms,
           invoked_skills: skill_usage_from_audit(audit),
-          skill_keys: skill_keys_from_audit(audit)
+          skill_keys: skill_keys_from_audit(audit),
+          workflow_key: workflow_key_from_audit(audit)
         }.compact
       end
 
@@ -160,6 +161,8 @@ module Ai
         }
         base[:invoked_skills] = invoked_skills if invoked_skills.present?
         base[:skill_keys] = invoked_skills.map { |s| s['skill_key'] || s[:skill_key] }.compact.uniq if invoked_skills.present?
+        wf = skill_outcome&.dig(:workflow_result)
+        base[:workflow_key] = wf.workflow_key if wf.respond_to?(:workflow_key) && wf.workflow_key.present?
         base.compact
       end
 
@@ -174,6 +177,15 @@ module Ai
         usage = skill_usage_from_audit(audit)
         return nil if usage.blank?
         usage.map { |s| s['skill_key'] || s[:skill_key] }.compact.uniq.sort
+      end
+
+      def workflow_key_from_audit(audit)
+        return nil unless audit.respond_to?(:skill_workflow_metadata)
+
+        meta = audit.skill_workflow_metadata
+        return nil if meta.blank?
+
+        (meta.is_a?(Hash) ? meta['workflow_key'] : nil).presence
       end
 
       def skill_usage_from_outcome(skill_outcome, agent_key)

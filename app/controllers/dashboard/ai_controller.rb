@@ -96,7 +96,8 @@ module Dashboard
           tool_result: run_result.deterministic_data,
           memory_used: false,
           explanation_metadata: run_result.explanation_metadata,
-          skill_composition_metadata: skill_outcome[:composition_result]
+          skill_composition_metadata: skill_outcome[:composition_result],
+          workflow_metadata: skill_outcome[:workflow_result]
         )
         AiChatMessage.create!(
           ai_chat_session: chat_session,
@@ -125,7 +126,8 @@ module Dashboard
           execution_plan_metadata: execution_plan.to_audit_metadata,
           invoked_skills: skill_outcome[:invocation_results],
           skill_affected_reply: skill_outcome[:skill_affected_reply],
-          skill_agent_key: composed[:agent_key]
+          skill_agent_key: composed[:agent_key],
+          skill_workflow_metadata: skill_outcome[:workflow_result]&.to_audit_hash
         )
         enqueue_summary_refresh_if_ok(chat_session)
         payload = build_response_payload(composed)
@@ -180,7 +182,8 @@ module Dashboard
             execution_plan_metadata: execution_plan.to_audit_metadata,
             invoked_skills: rewrite_result[:invocation_results],
             skill_affected_reply: true,
-            skill_agent_key: composed[:agent_key]
+            skill_agent_key: composed[:agent_key],
+            skill_workflow_metadata: rewrite_result[:workflow_result]&.to_audit_hash
           )
           enqueue_summary_refresh_if_ok(chat_session)
           payload = build_response_payload(composed)
@@ -682,6 +685,9 @@ module Dashboard
         )
         debug[:skill_affected_response] = !!skill_outcome[:skill_affected_reply]
       end
+      if skill_outcome.is_a?(Hash) && skill_outcome[:workflow_result].respond_to?(:to_audit_hash)
+        debug[:skill_workflow] = skill_outcome[:workflow_result].to_audit_hash
+      end
       debug
     end
 
@@ -699,6 +705,9 @@ module Dashboard
           affected_final_response: true
         )
         debug[:skill_affected_response] = true
+      end
+      if rewrite_result.is_a?(Hash) && rewrite_result[:workflow_result].respond_to?(:to_audit_hash)
+        debug[:skill_workflow] = rewrite_result[:workflow_result].to_audit_hash
       end
       debug
     end

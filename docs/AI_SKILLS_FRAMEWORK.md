@@ -28,8 +28,24 @@ This document describes the **bounded skill layer** under `Ai::Skills`: reusable
 | New domain skills | `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `payment_failure_summary`, `webhook_retry_summary`, `reporting_trend_summary`, `reconciliation_action_summary` |
 | Per-agent tuning | `AgentDefinition#max_skills_per_request` (default 2); e.g. `security_compliance` uses 1 |
 | **Per-agent profiles** | `AgentProfiles`, `AgentProfile`, `SkillWeights` — preferred skills, max budgets, heavy-skill limits, invocation thresholds |
+| **Bounded workflows (optional paths)** | `Ai::Skills::Workflows::Registry`, `Selector`, `Executor`, `WorkflowResult` — explicit 1–3 step sequences; not autonomous planning |
 
 **Out of scope (unchanged):** autonomous subagents, recursive planning, unbounded skill chains. `reporting_trend_summary` does not invent trends without explicit comparative ledger inputs; `reconciliation_action_summary` does not execute actions.
+
+### Bounded multi-skill workflows
+
+A **workflow** is a **named, pre-registered** sequence of at most three skill invocations for one domain use case. It is **not** autonomous planning, **not** recursive skill chaining, and **not** nested agents. Workflows complement the default `InvocationPlanner` loop: when `Workflows::Selector` matches a conservative routing + context pattern, `Workflows::Executor` runs the sequence in order via the same `Invoker` / `InvocationExecutor` path (reason code `bounded_workflow_step`). Nested workflow execution is rejected.
+
+| Workflow key | Steps (order) | When selected (summary) |
+|--------------|---------------|-------------------------|
+| `payment_explain_with_docs` | `payment_state_explainer` → `docs_lookup` | Routing `support_faq`, payment tool data, **and** message looks docs/policy/API-related |
+| `reconciliation_analysis_workflow` | `discrepancy_detector` → `reconciliation_action_summary` | Routing `reconciliation_analyst`, ledger tool path, ledger data present |
+| `webhook_failure_analysis_workflow` | `webhook_trace_explainer` → `payment_failure_summary` (second step optional) | Routing `operational`, webhook data, **and** failed/pending delivery or payment-failure context |
+| `rewrite_response_workflow` | `followup_rewriter` | Pre-composition concise-rewrite path (same gates as today); metadata attached via `WorkflowResult` |
+
+Disable all workflows with `AI_SKILL_WORKFLOWS_DISABLED=1`.
+
+**Metadata:** `Ai::Skills::Workflows::WorkflowResult#to_audit_hash` includes `workflow_key`, `workflow_selected`, `steps_attempted`, `steps_completed`, `contributing_skills`, `skipped_skills`, `stop_reason`, `success`, `affected_final_response`, `duration_ms`. Persisted on `ai_request_audits.skill_workflow_metadata` (jsonb), merged into `ResponseComposer` composition as `skill_workflow`, and exposed in debug payloads / audit drill-down. Replay compares `workflow_key` in `DiffBuilder` / `RequestReplayer` summaries.
 
 ### Per-agent skill profiles
 

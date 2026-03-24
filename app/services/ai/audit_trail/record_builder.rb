@@ -41,7 +41,8 @@ module Ai
         corpus_version: nil,
         invoked_skills: nil,
         skill_affected_reply: false,
-        skill_agent_key: nil
+        skill_agent_key: nil,
+        skill_workflow_metadata: nil
       )
         @request_id = request_id.to_s.strip.presence
         @endpoint = endpoint.to_s.strip.presence
@@ -75,6 +76,7 @@ module Ai
         @invoked_skills = invoked_skills.is_a?(Array) ? invoked_skills : []
         @skill_affected_reply = !!skill_affected_reply
         @skill_agent_key = skill_agent_key.to_s.strip.presence
+        @skill_workflow_metadata = skill_workflow_metadata.is_a?(Hash) ? skill_workflow_metadata : nil
       end
 
       def call
@@ -147,6 +149,10 @@ module Ai
 
       def record_accepts_invoked_skills?
         AiRequestAudit.column_names.include?('invoked_skills')
+      end
+
+      def record_accepts_skill_workflow_metadata?
+        AiRequestAudit.column_names.include?('skill_workflow_metadata')
       end
 
       def normalize_json_input(val)

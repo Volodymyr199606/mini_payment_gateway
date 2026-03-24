@@ -127,6 +127,24 @@ module Ai
         false
       end
 
+      # Webhook retry summary is most relevant when delivery is pending or failed.
+      def has_webhook_retry_relevant_state?
+        return false unless has_webhook_data?
+
+        webhook = extract_entity(:webhook_event) || (primary_tool == 'get_webhook_event' ? @deterministic_data : nil)
+        return false unless webhook.is_a?(Hash)
+
+        status = (webhook[:delivery_status] || webhook['delivery_status']).to_s.downcase
+        %w[pending failed].include?(status)
+      end
+
+      # Message suggests trend/compare/previous-period interest.
+      def has_trend_context?
+        return false if @message.blank?
+
+        @message.match?(/\b(trend|compare|vs|versus|previous|prior|last\s+week|this\s+week|up|down|change)\b/i)
+      end
+
       def extract_entity(key)
         data = @deterministic_data || {}
         data[key] || data[key.to_s]

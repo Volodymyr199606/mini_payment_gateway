@@ -27,8 +27,32 @@ This document describes the **bounded skill layer** under `Ai::Skills`: reusable
 | Multi-skill post_tool | `InvocationCoordinator` runs up to `min(agent.max_skills_per_request, MAX_INVOCATIONS_PER_REQUEST)` skills per request; `CompositionPlanner` merges outputs |
 | New domain skills | `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `payment_failure_summary`, `webhook_retry_summary`, `reporting_trend_summary`, `reconciliation_action_summary` |
 | Per-agent tuning | `AgentDefinition#max_skills_per_request` (default 2); e.g. `security_compliance` uses 1 |
+| **Per-agent profiles** | `AgentProfiles`, `AgentProfile`, `SkillWeights` — preferred skills, max budgets, heavy-skill limits, invocation thresholds |
 
 **Out of scope (unchanged):** autonomous subagents, recursive planning, unbounded skill chains. `reporting_trend_summary` does not invent trends without explicit comparative ledger inputs; `reconciliation_action_summary` does not execute actions.
+
+### Per-agent skill profiles
+
+Each agent has a tuned profile (`Ai::Skills::AgentProfiles`) that defines:
+
+- **allowed_skill_keys** — subset of skills the agent may use (must align with `AgentDefinition`)
+- **preferred_skill_keys** — ordered list; preferred skills are considered first by `InvocationPlanner`
+- **suppressed_skill_keys** — skills allowed but only invoked when additional thresholds are met
+- **max_skills_per_request** — hard cap on skill invocations per request (1–2 typical)
+- **max_heavy_skills_per_request** — cap on heavy skills (e.g. discrepancy_detector, reporting_trend_summary)
+- **performance_sensitivity** — `:low`, `:medium`, `:high` for future cost/latency shaping
+
+**Skill weights** (`SkillWeights`): light (template/cache), medium (single domain call), heavy (multi-call, comparison logic). Used for profile budgets and suppression.
+
+**Invocation thresholds** (explicit, testable):
+
+- `webhook_retry_summary` — only when `delivery_status` is `pending` or `failed` (not `succeeded`)
+- `reporting_trend_summary` — when profile suppresses it, only runs if message has trend/compare/previous keywords
+- `followup_rewriter` — only when `concise_rewrite_only` + `explanation_rewrite` + prior content present
+
+**Profile budgets** — `InvocationCoordinator` and `InvocationPlanner` use profile `max_skills_per_request`; when budget is reached, no further skills are planned. Heavy-skill budget prevents multiple heavy skills in one request.
+
+**Analytics** — `MetricsBuilder.skill_usage` includes `avg_skills_per_request_by_agent` for profile tuning visibility.
 
 ### Skill composition model (Phase 2+)
 
@@ -100,6 +124,9 @@ These skills are **bounded**: they perform a single domain job, have clear input
 | `Ai::Skills::CompositionResult` | Stable composition metadata: slots filled, contributing/suppressed skills, precedence applied. |
 | `Ai::Skills::ConflictResolver` | Explicit precedence when multiple skills target the same slot (see `PRECEDENCE_RULES`). |
 | `Ai::Skills::ResponseSlots` | Maps skill keys → slot names; additive vs style-only slots. |
+| `Ai::Skills::AgentProfile` | Per-agent tuning: preferred skills, budgets, suppression. |
+| `Ai::Skills::AgentProfiles` | Registry of profiles; `AgentProfiles.for(agent_key)`. |
+| `Ai::Skills::SkillWeights` | Light/medium/heavy classification for performance budgets. |
 
 ---
 
@@ -173,7 +200,7 @@ Skill usage is normalized via `Ai::Skills::UsageSerializer` and exposed consiste
 - **Audit trail:** `invoked_skills` (jsonb) on `AiRequestAudit` stores normalized skill usage per request. `RecordBuilder` and `Writer` persist it via the existing flow.
 - **Debug payload / UI:** When debug is enabled, the response includes `invoked_skills` and `skill_affected_response`. The dashboard debug panel shows a "Skills" section (skills invoked, phases, success/failure, whether the skill changed the final response).
 - **Replay:** `RequestReplayer` compares `skill_keys` and `invoked_skills` between original and replayed runs. `DiffBuilder.matched_skill_usage` indicates whether skill usage matches.
-- **Analytics:** `MetricsBuilder.skill_usage` aggregates `skill_keys_frequency`, `by_agent`, `success_rate`, `deterministic_rate`, `affected_response_count`.
+- **Analytics:** `MetricsBuilder.skill_usage` aggregates `skill_keys_frequency`, `by_agent`, `avg_skills_per_request_by_agent`, `success_rate`, `deterministic_rate`, `affected_response_count`.
 - **Observability:** `EventLogger.log_skill_invocation` emits per-invocation events; `log_ai_request` accepts optional `invoked_skills` for the final request log.
 
 **What is intentionally not persisted/displayed:** raw skill inputs, internal prompts, merchant/account data beyond what existing audit allows, large output blobs (only concise summaries).
@@ -211,6 +238,8 @@ Use **explicit** orchestration in `RequestPlanner` / composers if multi-step flo
 - `spec/services/ai/skills/webhook_retry_summary_spec.rb` — webhook retry/delivery status.
 - `spec/services/ai/skills/reporting_trend_summary_spec.rb` — comparative ledger trends.
 - `spec/services/ai/skills/reconciliation_action_summary_spec.rb` — next-step guidance.
+- `spec/services/ai/skills/agent_profiles_spec.rb` — profile budgets and preferences.
+- `spec/services/ai/skills/skill_weights_spec.rb` — light/medium/heavy classification.
 
 ---
 

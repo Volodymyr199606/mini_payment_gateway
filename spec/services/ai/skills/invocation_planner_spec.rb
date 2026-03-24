@@ -54,6 +54,48 @@ RSpec.describe Ai::Skills::InvocationPlanner do
       expect(planned[:reason_code]).to eq('webhook_data_retrieved')
     end
 
+    it 'does not plan webhook_retry_summary when delivery_status succeeded' do
+      ctx = Ai::Skills::InvocationContext.for_post_tool(
+        agent_key: :operational,
+        merchant_id: 1,
+        message: 'webhook',
+        tool_names: ['get_webhook_event'],
+        deterministic_data: { id: 1, delivery_status: 'succeeded', attempts: 1 }
+      )
+      planned1 = described_class.plan(context: ctx, already_invoked: [])
+      expect(planned1[:skill_key]).to eq(:webhook_trace_explainer)
+      planned2 = described_class.plan(context: ctx, already_invoked: [:webhook_trace_explainer])
+      expect(planned2).to be_nil
+    end
+
+    it 'plans webhook_retry_summary when delivery_status pending' do
+      ctx = Ai::Skills::InvocationContext.for_post_tool(
+        agent_key: :operational,
+        merchant_id: 1,
+        message: 'webhook',
+        tool_names: ['get_webhook_event'],
+        deterministic_data: { id: 1, delivery_status: 'pending', attempts: 1 }
+      )
+      planned1 = described_class.plan(context: ctx, already_invoked: [])
+      expect(planned1[:skill_key]).to eq(:webhook_trace_explainer)
+      planned2 = described_class.plan(context: ctx, already_invoked: [:webhook_trace_explainer])
+      expect(planned2[:skill_key]).to eq(:webhook_retry_summary)
+    end
+
+    it 'reporting_calculation respects max 1 skill budget' do
+      ctx = Ai::Skills::InvocationContext.for_post_tool(
+        agent_key: :reporting_calculation,
+        merchant_id: 1,
+        message: 'compare trends',
+        tool_names: ['get_ledger_summary'],
+        deterministic_data: { totals: {}, from: '2025-01-01', to: '2025-01-07' }
+      )
+      planned1 = described_class.plan(context: ctx, already_invoked: [])
+      expect(planned1[:skill_key]).to eq(:ledger_period_summary)
+      planned2 = described_class.plan(context: ctx, already_invoked: [:ledger_period_summary])
+      expect(planned2).to be_nil
+    end
+
     it 'plans ledger_period_summary when reporting has ledger data' do
       ctx = Ai::Skills::InvocationContext.for_post_tool(
         agent_key: :reporting_calculation,

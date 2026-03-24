@@ -100,8 +100,8 @@ module Ai
         return {} unless AiRequestAudit.column_names.include?('invoked_skills')
 
         total = @scope.count
-        raw = @scope.pluck(:invoked_skills).compact.reject { |a| a.blank? || (a.is_a?(Array) && a.empty?) }
-        all_skills = raw.flatten.compact
+        raw = @scope.pluck(:invoked_skills, :agent_key).compact.reject { |(inv, _)| inv.blank? || (inv.is_a?(Array) && inv.empty?) }
+        all_skills = raw.flat_map { |(inv, _)| Array(inv).compact }
         return { skill_invoked_count: 0, skill_usage_rate: 0, skill_keys_frequency: {}, by_agent: {}, success_rate: nil } if all_skills.empty?
 
         invoked = all_skills.select { |s| s['invoked'] || s[:invoked] }
@@ -111,15 +111,27 @@ module Ai
         skill_keys_freq = invoked.map { |s| s['skill_key'] || s[:skill_key] }.compact.tally.sort_by { |_, v| -v }.to_h
         by_agent = invoked.group_by { |s| s['agent_key'] || s[:agent_key] }.transform_values(&:size)
 
+        # Profile-aware: avg skills per request by agent
+        skills_per_request_by_agent = Hash.new { |h, k| h[k] = [] }
+        raw.each do |inv, agent|
+          agent_key = agent.to_s.presence || 'unknown'
+          count = Array(inv).count { |s| s['invoked'] || s[:invoked] }
+          skills_per_request_by_agent[agent_key] << count
+        end
+        avg_skills_per_request_by_agent = skills_per_request_by_agent.transform_values do |counts|
+          counts.any? ? (counts.sum.to_f / counts.size).round(2) : 0
+        end
+
         {
           skill_invoked_count: invoked.size,
           skill_usage_rate: total.positive? ? (raw.size.to_f / total).round(3) : 0,
           skill_keys_frequency: skill_keys_freq,
           by_agent: by_agent,
+          avg_skills_per_request_by_agent: avg_skills_per_request_by_agent.presence,
           success_rate: invoked.any? ? (1 - failed.size.to_f / invoked.size).round(3) : nil,
           deterministic_rate: invoked.any? ? (deterministic_count.to_f / invoked.size).round(3) : nil,
           affected_response_count: affected_count
-        }
+        }.compact
       end
 
       def fallback_metrics

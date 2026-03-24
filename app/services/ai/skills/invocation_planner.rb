@@ -4,6 +4,7 @@ module Ai
   module Skills
     # Rule-based planning for skill invocation. No recursion, no chaining.
     # Decides which allowed skill (if any) to run at each phase. Bounded and auditable.
+    # Uses AgentProfiles for per-agent budgets, preferred order, and suppression.
     class InvocationPlanner
       MAX_INVOCATIONS_PER_REQUEST = 2
       INVOCATIONS_PER_PHASE = 1
@@ -20,25 +21,45 @@ module Ai
         pre_composition: %i[followup_rewriter]
       }.freeze
 
+      SUPPRESSION_REASONS = {
+        budget_reached: 'profile_budget_reached',
+        heavy_budget_reached: 'profile_heavy_budget_reached',
+        not_preferred_suppressed: 'profile_suppressed_skill',
+        threshold_not_met: 'invocation_threshold_not_met'
+      }.freeze
+
       class << self
         # @param context [InvocationContext]
         # @param already_invoked [Array<Symbol>] skills invoked earlier this request
         # @return [Hash, nil] { skill_key:, reason_code: } or nil if no skill to invoke
         def plan(context:, already_invoked: [])
-          return nil if already_invoked.size >= MAX_INVOCATIONS_PER_REQUEST
+          profile = AgentProfiles.for(context.agent_key)
+          max_allowed = [profile.max_skills_per_request, MAX_INVOCATIONS_PER_REQUEST].min
 
-          rules = PHASE_SKILL_RULES[context.phase]
+          return nil if already_invoked.size >= max_allowed
+
+          rules = ordered_skills_for_phase(context.phase, profile)
           return nil unless rules.present?
 
           rules.each do |skill_key|
             next if already_invoked.include?(skill_key)
 
-            reason = should_invoke?(context, skill_key, already_invoked: already_invoked)
+            reason = should_invoke?(context, skill_key, already_invoked: already_invoked, profile: profile)
             next unless reason
 
             return { skill_key: skill_key, reason_code: reason }
           end
           nil
+        end
+
+        # Order phase skills by profile preference (preferred first, then by PHASE_SKILL_RULES order).
+        def ordered_skills_for_phase(phase, profile)
+          base = PHASE_SKILL_RULES[phase.to_sym] || []
+          return base if base.empty?
+
+          preferred = profile.preferred_skill_keys & base
+          others = base - preferred
+          (preferred + others).uniq
         end
 
         # @return [Array<Hash>] all planned invocations for the request (for debugging)
@@ -58,8 +79,11 @@ module Ai
 
         private
 
-        def should_invoke?(context, skill_key, already_invoked: [])
+        def should_invoke?(context, skill_key, already_invoked: [], profile: nil)
+          profile ||= AgentProfiles.for(context.agent_key)
           return nil unless agent_allows?(context.agent_key, skill_key)
+          return nil if profile.budget_reached?(already_invoked: already_invoked)
+          return nil if SkillWeights.heavy?(skill_key) && profile.heavy_budget_reached?(already_invoked: already_invoked)
 
           case skill_key
           when :followup_rewriter
@@ -79,9 +103,9 @@ module Ai
           when :payment_failure_summary
             rule_payment_failure_summary(context)
           when :webhook_retry_summary
-            rule_webhook_retry_summary(context)
+            rule_webhook_retry_summary(context, profile: profile)
           when :reporting_trend_summary
-            rule_reporting_trend_summary(context)
+            rule_reporting_trend_summary(context, profile: profile)
           when :reconciliation_action_summary
             rule_reconciliation_action_summary(context)
           else
@@ -158,16 +182,18 @@ module Ai
           'payment_failure_detected'
         end
 
-        def rule_webhook_retry_summary(context)
+        def rule_webhook_retry_summary(context, profile: nil)
           return nil unless context.phase == :post_tool
           return nil unless context.has_webhook_data?
+          return nil unless context.has_webhook_retry_relevant_state?
 
           'webhook_retry_status'
         end
 
-        def rule_reporting_trend_summary(context)
+        def rule_reporting_trend_summary(context, profile: nil)
           return nil unless context.phase == :post_tool
           return nil unless context.has_ledger_data?
+          return nil if profile&.suppressed?(:reporting_trend_summary) && !context.has_trend_context?
 
           'ledger_data_for_trends'
         end

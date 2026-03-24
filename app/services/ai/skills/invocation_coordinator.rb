@@ -31,8 +31,8 @@ module Ai
           invocation_results = []
           already_invoked = []
           base_reply = run_result.reply_text
-          defn = AgentRegistry.definition(skill_agent)
-          max_inv = [defn&.max_skills_per_request || InvocationPlanner::MAX_INVOCATIONS_PER_REQUEST, InvocationPlanner::MAX_INVOCATIONS_PER_REQUEST].min
+          profile = AgentProfiles.for(skill_agent)
+          max_inv = [profile.max_skills_per_request, InvocationPlanner::MAX_INVOCATIONS_PER_REQUEST].min
 
           loop do
             break if already_invoked.size >= max_inv

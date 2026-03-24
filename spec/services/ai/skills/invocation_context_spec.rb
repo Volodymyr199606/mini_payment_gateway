@@ -28,6 +28,48 @@ RSpec.describe Ai::Skills::InvocationContext do
       expect(ctx.has_webhook_data?).to be true
     end
 
+    it 'has_webhook_retry_relevant_state? true when pending or failed' do
+      ctx_pending = described_class.for_post_tool(
+        agent_key: :operational,
+        merchant_id: 1,
+        message: 'webhook',
+        tool_names: ['get_webhook_event'],
+        deterministic_data: { id: 1, delivery_status: 'pending', attempts: 1 }
+      )
+      expect(ctx_pending.has_webhook_retry_relevant_state?).to be true
+
+      ctx_failed = described_class.for_post_tool(
+        agent_key: :operational,
+        merchant_id: 1,
+        message: 'webhook',
+        tool_names: ['get_webhook_event'],
+        deterministic_data: { id: 1, delivery_status: 'failed', attempts: 3 }
+      )
+      expect(ctx_failed.has_webhook_retry_relevant_state?).to be true
+    end
+
+    it 'has_webhook_retry_relevant_state? false when succeeded' do
+      ctx = described_class.for_post_tool(
+        agent_key: :operational,
+        merchant_id: 1,
+        message: 'webhook',
+        tool_names: ['get_webhook_event'],
+        deterministic_data: { id: 1, delivery_status: 'succeeded', attempts: 1 }
+      )
+      expect(ctx.has_webhook_retry_relevant_state?).to be false
+    end
+
+    it 'has_trend_context? matches trend/compare/previous keywords' do
+      ctx = described_class.for_post_tool(
+        agent_key: :reporting_calculation,
+        merchant_id: 1,
+        message: 'compare charges this week vs last week',
+        tool_names: ['get_ledger_summary'],
+        deterministic_data: {}
+      )
+      expect(ctx.has_trend_context?).to be true
+    end
+
     it 'detects ledger data from tool_names' do
       ctx = described_class.for_post_tool(
         agent_key: :reporting_calculation,

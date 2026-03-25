@@ -8,7 +8,7 @@ module Ai
         support_faq: AgentProfile.new(
           agent_key: :support_faq,
           allowed_skill_keys: %i[
-            docs_lookup payment_state_explainer followup_rewriter
+            payment_state_explainer followup_rewriter
             refund_eligibility_explainer authorization_vs_capture_explainer payment_failure_summary
           ],
           preferred_skill_keys: %i[payment_state_explainer payment_failure_summary followup_rewriter],
@@ -20,8 +20,8 @@ module Ai
         ),
         security_compliance: AgentProfile.new(
           agent_key: :security_compliance,
-          allowed_skill_keys: %i[docs_lookup payment_state_explainer authorization_vs_capture_explainer],
-          preferred_skill_keys: %i[authorization_vs_capture_explainer docs_lookup],
+          allowed_skill_keys: %i[payment_state_explainer authorization_vs_capture_explainer],
+          preferred_skill_keys: %i[authorization_vs_capture_explainer payment_state_explainer],
           suppressed_skill_keys: [],
           max_skills_per_request: 1,
           max_heavy_skills_per_request: 0,
@@ -30,8 +30,8 @@ module Ai
         ),
         developer_onboarding: AgentProfile.new(
           agent_key: :developer_onboarding,
-          allowed_skill_keys: %i[docs_lookup followup_rewriter authorization_vs_capture_explainer],
-          preferred_skill_keys: %i[authorization_vs_capture_explainer docs_lookup followup_rewriter],
+          allowed_skill_keys: %i[followup_rewriter authorization_vs_capture_explainer],
+          preferred_skill_keys: %i[authorization_vs_capture_explainer followup_rewriter],
           suppressed_skill_keys: [],
           max_skills_per_request: 1,
           max_heavy_skills_per_request: 0,
@@ -53,7 +53,7 @@ module Ai
         reconciliation_analyst: AgentProfile.new(
           agent_key: :reconciliation_analyst,
           allowed_skill_keys: %i[
-            ledger_period_summary discrepancy_detector payment_state_explainer transaction_trace
+            ledger_period_summary discrepancy_detector payment_state_explainer
             refund_eligibility_explainer authorization_vs_capture_explainer
             reporting_trend_summary reconciliation_action_summary
           ],
@@ -66,8 +66,8 @@ module Ai
         ),
         reporting_calculation: AgentProfile.new(
           agent_key: :reporting_calculation,
-          allowed_skill_keys: %i[ledger_period_summary time_range_resolution report_explainer reporting_trend_summary],
-          preferred_skill_keys: %i[ledger_period_summary report_explainer],
+          allowed_skill_keys: %i[ledger_period_summary reporting_trend_summary],
+          preferred_skill_keys: %i[ledger_period_summary],
           suppressed_skill_keys: %i[reporting_trend_summary],
           max_skills_per_request: 1,
           max_heavy_skills_per_request: 0,

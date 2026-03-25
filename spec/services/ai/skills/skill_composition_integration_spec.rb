@@ -7,13 +7,13 @@ RSpec.describe 'Skill composition integration' do
     it 'prefers deterministic primary over generic LLM-style primary' do
       candidates = [
         { skill_key: :payment_state_explainer, slot: :primary_explanation, text: 'PI captured.', deterministic: true },
-        { skill_key: :report_explainer, slot: :primary_explanation, text: 'Here is a nice story.', deterministic: false }
+        { skill_key: :ledger_period_summary, slot: :primary_explanation, text: 'Here is a nice story.', deterministic: false }
       ]
       out = described_class.resolve(candidates: candidates, tool_reply: '')
       expect(out[:contributing]).to include(:payment_state_explainer)
-      expect(out[:suppressed]).to include(:report_explainer)
+      expect(out[:suppressed]).to include(:ledger_period_summary)
       expect(out[:deterministic_primary]).to be true
-      reason = out[:suppressed_reasons].find { |r| r['skill_key'] == 'report_explainer' }
+      reason = out[:suppressed_reasons].find { |r| r['skill_key'] == 'ledger_period_summary' }
       expect(reason['reason_code']).to eq('deterministic_over_generic')
     end
 
@@ -54,7 +54,7 @@ RSpec.describe 'Skill composition integration' do
     it 'passes deterministic_primary and suppressed_reasons through from multi-skill resolve' do
       results = [
         { skill_key: 'payment_state_explainer', invoked: true, success: true, deterministic: true, explanation: 'A' },
-        { skill_key: 'report_explainer', invoked: true, success: true, deterministic: false, explanation: 'B' }
+        { skill_key: 'ledger_period_summary', invoked: true, success: true, deterministic: false, explanation: 'B' }
       ]
       r = described_class.plan(reply_text: '', invocation_results: results, agent_key: :operational)
       expect(r.deterministic_primary).to be true

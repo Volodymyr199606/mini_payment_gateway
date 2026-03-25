@@ -38,8 +38,8 @@ A **workflow** is a **named, pre-registered** sequence of at most three skill in
 
 | Workflow key | Steps (order) | When selected (summary) |
 |--------------|---------------|-------------------------|
-| `payment_explain_with_docs` | `payment_state_explainer` | Tool returns payment state, **and** message looks docs/policy/API-related (docs step currently disabled) |
-| `reconciliation_analysis_workflow` | `discrepancy_detector` → `reconciliation_action_summary` | Routing `reconciliation_analyst`, ledger tool path, ledger data present |
+| `payment_explain_with_docs` | `payment_state_explainer` | Tool-resolved `support_faq` or `operational`, payment tool data, **and** docs/policy/API-style message |
+| `reconciliation_analysis_workflow` | `discrepancy_detector` → `reconciliation_action_summary` | Tool-resolved `reporting_calculation`, ledger data, **and** reconciliation-style message (mismatch, settlement, etc.) |
 | `webhook_failure_analysis_workflow` | `webhook_trace_explainer` → `payment_failure_summary` (second step optional) | Routing `operational`, webhook data, **and** failed/pending delivery or payment-failure context |
 | `rewrite_response_workflow` | `followup_rewriter` | Pre-composition concise-rewrite path (same gates as today); metadata attached via `WorkflowResult` |
 
@@ -99,7 +99,13 @@ Skills are **not** the same as:
 | **Agents** (`Ai::Agents::*`) | Specialist prompts + routing; choose retrieval/orchestration path. |
 | **Skills** | Declarative capability labels + bounded execution hook for future orchestration (docs explain, ledger summarize, etc.). |
 
-Skills complement tools: a skill may *orchestrate* tools, reuse domain services, or call existing logic. Core skills wrap domain behavior; builtins remain stubs where noted.
+Skills complement tools: a skill may *orchestrate* tools, reuse domain services, or call existing logic. **v1 registry** includes only implemented, planner-wired skills (no stub-only entries).
+
+---
+
+## v1 skill platform (pruned)
+
+The following were **removed from `Registry` and agent allow-lists** (they were never invoked by `InvocationPlanner`, duplicated tool/renderer output, or returned placeholder text only): `docs_lookup`, `failure_summary`, `time_range_resolution`, `report_explainer`, `transaction_trace`. RAG and deterministic tool explanations remain the source of truth for docs and numeric reporting; reintroduce a skill only when it has a distinct, tested execution path.
 
 ---
 
@@ -164,11 +170,12 @@ Each `Ai::Agents::AgentDefinition` includes `allowed_skill_keys: []` and `max_sk
 
 | Agent | Example allowed skills |
 |-------|-------------------------|
-| `support_faq` | `docs_lookup`, `payment_state_explainer`, `followup_rewriter`, `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `payment_failure_summary` |
-| `developer_onboarding` | `docs_lookup`, `followup_rewriter`, `authorization_vs_capture_explainer` |
+| `support_faq` | `payment_state_explainer`, `followup_rewriter`, `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `payment_failure_summary` |
+| `developer_onboarding` | `followup_rewriter`, `authorization_vs_capture_explainer` |
+| `security_compliance` | `payment_state_explainer`, `authorization_vs_capture_explainer` |
 | `operational` | `webhook_trace_explainer`, `payment_state_explainer`, `payment_failure_summary`, `webhook_retry_summary` |
-| `reporting_calculation` | `ledger_period_summary`, `time_range_resolution`, `report_explainer`, `reporting_trend_summary` |
-| `reconciliation_analyst` | `ledger_period_summary`, `discrepancy_detector`, `payment_state_explainer`, `transaction_trace`, `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `reporting_trend_summary`, `reconciliation_action_summary` |
+| `reporting_calculation` | `ledger_period_summary`, `reporting_trend_summary` |
+| `reconciliation_analyst` | `ledger_period_summary`, `discrepancy_detector`, `payment_state_explainer`, `refund_eligibility_explainer`, `authorization_vs_capture_explainer`, `reporting_trend_summary`, `reconciliation_action_summary` |
 
 `Ai::AgentRegistry.validate!` ensures every referenced skill key exists in `Ai::Skills::Registry`.
 
@@ -197,7 +204,7 @@ Agents use skills only when explicitly planned by `InvocationPlanner`. Decision 
 - **refund_eligibility_explainer (post_tool):** After `payment_state_explainer`, when captured PI + refund keywords. Agent must allow it.
 - **authorization_vs_capture_explainer (post_tool):** After `payment_state_explainer`, when auth/capture keywords. Agent must allow it.
 - **payment_failure_summary (post_tool):** When payment/transaction data indicates failure (failed PI, failed txn). Agent must allow it.
-- **webhook_retry_summary (post_tool):** When tool returned webhook event data. Agent must allow it (`operational`).
+- **webhook_retry_summary (post_tool):** When webhook data present and delivery is `pending` or `failed`. Agent must allow it (`operational`).
 - **reporting_trend_summary (post_tool):** When ledger data present. Agent must allow it (`reporting_calculation`, `reconciliation_analyst`).
 - **reconciliation_action_summary (post_tool):** When ledger data present. Agent must allow it (`reconciliation_analyst`).
 

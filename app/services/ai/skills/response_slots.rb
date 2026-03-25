@@ -28,9 +28,7 @@ module Ai
         reporting_trend_summary: :supporting_analysis,
         reconciliation_action_summary: :next_steps,
         merchant_account_status_summary: :primary_explanation,
-        docs_citation_summarizer: :docs_clarification,
-        docs_lookup: :docs_clarification,
-        report_explainer: :primary_explanation
+        docs_citation_summarizer: :docs_clarification
       }.freeze
 
       # When multiple skills both target :primary_explanation and are deterministic,
@@ -41,7 +39,6 @@ module Ai
         ledger_period_summary
         merchant_account_status_summary
         payment_failure_summary
-        report_explainer
       ].freeze
 
       # Slots that must not override deterministic factual content.

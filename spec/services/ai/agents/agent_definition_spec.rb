@@ -43,9 +43,9 @@ RSpec.describe Ai::Agents::AgentDefinition do
       d = described_class.new(
         key: :x,
         class_name: 'X',
-        allowed_skill_keys: %i[docs_lookup]
+        allowed_skill_keys: %i[payment_state_explainer]
       )
-      expect(d.allowed_skill?(:docs_lookup)).to be(true)
+      expect(d.allowed_skill?(:payment_state_explainer)).to be(true)
       expect(d.allowed_skill?(:ledger_period_summary)).to be(false)
     end
   end

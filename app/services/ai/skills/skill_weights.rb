@@ -19,15 +19,10 @@ module Ai
         webhook_trace_explainer: LIGHT,
         webhook_retry_summary: LIGHT,
         followup_rewriter: LIGHT,
-        docs_lookup: LIGHT,
         ledger_period_summary: MEDIUM,
-        report_explainer: MEDIUM,
-        time_range_resolution: LIGHT,
-        transaction_trace: MEDIUM,
         discrepancy_detector: HEAVY,
         reporting_trend_summary: HEAVY,
         reconciliation_action_summary: MEDIUM,
-        failure_summary: MEDIUM,
         merchant_account_status_summary: LIGHT,
         docs_citation_summarizer: MEDIUM
       }.freeze

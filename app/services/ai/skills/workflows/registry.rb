@@ -39,7 +39,7 @@ module Ai
             {
               payment_explain_with_docs: WorkflowDefinition.new(
                 key: :payment_explain_with_docs,
-                description: 'Deterministic payment explanation. Docs clarification is disabled until docs_lookup is wired.',
+                description: 'Deterministic payment explanation for docs/policy-style payment questions.',
                 skill_steps: %i[payment_state_explainer],
                 # Workflow selection is based on tool-resolved skill agent (e.g. get_payment_intent -> operational).
                 allowed_routing_agents: %i[support_faq operational],

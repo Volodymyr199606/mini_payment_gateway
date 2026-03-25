@@ -5,20 +5,15 @@ module Ai
     # Explicit registration of skills (no autoload discovery). Keys map to BaseSkill subclasses.
     class Registry
       SKILLS = {
-        docs_lookup: Builtins::DocsLookupSkill,
         payment_state_explainer: PaymentStateExplainer,
         followup_rewriter: FollowupRewriter,
         webhook_trace_explainer: WebhookTraceExplainer,
-        failure_summary: Builtins::FailureSummarySkill,
         payment_failure_summary: PaymentFailureSummary,
         webhook_retry_summary: WebhookRetrySummary,
         reporting_trend_summary: ReportingTrendSummary,
         reconciliation_action_summary: ReconciliationActionSummary,
         ledger_period_summary: LedgerPeriodSummary,
-        time_range_resolution: Builtins::TimeRangeResolutionSkill,
-        report_explainer: Builtins::ReportExplainerSkill,
         discrepancy_detector: DiscrepancyDetector,
-        transaction_trace: Builtins::TransactionTraceSkill,
         refund_eligibility_explainer: RefundEligibilityExplainer,
         authorization_vs_capture_explainer: AuthorizationVsCaptureExplainer
       }.freeze

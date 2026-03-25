@@ -29,7 +29,7 @@ module Ai
               defn = Registry.fetch(key)
               next unless defn
               next unless defn.allowed_routing_agents.include?(ak)
-            next unless matches_post_tool?(defn, ak, skill_agent, context)
+              next unless matches_post_tool?(defn, ak, skill_agent, context)
 
               return defn
             end

@@ -6,16 +6,16 @@ RSpec.describe Ai::Skills::SkillResult do
   describe '.success' do
     it 'builds a successful result with stable to_h' do
       r = described_class.success(
-        skill_key: :docs_lookup,
+        skill_key: :payment_state_explainer,
         data: { 'rows' => 1 },
         explanation: 'ok',
         metadata: { agent_key: 'support_faq' },
         deterministic: true
       )
       expect(r.success).to be(true)
-      expect(r.skill_key).to eq(:docs_lookup)
+      expect(r.skill_key).to eq(:payment_state_explainer)
       expect(r.data).to eq({ 'rows' => 1 })
-      expect(r.to_h[:skill_key]).to eq('docs_lookup')
+      expect(r.to_h[:skill_key]).to eq('payment_state_explainer')
       expect(r.to_h[:deterministic]).to be(true)
       expect(r.to_h[:safe_for_composition]).to be(true)
     end
@@ -24,7 +24,7 @@ RSpec.describe Ai::Skills::SkillResult do
   describe '.failure' do
     it 'builds a failure with safe error fields' do
       r = described_class.failure(
-        skill_key: :docs_lookup,
+        skill_key: :payment_state_explainer,
         error_code: 'skill_not_allowed',
         error_message: 'Not allowed.'
       )

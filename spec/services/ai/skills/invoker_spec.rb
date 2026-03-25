@@ -6,21 +6,24 @@ RSpec.describe Ai::Skills::Invoker do
   include ApiHelpers
   describe '.call' do
     it 'invokes allowed skill for support_faq' do
+      merchant = create_merchant_with_api_key.first
+      customer = merchant.customers.create!(email: "invoker_ok_#{SecureRandom.hex(4)}@example.com")
+      pi = merchant.payment_intents.create!(customer: customer, amount_cents: 1000, currency: 'USD', status: 'created')
       result = described_class.call(
         agent_key: :support_faq,
-        skill_key: :docs_lookup,
-        context: { merchant_id: 1 }
+        skill_key: :payment_state_explainer,
+        context: { merchant_id: merchant.id, payment_intent_id: pi.id }
       )
       expect(result).to be_a(Ai::Skills::SkillResult)
       expect(result.success).to be(true)
-      expect(result.skill_key).to eq(:docs_lookup)
+      expect(result.skill_key).to eq(:payment_state_explainer)
       expect(result.to_h[:metadata]).to include('agent_key' => 'support_faq')
     end
 
     it 'returns failure when skill not allowed for agent' do
       result = described_class.call(
         agent_key: :reporting_calculation,
-        skill_key: :docs_lookup,
+        skill_key: :payment_state_explainer,
         context: {}
       )
       expect(result.success).to be(false)

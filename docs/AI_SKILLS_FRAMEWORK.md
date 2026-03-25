@@ -309,6 +309,18 @@ Skill quality is evaluated via:
 
 **Quality metadata** (`Ai::Evals::Skills::QualityMetadata`): `skill_expected`, `skill_invoked`, `skill_helpful`, `skill_blocked_by_policy`, `skill_unnecessary`, `skill_affected_response`, `skill_quality_notes`. Used for tests and replay comparison.
 
+### Value & impact evidence (internal)
+
+Observable **business/value** storytelling uses audit aggregates + eval coverage — not subjective “smarter” claims:
+
+| Component | Purpose |
+|-----------|---------|
+| `Ai::Skills::ValueAnalysis::MetricCalculator` | From `ai_request_audits`: skill frequencies, `affected_final_response` rates, deterministic share, workflow keys, per-`agent_key` mix. |
+| `Ai::Skills::ValueAnalysis::ScenarioScorecard` | From `spec/fixtures/ai/skill_scenarios.yml` + `skill_regression_scenarios.yml`: how many scenarios expect each skill. |
+| `Ai::Skills::ValueAnalysis::ReportBuilder` | Markdown + structured hash for planning and demos. |
+
+Run `bundle exec rake ai:skills:value_report` (writes under `tmp/ai_skills/`). See **[AI_SKILL_VALUE_REPORT.md](AI_SKILL_VALUE_REPORT.md)** for interpretation and limits.
+
 ---
 
 ## References

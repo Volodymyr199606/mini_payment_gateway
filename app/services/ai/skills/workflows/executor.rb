@@ -19,6 +19,7 @@ module Ai
               invoker_agent = workflow_def.execution_agent_key || InvocationCoordinator.resolve_skill_agent(routing_agent_key, context.tool_names)
 
               wf_ctx = build_post_tool_context(invoker_agent, context, run_result)
+              profile = AgentProfiles.for(invoker_agent)
 
               invocation_results = []
               contributing = []
@@ -30,6 +31,19 @@ module Ai
               workflow_def.skill_steps.each_with_index do |skill_key, idx|
                 break if idx >= workflow_def.max_steps
                 break if idx >= WorkflowDefinition::MAX_SKILL_STEPS
+
+                already_invoked_keys = invocation_results.map { |r| r[:skill_key].to_sym }
+                if profile.budget_reached?(already_invoked: already_invoked_keys)
+                  stop_reason = 'profile_budget_reached'
+                  skipped |= workflow_def.skill_steps[idx..].map(&:to_s)
+                  break
+                end
+
+                if SkillWeights.heavy?(skill_key) && profile.heavy_budget_reached?(already_invoked: already_invoked_keys)
+                  stop_reason = 'profile_heavy_budget_reached'
+                  skipped |= workflow_def.skill_steps[idx..].map(&:to_s)
+                  break
+                end
 
                 if optional_skip?(workflow_def, skill_key, wf_ctx)
                   skipped << skill_key.to_s
@@ -127,7 +141,9 @@ module Ai
 
           def optional_skip?(workflow_def, skill_key, context)
             if workflow_def.key == :webhook_failure_analysis_workflow && skill_key == :payment_failure_summary
-              return true unless context.has_payment_failure_data? || context.has_webhook_retry_relevant_state?
+              # payment_failure_summary requires explicit failed payment intent/transaction context.
+              # For webhook retry explanations, prefer stopping after webhook_trace_explainer.
+              return true unless context.has_payment_failure_data?
             end
 
             false

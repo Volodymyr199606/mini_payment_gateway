@@ -39,9 +39,10 @@ module Ai
             {
               payment_explain_with_docs: WorkflowDefinition.new(
                 key: :payment_explain_with_docs,
-                description: 'Deterministic payment explanation, then optional docs clarification for support queries.',
-                skill_steps: %i[payment_state_explainer docs_lookup],
-                allowed_routing_agents: %i[support_faq],
+                description: 'Deterministic payment explanation. Docs clarification is disabled until docs_lookup is wired.',
+                skill_steps: %i[payment_state_explainer],
+                # Workflow selection is based on tool-resolved skill agent (e.g. get_payment_intent -> operational).
+                allowed_routing_agents: %i[support_faq operational],
                 execution_agent_key: :support_faq,
                 phase: :post_tool
               ),
@@ -49,7 +50,8 @@ module Ai
                 key: :reconciliation_analysis_workflow,
                 description: 'Ledger-backed discrepancy scan then bounded reconciliation next steps.',
                 skill_steps: %i[discrepancy_detector reconciliation_action_summary],
-                allowed_routing_agents: %i[reconciliation_analyst],
+                # get_ledger_summary tool-resolves to reporting_calculation.
+                allowed_routing_agents: %i[reporting_calculation],
                 execution_agent_key: :reconciliation_analyst,
                 phase: :post_tool
               ),

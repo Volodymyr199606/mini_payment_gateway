@@ -29,7 +29,9 @@ module Ai
           )
 
           wf_def = Workflows::Selector.select_post_tool(
-            routing_agent_key: agent_key,
+            # For post_tool workflows, base selection on the tool-resolved skill agent
+            # (this matches how the skill invocation pipeline already resolves agents).
+            routing_agent_key: skill_agent,
             skill_agent: skill_agent,
             context: context
           )
@@ -39,7 +41,7 @@ module Ai
               workflow_def: wf_def,
               context: context,
               run_result: run_result,
-              routing_agent_key: agent_key
+              routing_agent_key: skill_agent
             )
           end
 

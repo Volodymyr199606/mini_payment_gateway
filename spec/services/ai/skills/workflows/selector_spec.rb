@@ -19,9 +19,9 @@ RSpec.describe Ai::Skills::Workflows::Selector do
   describe '.select_post_tool' do
     it 'selects reconciliation workflow when routing analyst + ledger tool' do
       data = { ledger_summary: { from: 'a', to: 'b', totals: {} } }
-      c = ctx(:reporting_calculation, ['get_ledger_summary'], data)
+      c = ctx(:reporting_calculation, ['get_ledger_summary'], data, message: 'reconciliation statement mismatch last 7 days')
       wf = described_class.select_post_tool(
-        routing_agent_key: :reconciliation_analyst,
+        routing_agent_key: :reporting_calculation,
         skill_agent: :reporting_calculation,
         context: c
       )
@@ -30,10 +30,10 @@ RSpec.describe Ai::Skills::Workflows::Selector do
 
     it 'selects payment+docs when support_faq, payment data, and docs-like message' do
       data = { payment_intent: { id: 1, status: 'captured', amount_cents: 100, currency: 'USD' } }
-      c = ctx(:support_faq, ['get_payment_intent'], data, message: 'What is the API fee policy for this payment?')
+      c = ctx(:operational, ['get_payment_intent'], data, message: 'What is the API fee policy for this payment?')
       wf = described_class.select_post_tool(
-        routing_agent_key: :support_faq,
-        skill_agent: :support_faq,
+        routing_agent_key: :operational,
+        skill_agent: :operational,
         context: c
       )
       expect(wf&.key).to eq(:payment_explain_with_docs)
@@ -41,10 +41,10 @@ RSpec.describe Ai::Skills::Workflows::Selector do
 
     it 'does not select payment workflow without docs-like message' do
       data = { payment_intent: { id: 1, status: 'captured', amount_cents: 100, currency: 'USD' } }
-      c = ctx(:support_faq, ['get_payment_intent'], data, message: 'status only')
+      c = ctx(:operational, ['get_payment_intent'], data, message: 'status only')
       wf = described_class.select_post_tool(
-        routing_agent_key: :support_faq,
-        skill_agent: :support_faq,
+        routing_agent_key: :operational,
+        skill_agent: :operational,
         context: c
       )
       expect(wf).to be_nil
@@ -54,9 +54,9 @@ RSpec.describe Ai::Skills::Workflows::Selector do
       old = ENV['AI_SKILL_WORKFLOWS_DISABLED']
       ENV['AI_SKILL_WORKFLOWS_DISABLED'] = '1'
       data = { ledger_summary: { totals: {} } }
-      c = ctx(:reporting_calculation, ['get_ledger_summary'], data)
+      c = ctx(:reporting_calculation, ['get_ledger_summary'], data, message: 'reconciliation statement mismatch last 7 days')
       wf = described_class.select_post_tool(
-        routing_agent_key: :reconciliation_analyst,
+        routing_agent_key: :reporting_calculation,
         skill_agent: :reporting_calculation,
         context: c
       )

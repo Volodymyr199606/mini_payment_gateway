@@ -11,6 +11,8 @@ module Ai
 
         STOP_REASONS = %w[
           completed
+          profile_budget_reached
+          profile_heavy_budget_reached
           prerequisite_missing
           skill_not_allowed
           skill_execution_failed

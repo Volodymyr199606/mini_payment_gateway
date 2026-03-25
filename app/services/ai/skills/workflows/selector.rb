@@ -29,7 +29,7 @@ module Ai
               defn = Registry.fetch(key)
               next unless defn
               next unless defn.allowed_routing_agents.include?(ak)
-              next unless matches_post_tool?(defn, ak, skill_agent, context)
+            next unless matches_post_tool?(defn, ak, skill_agent, context)
 
               return defn
             end
@@ -72,14 +72,21 @@ module Ai
           def matches_post_tool?(defn, routing_agent, skill_agent, context)
             case defn.key
             when :reconciliation_analysis_workflow
-              routing_agent == :reconciliation_analyst && skill_agent == :reporting_calculation && context.has_ledger_data?
+              routing_agent == :reporting_calculation && context.has_ledger_data? && reconciliation_context_message?(context.message)
             when :payment_explain_with_docs
-              routing_agent == :support_faq && skill_agent == :support_faq && context.has_payment_data? && docs_context_message?(context.message)
+              (routing_agent == :support_faq || routing_agent == :operational) &&
+                context.has_payment_data? &&
+                docs_context_message?(context.message)
             when :webhook_failure_analysis_workflow
-              routing_agent == :operational && skill_agent == :operational && context.has_webhook_data? && webhook_failure_workflow_eligible?(context)
+              routing_agent == :operational && context.has_webhook_data? && webhook_failure_workflow_eligible?(context)
             else
               false
             end
+          end
+
+          def reconciliation_context_message?(message)
+            msg = message.to_s.downcase
+            msg.match?(/\b(reconciliation|discrepancy|mismatch|matching|settlement|payout|statement)\b/)
           end
         end
       end

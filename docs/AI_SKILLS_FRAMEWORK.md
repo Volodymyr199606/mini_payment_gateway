@@ -38,7 +38,7 @@ A **workflow** is a **named, pre-registered** sequence of at most three skill in
 
 | Workflow key | Steps (order) | When selected (summary) |
 |--------------|---------------|-------------------------|
-| `payment_explain_with_docs` | `payment_state_explainer` → `docs_lookup` | Routing `support_faq`, payment tool data, **and** message looks docs/policy/API-related |
+| `payment_explain_with_docs` | `payment_state_explainer` | Tool returns payment state, **and** message looks docs/policy/API-related (docs step currently disabled) |
 | `reconciliation_analysis_workflow` | `discrepancy_detector` → `reconciliation_action_summary` | Routing `reconciliation_analyst`, ledger tool path, ledger data present |
 | `webhook_failure_analysis_workflow` | `webhook_trace_explainer` → `payment_failure_summary` (second step optional) | Routing `operational`, webhook data, **and** failed/pending delivery or payment-failure context |
 | `rewrite_response_workflow` | `followup_rewriter` | Pre-composition concise-rewrite path (same gates as today); metadata attached via `WorkflowResult` |

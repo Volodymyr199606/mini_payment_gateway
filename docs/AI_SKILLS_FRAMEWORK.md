@@ -315,9 +315,9 @@ Observable **business/value** storytelling uses audit aggregates + eval coverage
 
 | Component | Purpose |
 |-----------|---------|
-| `Ai::Skills::ValueAnalysis::MetricCalculator` | From `ai_request_audits`: skill frequencies, `affected_final_response` rates, deterministic share, workflow keys, per-`agent_key` mix. |
+| `Ai::Skills::ValueAnalysis::MetricCalculator` | From `ai_request_audits`: skill frequencies, `affected_final_response` / helpfulness-style proxies, deterministic share, workflow keys & per-workflow breakdown, strengthened-deterministic-path proxy, per-`agent_key` mix. |
 | `Ai::Skills::ValueAnalysis::ScenarioScorecard` | From `spec/fixtures/ai/skill_scenarios.yml` + `skill_regression_scenarios.yml`: how many scenarios expect each skill. |
-| `Ai::Skills::ValueAnalysis::ReportBuilder` | Markdown + structured hash for planning and demos. |
+| `Ai::Skills::ValueAnalysis::ReportBuilder` | Markdown + structured hash: rankings, per-agent value tiers, keep/watch/prune candidates. |
 
 Run `bundle exec rake ai:skills:value_report` (writes under `tmp/ai_skills/`). See **[AI_SKILL_VALUE_REPORT.md](AI_SKILL_VALUE_REPORT.md)** for interpretation and limits.
 

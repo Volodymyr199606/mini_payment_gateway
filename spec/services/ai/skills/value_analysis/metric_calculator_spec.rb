@@ -52,10 +52,14 @@ RSpec.describe Ai::Skills::ValueAnalysis::MetricCalculator do
     expect(m[:audit_sample_size]).to eq(2)
     expect(m[:requests_with_any_skill]).to eq(2)
     expect(m[:workflow_key_frequency]['payment_explain_with_docs']).to eq(1)
+    expect(m[:workflow_breakdown]['payment_explain_with_docs'][:audit_count]).to eq(1)
+    expect(m[:workflow_selection_rate]).to eq(0.5)
     pi = m[:by_skill]['payment_state_explainer']
     expect(pi[:invocation_count]).to eq(2)
     expect(pi[:affected_rate]).to eq(0.5)
     expect(pi[:deterministic_rate]).to eq(1.0)
     expect(m[:skill_invocations_by_audit_agent]['operational']['payment_state_explainer']).to eq(2)
+    expect(m[:skill_helpfulness_proxy][:request_affected_rate]).to eq(0.5)
+    expect(m[:deterministic_path_strengthened_requests]).to eq(1)
   end
 end

@@ -25,6 +25,8 @@ module Ai
 
           static = static_registry_signals
           rankings = derive_rankings(metrics, coverage, static)
+          agent_summaries = derive_agent_summaries(metrics, coverage)
+          recommendations = derive_recommendations(metrics, rankings, agent_summaries, static)
 
           {
             generated_at: Time.zone.now.iso8601,
@@ -35,7 +37,12 @@ module Ai
             eval_pass_by_scenario: eval_pass.presence,
             static: static,
             rankings: rankings,
-            markdown: render_markdown(metrics, coverage, scorecard_summary, static, eval_pass, rankings)
+            agent_summaries: agent_summaries,
+            recommendations: recommendations,
+            markdown: render_markdown(
+              metrics, coverage, scorecard_summary, static, eval_pass, rankings,
+              agent_summaries, recommendations
+            )
           }
         end
 
@@ -103,6 +110,8 @@ module Ai
           {
             by_eval_scenario_coverage: by_eval,
             by_production_signal: by_prod,
+            top_skills_by_eval: by_eval.select { |e| e[:eval_scenario_count].to_i.positive? }.first(8),
+            top_skills_by_production: by_prod.first(8),
             notes: [
               'Rankings are evidence helpers, not revenue or user-satisfaction scores.',
               'production_signal_score = affected_rate * ln(invocation_count + 1) when audits exist.',
@@ -111,7 +120,105 @@ module Ai
           }
         end
 
-        def render_markdown(metrics, coverage, scorecard_summary, static, eval_pass, rankings)
+        def derive_agent_summaries(metrics, coverage)
+          audit_n = metrics[:audit_sample_size].to_i
+          mix = metrics[:skill_invocations_by_audit_agent] || {}
+
+          Ai::AgentRegistry::DEFINITIONS.keys.map do |agent_key|
+            defn = Ai::AgentRegistry.definition(agent_key)
+            allowed = Array(defn&.allowed_skill_keys).map(&:to_s)
+            eval_weight = allowed.sum { |sk| coverage[sk]&.dig(:scenario_count).to_i }
+            prod = mix[agent_key.to_s] || {}
+            prod_inv = prod.values.sum
+            profile = Ai::Skills::AgentProfiles.for(agent_key)
+
+            {
+              agent_key: agent_key.to_s,
+              allowed_skills: allowed,
+              eval_scenario_weight: eval_weight,
+              production_invocation_total: prod_inv,
+              skill_mix: prod,
+              value_tier: tier_for_agent(agent_key, eval_weight, prod_inv, audit_n),
+              profile: {
+                max_skills_per_request: profile.max_skills_per_request,
+                max_heavy_skills_per_request: profile.max_heavy_skills_per_request,
+                performance_sensitivity: profile.performance_sensitivity
+              },
+              narrative: agent_narrative(agent_key)
+            }
+          end
+        end
+
+        def tier_for_agent(agent_key, eval_weight, prod_inv, audit_n)
+          # security_compliance is intentionally narrow; "low" tier can still be correct product design.
+          if eval_weight.zero? && prod_inv.zero?
+            return audit_n.positive? ? :low : :unknown
+          end
+
+          if %i[support_faq operational reconciliation_analyst].include?(agent_key) && (eval_weight >= 3 || prod_inv >= 5)
+            return :high
+          end
+
+          if agent_key == :security_compliance
+            return (eval_weight.positive? || prod_inv.positive?) ? :medium : :low
+          end
+
+          return :high if eval_weight >= 4 && prod_inv.positive?
+          return :medium if eval_weight.positive? || prod_inv.positive?
+
+          :low
+        end
+
+        def agent_narrative(agent_key)
+          {
+            support_faq: 'Payment + refund explainers, failure summary, rewrite — primary support surface.',
+            operational: 'Webhook trace/retry + payment failure paths — operations-heavy.',
+            reporting_calculation: 'Ledger + optional trend — deterministic reporting.',
+            reconciliation_analyst: 'Ledger + discrepancy + next steps — analysis-heavy.',
+            developer_onboarding: 'Auth/capture explainer + rewrite — narrow by design.',
+            security_compliance: 'Intentionally small allowlist; conservative skill use.'
+          }[agent_key.to_sym] || 'See AgentRegistry allowlist.'
+        end
+
+        def derive_recommendations(metrics, rankings, agent_summaries, _static)
+          watch = []
+          keep = []
+          has_audits = metrics[:audit_sample_size].to_i.positive?
+
+          (rankings[:top_skills_by_eval] || []).each do |e|
+            next if e[:eval_scenario_count].to_i < 2
+
+            keep << "Eval-heavy: #{e[:skill_key]} (#{e[:eval_scenario_count]} scenarios)"
+          end
+
+          if has_audits && metrics[:workflow_audit_count].to_i.positive?
+            (metrics[:workflow_breakdown] || {}).each do |wk, row|
+              next if row[:audit_count].to_i.positive?
+
+              watch << "Workflow `#{wk}`: no audit hits in scope — validate in production traffic for v1 narrative."
+            end
+          elsif has_audits && metrics[:requests_with_any_skill].to_i.positive? && metrics[:workflow_audit_count].to_i.zero?
+            watch << 'Workflows: requests have skills but no `skill_workflow_metadata` in scope — workflows may be rare or path-limited.'
+          end
+
+          agent_summaries.each do |a|
+            next unless a[:value_tier] == :unknown
+
+            watch << "Agent #{a[:agent_key]}: insufficient eval + audit evidence in this scope — #{a[:narrative]}"
+          end
+
+          {
+            keep_expand: keep.uniq.first(10),
+            watch_or_validate: watch.uniq.first(15),
+            prune_or_simplify: [
+              'Skills/workflows with zero eval coverage and zero production invocations (see rankings) are candidates to trim or merge — confirm before removing.',
+              'Review `fallback_with_skill_rate_given_skill` vs baseline; elevated fallback with skills may warrant planner tuning (not automatic prune).'
+            ]
+          }
+        end
+
+        def render_markdown(metrics, coverage, scorecard_summary, static, eval_pass, rankings,
+                            agent_summaries, recommendations)
           lines = []
           lines << '# AI skill value — evidence snapshot'
           lines << ''
@@ -129,14 +236,23 @@ module Ai
           if metrics[:audit_sample_size].to_i.positive?
             lines << "- Requests with any skill: **#{metrics[:requests_with_any_skill]}** (#{(metrics[:requests_with_any_skill_rate].to_f * 100).round(1)}%)"
             lines << "- Requests where a skill affected the reply: **#{metrics[:requests_with_skill_affected_response]}** (#{(metrics[:skill_affected_request_rate].to_f * 100).round(1)}%)"
+            lines << "- Skill helpfulness proxy (request): **#{(metrics.dig(:skill_helpfulness_proxy, :request_affected_rate).to_f * 100).round(1)}%** of skill-requests had `affected_final_response` on at least one skill"
             lines << "- Skill invocations (total rows): **#{metrics[:skill_invocation_total]}**; deterministic share: **#{(metrics[:skill_invocation_deterministic_rate].to_f * 100).round(1)}%**"
             lines << "- deterministic_explanation_used ∧ skill: **#{metrics[:deterministic_explanation_with_any_skill]}** (#{(metrics[:deterministic_explanation_with_skill_rate].to_f * 100).round(1)}% of requests with skills)"
+            lines << "- Deterministic path strengthened (det_expl ∧ skill ∧ deterministic skill): **#{metrics[:deterministic_path_strengthened_requests]}** (#{(metrics[:deterministic_path_strengthened_rate].to_f * 100).round(1)}% of skill-requests)"
+            lines << "- Fallback despite skills (investigate): **#{metrics[:fallback_with_skill_requests]}** (#{(metrics[:fallback_with_skill_rate_given_skill].to_f * 100).round(1)}% of skill-requests)"
+            lines << "- Workflow selection rate: **#{(metrics[:workflow_selection_rate].to_f * 100).round(1)}%** of skill-requests recorded a workflow"
             lines << ''
             lines << '### Workflow keys (audit metadata)'
             if metrics[:workflow_key_frequency].present?
               metrics[:workflow_key_frequency].each { |k, v| lines << "- `#{k}`: #{v}" }
             else
               lines << '- (none in scope)'
+            end
+            lines << ''
+            lines << '### Workflows (registered vs audits in scope)'
+            (metrics[:workflow_breakdown] || {}).sort_by { |k, _| k }.each do |wk, row|
+              lines << "- **#{wk}**: audits=#{row[:audit_count]}, share_of_workflow_events=#{(row[:share_of_workflow_audits].to_f * 100).round(1)}%"
             end
             lines << ''
             lines << '### Per-skill (production signals in scope)'
@@ -150,6 +266,26 @@ module Ai
             end
           else
             lines << '_No rows in scope — run against a DB with audit data, or rely on eval coverage below._'
+          end
+          lines << ''
+
+          lines << '## Highest-value skills (evidence blend)'
+          lines << '- **By eval fixtures** (regression protection): top scenario coverage.'
+          (rankings[:top_skills_by_eval] || []).each do |e|
+            lines << "- **#{e[:skill_key]}**: #{e[:eval_scenario_count]} scenario(s)"
+          end
+          lines << '- **By production signal** (when audits exist): `affected_rate * ln(invocations+1)`.'
+          (rankings[:top_skills_by_production] || []).each do |e|
+            next if e[:production_signal_score].blank?
+
+            lines << "- **#{e[:skill_key]}**: score=#{e[:production_signal_score]} (inv=#{e[:production_invocation_count]}, affected_rate=#{e[:production_affected_rate]})"
+          end
+          lines << ''
+
+          lines << '## Agents — skill value (tier + mix)'
+          agent_summaries.sort_by { |a| a[:agent_key] }.each do |a|
+            lines << "- **#{a[:agent_key]}** — tier `#{a[:value_tier]}` | eval_weight=#{a[:eval_scenario_weight]} | prod_inv=#{a[:production_invocation_total]} | max_skills/req=#{a[:profile][:max_skills_per_request]}"
+            lines << "  - #{a[:narrative]}"
           end
           lines << ''
 
@@ -171,9 +307,36 @@ module Ai
           lines << '_Workflow usefulness in production requires non-zero `workflow_key_frequency` in audits above._'
           lines << ''
 
+          lines << '## Recommendations (keep / watch / prune candidates)'
+          lines << '### Keep / expand'
+          if recommendations[:keep_expand].present?
+            recommendations[:keep_expand].each { |x| lines << "- #{x}" }
+          else
+            lines << '- _(none in this run — add eval scenarios or widen audit scope.)_'
+          end
+          lines << ''
+          lines << '### Watch / validate'
+          if recommendations[:watch_or_validate].present?
+            recommendations[:watch_or_validate].each { |x| lines << "- #{x}" }
+          else
+            lines << '- _(none)_'
+          end
+          lines << ''
+          lines << '### Prune / simplify (candidates only)'
+          recommendations[:prune_or_simplify].each { |x| lines << "- #{x}" }
+          lines << ''
+
+          lines << '## Deterministic paths strengthened (proxy)'
+          lines << '- **Signal**: `deterministic_explanation_used` ∧ at least one invoked skill ∧ that skill marked `deterministic`.'
+          lines << "- **In scope**: **#{metrics[:deterministic_path_strengthened_requests]}** requests (#{(metrics[:deterministic_path_strengthened_rate].to_f * 100).round(1)}% of skill-requests)."
+          lines << '- Interpretation: domain explanation path plus bounded deterministic skill output — stronger grounding than generic synthesis alone.'
+          lines << ''
+
           lines << '## LLM dependence (proxy)'
-          lines << "- Share of skill invocations that are deterministic: **#{(metrics[:skill_invocation_deterministic_rate].to_f * 100).round(1)}%** (when invocations exist)."
-          lines << '- Interpretation: higher deterministic share means more skill output is template/tool-backed rather than free-form generation.'
+          det_share = metrics.dig(:llm_dependency_proxy, :deterministic_skill_share_of_invocations)
+          det_pct = det_share.nil? ? 'n/a' : "#{(det_share.to_f * 100).round(1)}%"
+          lines << "- Share of skill invocations that are deterministic: **#{det_pct}** (matches `skill_invocation_deterministic_rate` when invocations exist)."
+          lines << '- Interpretation: higher deterministic share means the model is more often **formatting/clarifying** bounded skill output than inventing domain facts.'
           lines << ''
 
           if eval_pass.present?

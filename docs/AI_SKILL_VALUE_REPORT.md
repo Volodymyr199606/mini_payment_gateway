@@ -42,10 +42,21 @@ puts r[:markdown]
 ## Key metrics (interpretation)
 
 - **`affected_rate` (per skill)** — Share of invocations where `affected_final_response` is true. Proxy for “skill changed the final reply,” not “users liked it.”
-- **`skill_invocation_deterministic_rate`** — Share of invocations marked deterministic. **LLM dependence proxy**: higher deterministic share ⇒ more template/tool-backed skill output.
-- **`deterministic_explanation_with_skill_rate`** — Overlap of tool/renderer deterministic explanations with any skill invocation (correlation, not causation).
-- **`workflow_key_frequency`** — How often `skill_workflow_metadata` records a workflow (bounded multi-skill paths).
+- **`skill_helpfulness_proxy.request_affected_rate`** — Share of **requests** that had at least one skill and at least one `affected_final_response` on an invocation. Coarse “did skills touch the outcome” signal.
+- **`skill_invocation_deterministic_rate`** / **`llm_dependency_proxy`** — Share of invocations marked deterministic. **LLM dependence proxy**: higher deterministic share ⇒ more template/tool-backed skill output (model more often clarifies bounded output than invents facts).
+- **`deterministic_explanation_with_skill_rate`** — Overlap of deterministic explanations with any skill invocation (correlation, not causation).
+- **`deterministic_path_strengthened_rate`** — Requests with `deterministic_explanation_used`, any skill, and at least one **deterministic** skill invocation — proxy for “grounded explanation + bounded deterministic skill.”
+- **`fallback_with_skill_rate_given_skill`** — Share of skill-requests that still hit `fallback_used` — worth investigating (planner/tuning), not automatic “bad skill.”
+- **`workflow_key_frequency`** / **`workflow_selection_rate`** / **`workflow_breakdown`** — Raw counts, share of skill-requests with a workflow, and per-registered-workflow audit counts vs total workflow events.
 - **`eval_scenario_count` (per skill)** — How many YAML scenarios **expect** that skill — engineering priority / regression protection.
+
+## Report output (structured + markdown)
+
+`ReportBuilder` adds:
+
+- **Rankings** — `top_skills_by_eval`, `top_skills_by_production` (when audits exist; score = `affected_rate * ln(invocations+1)`).
+- **`agent_summaries`** — Per `AgentRegistry` agent: allowlist, eval weight, production skill mix, `AgentProfiles` caps, **value tier** (high / medium / low / unknown), short narrative.
+- **`recommendations`** — `keep_expand`, `watch_or_validate`, `prune_or_simplify` (candidate lists; not automatic product decisions).
 
 ## Highest-value story (evidence-based)
 

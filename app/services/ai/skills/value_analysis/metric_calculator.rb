@@ -31,6 +31,8 @@ module Ai
           requests_skill_affected = 0
           det_expl_with_any_skill = 0
           tool_with_any_skill = 0
+          fallback_with_skill = 0
+          requests_skill_and_det_expl = 0
 
           rows.each do |invoked, agent_key, wf_meta, det_expl, fallback, tool_used|
             inv = Array(invoked).compact
@@ -39,6 +41,9 @@ module Ai
             requests_skill_affected += 1 if inv.any? { |s| truthy?(s['affected_final_response'] || s[:affected_final_response]) }
             det_expl_with_any_skill += 1 if truthy?(det_expl) && has_invocation
             tool_with_any_skill += 1 if truthy?(tool_used) && has_invocation
+            fallback_with_skill += 1 if truthy?(fallback) && has_invocation
+            skill_det = inv.any? { |s| truthy?(s['invoked'] || s[:invoked]) && truthy?(s['deterministic'] || s[:deterministic]) }
+            requests_skill_and_det_expl += 1 if truthy?(det_expl) && has_invocation && skill_det
 
             inv.each do |s|
               next unless truthy?(s['invoked'] || s[:invoked])
@@ -62,10 +67,13 @@ module Ai
           by_audit_agent = tally_agent_intensity(rows)
           by_agent_and_skill = tally_agent_skill(skill_rows)
           wf_freq = workflow_keys.tally
+          wf_total = workflow_keys.size
 
           invocations = skill_rows.size
           deterministic_invocations = skill_rows.count { |r| r[:deterministic] }
           affected_invocations = skill_rows.count { |r| r[:affected] }
+
+          workflow_breakdown = build_workflow_breakdown(wf_freq, wf_total)
 
           {
             audit_sample_size: total,
@@ -73,8 +81,17 @@ module Ai
             requests_with_any_skill_rate: round_rate(requests_with_skill, total),
             requests_with_skill_affected_response: requests_skill_affected,
             skill_affected_request_rate: round_rate(requests_skill_affected, total),
+            skill_helpfulness_proxy: {
+              invocation_affected_rate: round_rate(affected_invocations, invocations),
+              request_affected_rate: round_rate(requests_skill_affected, requests_with_skill),
+              note: 'Proxy for “skill changed outcome”: uses affected_final_response flags, not human ratings.'
+            },
+            fallback_with_skill_requests: fallback_with_skill,
+            fallback_with_skill_rate_given_skill: round_rate(fallback_with_skill, requests_with_skill),
             deterministic_explanation_with_any_skill: det_expl_with_any_skill,
             deterministic_explanation_with_skill_rate: round_rate(det_expl_with_any_skill, requests_with_skill),
+            deterministic_path_strengthened_requests: requests_skill_and_det_expl,
+            deterministic_path_strengthened_rate: round_rate(requests_skill_and_det_expl, requests_with_skill),
             tool_used_with_any_skill: tool_with_any_skill,
             skill_invocation_total: invocations,
             skill_invocation_deterministic_count: deterministic_invocations,
@@ -82,8 +99,10 @@ module Ai
             skill_invocation_affected_count: affected_invocations,
             skill_invocation_affected_rate: round_rate(affected_invocations, invocations),
             by_skill: by_skill,
-            workflow_audit_count: workflow_keys.size,
+            workflow_audit_count: wf_total,
+            workflow_selection_rate: round_rate(wf_total, requests_with_skill),
             workflow_key_frequency: wf_freq.sort_by { |_, v| -v }.to_h,
+            workflow_breakdown: workflow_breakdown,
             by_audit_agent: by_audit_agent,
             skill_invocations_by_audit_agent: by_agent_and_skill,
             llm_dependency_proxy: {
@@ -102,8 +121,17 @@ module Ai
             requests_with_any_skill_rate: 0.0,
             requests_with_skill_affected_response: 0,
             skill_affected_request_rate: 0.0,
+            skill_helpfulness_proxy: {
+              invocation_affected_rate: 0.0,
+              request_affected_rate: 0.0,
+              note: 'No audit rows in scope.'
+            },
+            fallback_with_skill_requests: 0,
+            fallback_with_skill_rate_given_skill: 0.0,
             deterministic_explanation_with_any_skill: 0,
             deterministic_explanation_with_skill_rate: 0.0,
+            deterministic_path_strengthened_requests: 0,
+            deterministic_path_strengthened_rate: 0.0,
             tool_used_with_any_skill: 0,
             skill_invocation_total: 0,
             skill_invocation_deterministic_count: 0,
@@ -112,7 +140,9 @@ module Ai
             skill_invocation_affected_rate: 0.0,
             by_skill: {},
             workflow_audit_count: 0,
+            workflow_selection_rate: 0.0,
             workflow_key_frequency: {},
+            workflow_breakdown: {},
             by_audit_agent: {},
             skill_invocations_by_audit_agent: {},
             llm_dependency_proxy: {
@@ -120,6 +150,18 @@ module Ai
               note: 'No audit rows in scope.'
             }
           }
+        end
+
+        def build_workflow_breakdown(wf_freq, wf_total)
+          wf_string = (wf_freq || {}).transform_keys(&:to_s)
+          Ai::Skills::Workflows::Registry.keys.each_with_object({}) do |key, h|
+            ks = key.to_s
+            c = wf_string[ks].to_i
+            h[ks] = {
+              audit_count: c,
+              share_of_workflow_audits: wf_total.positive? ? round_rate(c, wf_total) : 0.0
+            }
+          end
         end
 
         def truthy?(v)

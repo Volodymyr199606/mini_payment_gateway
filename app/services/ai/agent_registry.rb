@@ -43,7 +43,8 @@ module Ai
         supports_retrieval: true,
         supports_memory: false,
         debug_label: 'Developer',
-        allowed_skill_keys: %i[followup_rewriter authorization_vs_capture_explainer]
+        allowed_skill_keys: %i[followup_rewriter authorization_vs_capture_explainer],
+        max_skills_per_request: 1
       ),
       operational: Agents::AgentDefinition.new(
         key: :operational,
@@ -76,7 +77,8 @@ module Ai
         supports_orchestration: false,
         preferred_execution_modes: [:deterministic_only],
         debug_label: 'Reporting',
-        allowed_skill_keys: %i[ledger_period_summary reporting_trend_summary]
+        allowed_skill_keys: %i[ledger_period_summary reporting_trend_summary],
+        max_skills_per_request: 1
       )
     }.freeze
 

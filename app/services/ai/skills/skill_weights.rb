@@ -23,6 +23,7 @@ module Ai
         discrepancy_detector: HEAVY,
         reporting_trend_summary: HEAVY,
         reconciliation_action_summary: MEDIUM,
+        # Not v1 Registry skills — reserved placeholders (see `ResponseSlots::RESERVED_NON_V1_SKILL_KEYS`).
         merchant_account_status_summary: LIGHT,
         docs_citation_summarizer: MEDIUM
       }.freeze

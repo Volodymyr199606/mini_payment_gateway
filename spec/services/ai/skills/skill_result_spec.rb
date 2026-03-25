@@ -18,6 +18,7 @@ RSpec.describe Ai::Skills::SkillResult do
       expect(r.to_h[:skill_key]).to eq('payment_state_explainer')
       expect(r.to_h[:deterministic]).to be(true)
       expect(r.to_h[:safe_for_composition]).to be(true)
+      expect(described_class::CONTRACT_SCHEMA_VERSION).to eq(Ai::Skills::PlatformV1::CONTRACT_SCHEMA_VERSION)
     end
   end
 

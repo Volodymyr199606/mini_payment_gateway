@@ -6,7 +6,7 @@ module Ai
     # Subclasses must define DEFINITION (SkillDefinition) and implement #execute.
     #
     # Skills are not autonomous agents: no recursive planning, no spawning subagents.
-    # Policy checks should wrap invocation (see Invoker).
+    # Policy checks should wrap invocation (see Invoker). Official platform boundary: `Ai::Skills::PlatformV1`.
     class BaseSkill
       class << self
         def definition

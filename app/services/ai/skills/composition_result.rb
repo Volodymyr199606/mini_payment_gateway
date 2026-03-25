@@ -3,7 +3,10 @@
 module Ai
   module Skills
     # Structured result of skill composition. Safe for audit, debug, replay.
+    # Bump `CONTRACT_SCHEMA_VERSION` only with `Ai::Skills::PlatformV1::CONTRACT_SCHEMA_VERSION`.
     class CompositionResult
+      CONTRACT_SCHEMA_VERSION = '1.0.0'
+
       attr_reader :reply_text, :filled_slots, :contributing_skills, :suppressed_skills,
                   :suppressed_reason_codes, :conflict_resolutions, :precedence_rules_applied,
                   :composition_mode, :style_transform_applied, :deterministic_primary

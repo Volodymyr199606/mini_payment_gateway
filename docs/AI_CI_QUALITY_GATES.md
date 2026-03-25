@@ -75,7 +75,7 @@ After all AI gates pass, the **Spec (rest)** job runs the remaining RSpec specs 
 - **Evals:** Existing skill scenarios, invocation correctness, safety, bounded invocation under `spec/ai/evals/skills/`.
 - **Perf smoke:** Planner caps and relative metrics helpers; deeper wall-clock ratios are `:perf_local` only (`RUN_PERF_LOCAL=1`).
 
-See [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md) for commands (`bin/ci_ai_skills`, `rake ai:skills:*`).
+See [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md) for commands (`bin/ci_ai_skills`, `rake ai:skills:*`). Boot-time **v1 platform** alignment (registry, profiles, workflows, response slots, contract schema versions) is enforced in development/test by `Ai::Skills::PlatformV1.validate!` — see [AI_SKILL_PLATFORM_V1.md](AI_SKILL_PLATFORM_V1.md) and `spec/services/ai/skills/platform_v1_spec.rb`.
 
 ### demo_seed (optional)
 

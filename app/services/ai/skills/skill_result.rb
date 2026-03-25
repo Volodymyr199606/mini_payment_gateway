@@ -3,7 +3,10 @@
 module Ai
   module Skills
     # Structured output from a skill execution. Stable shape for composition, audit, replay, and analytics.
+    # Bump only with `Ai::Skills::PlatformV1::CONTRACT_SCHEMA_VERSION` and a migration note.
     class SkillResult
+      CONTRACT_SCHEMA_VERSION = '1.0.0'
+
       attr_reader :skill_key, :success, :data, :explanation, :metadata,
                   :safe_for_composition, :deterministic, :error_code, :error_message
 

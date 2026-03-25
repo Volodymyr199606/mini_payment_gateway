@@ -3,7 +3,8 @@
 module Ai
   module Skills
     # Per-agent skill profile: preferred skills, budgets, and performance tuning.
-    # Read-only; used by InvocationPlanner and analytics.
+    # Read-only; used by InvocationPlanner and analytics. v1 platform profiles are frozen in `AgentProfiles`
+    # and validated against `AgentDefinition` via `Ai::Skills::PlatformV1.validate!`.
     class AgentProfile
       attr_reader :agent_key, :allowed_skill_keys, :preferred_skill_keys,
                   :suppressed_skill_keys, :max_skills_per_request,

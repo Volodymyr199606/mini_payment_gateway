@@ -7,6 +7,7 @@ Rails.application.config.after_initialize do
 
   begin
     Ai::Skills::Registry.validate!
+    Ai::Skills::PlatformV1.validate!
     Ai::AgentRegistry.validate!
     Ai::Tools::Registry.validate!
   rescue ArgumentError => e

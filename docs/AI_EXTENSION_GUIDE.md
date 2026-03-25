@@ -1,8 +1,8 @@
 # AI Extension Guide: Adding Agents and Tools
 
-**See also**: [AI_PLATFORM.md](AI_PLATFORM.md) (overview and doc index), [AI_SAFETY_AND_POLICY.md](AI_SAFETY_AND_POLICY.md) (policy and tool restrictions).
+**See also**: [AI_PLATFORM.md](AI_PLATFORM.md) (overview and doc index), [AI_SAFETY_AND_POLICY.md](AI_SAFETY_AND_POLICY.md) (policy and tool restrictions), [AI_SKILL_PLATFORM_V1.md](AI_SKILL_PLATFORM_V1.md) (frozen v1 bounded skill platform).
 
-This guide describes how to add new **agents** and **tools** to the payment gateway AI system using the plugin-style registry pattern. The registries are the single source of truth for discovery, metadata, and capability checks.
+This guide describes how to add new **agents** and **tools** to the payment gateway AI system using the plugin-style registry pattern. The registries are the single source of truth for discovery, metadata, and capability checks. For **bounded skills**, follow the v1 checklist below so changes stay reviewable and CI-protected.
 
 ## Overview
 
@@ -167,6 +167,25 @@ In development and test, `Ai::Tools::Registry.validate!` runs after initialize. 
 - Every TOOLS key has a class that exists.
 - DEFINITIONS keys match TOOLS keys.
 - Every tool definition has `read_only: true` and non-blank `class_name`.
+
+---
+
+## Adding a v1 skill (bounded platform)
+
+Treat this as a **platform change**, not a one-off class. The stable contract is summarized in [AI_SKILL_PLATFORM_V1.md](AI_SKILL_PLATFORM_V1.md).
+
+1. **Implement** `Ai::Skills::BaseSkill` with a `SkillDefinition` (`DEFINITION`) and `#execute(context:)` returning `Ai::Skills::SkillResult`.
+2. **Register** the class in `Ai::Skills::Registry::SKILLS` (explicit hash; no autoload discovery).
+3. **Map slots & weight** — `Ai::Skills::ResponseSlots::SKILL_TO_SLOT` and `Ai::Skills::SkillWeights::WEIGHTS` (every registered skill needs both).
+4. **Agents** — add the skill key to `Ai::AgentRegistry` `allowed_skill_keys` for each agent that may use it, and **mirror** the same allowlist in `Ai::Skills::AgentProfiles::PROFILES` (must match exactly for v1; `PlatformV1` validates).
+5. **Invocation** — extend `InvocationPlanner` / `InvocationCoordinator` only if new phase gates or thresholds are required (keep bounded; no new autonomous loops).
+6. **Audit** — usage flows through `Ai::Skills::InvocationResult` and `Ai::Skills::UsageSerializer` (see `SkillMetadataContract`).
+7. **Composition** — if the skill participates in multi-skill replies, ensure `ConflictResolver` / `CompositionPlanner` behavior is defined and tested.
+8. **Evals & CI** — add YAML scenarios under `spec/fixtures/ai/`, extend skill regression/contract specs (`spec/ai/evals/skills/`, `spec/ai/skills/`, `spec/services/ai/skills/`). See [AI_CI_QUALITY_GATES.md](AI_CI_QUALITY_GATES.md).
+
+**Workflows** (optional multi-step paths): register only in `Ai::Skills::Workflows::Registry`, wire `Selector`/`Executor`, document in `AI_SKILL_PLATFORM_V1.md`. Do not add dynamic or nested workflows.
+
+**Out of scope for v1:** autonomous subagents, recursive planning, runtime skill discovery, arbitrary chaining — see `Ai::Skills::PlatformV1::OUT_OF_SCOPE`.
 
 ---
 

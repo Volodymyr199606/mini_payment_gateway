@@ -5,6 +5,7 @@ module Ai
     module Skills
       # Contract keys for skill usage in audit, debug, replay, and analytics.
       # Used by quality gates; keep in sync with UsageSerializer and InvocationResult#to_audit_hash.
+      # Platform label: `Ai::Skills::PlatformV1::VERSION` / `CONTRACT_SCHEMA_VERSION`.
       module SkillMetadataContract
         INVOCATION_RESULT_KEYS = %i[
           skill_key phase invoked reason_code success deterministic

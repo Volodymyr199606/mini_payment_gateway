@@ -35,4 +35,8 @@ RSpec.describe 'Skill quality gate framework' do
   it 'ai_skills_ci rake file exists' do
     expect(Rails.root.join('lib/tasks/ai_skills_ci.rake')).to exist
   end
+
+  it 'PlatformV1 validates without drift' do
+    expect { Ai::Skills::PlatformV1.validate! }.not_to raise_error
+  end
 end

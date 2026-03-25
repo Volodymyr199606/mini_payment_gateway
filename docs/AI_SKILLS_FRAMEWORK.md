@@ -2,6 +2,13 @@
 
 This document describes the **bounded skill layer** under `Ai::Skills`: reusable capabilities that agents may use, with explicit registration, stable results, and **no** autonomous subagents or recursive planning.
 
+### Official v1 skill platform (frozen)
+
+The current system is the **stable internal v1 platform**: core shapes, registry, per-agent profiles, and bounded workflows are treated as **supportable contracts**, validated in development/test by `Ai::Skills::PlatformV1.validate!`.
+
+- **Boundary & contracts:** [AI_SKILL_PLATFORM_V1.md](AI_SKILL_PLATFORM_V1.md)
+- **How to add skills safely:** [AI_EXTENSION_GUIDE.md](AI_EXTENSION_GUIDE.md#adding-a-v1-skill-bounded-platform)
+
 ---
 
 ## Phase 1 status (complete)

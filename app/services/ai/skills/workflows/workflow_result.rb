@@ -4,7 +4,10 @@ module Ai
   module Skills
     module Workflows
       # Stable metadata for a bounded multi-skill workflow run (audit, debug, replay, analytics).
+      # Bump `CONTRACT_SCHEMA_VERSION` only with `Ai::Skills::PlatformV1::CONTRACT_SCHEMA_VERSION`.
       class WorkflowResult
+        CONTRACT_SCHEMA_VERSION = '1.0.0'
+
         attr_reader :workflow_key, :workflow_selected, :steps_attempted, :steps_completed,
                     :contributing_skills, :skipped_skills, :stop_reason, :success,
                     :affected_final_response, :metadata, :duration_ms

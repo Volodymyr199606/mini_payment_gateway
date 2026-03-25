@@ -5,6 +5,9 @@ module Ai
     # Structured slots for skill output. Each slot is a single contributor target.
     # Precedence: primary_explanation > supporting_analysis > docs_clarification > style_transform.
     module ResponseSlots
+      # Slot mappings for skills **not** in `Registry` — reserved for future work, **not** v1 platform skills.
+      RESERVED_NON_V1_SKILL_KEYS = %i[merchant_account_status_summary docs_citation_summarizer].freeze
+
       SLOT_NAMES = %i[
         primary_explanation
         supporting_analysis

@@ -43,7 +43,7 @@ RSpec.describe Ai::Skills::ReportingTrendSummary do
       result = described_class.new.execute(context: context)
 
       expect(result.success).to be true
-      expect(result.explanation).to include('Trend summary')
+      expect(result.explanation).to include('Trend vs previous period')
       expect(result.data['trend_available']).to be true
     end
 
@@ -64,7 +64,7 @@ RSpec.describe Ai::Skills::ReportingTrendSummary do
       result = described_class.new.execute(context: context)
 
       expect(result.success).to be true
-      expect(result.explanation).to include('No comparative period')
+      expect(result.explanation).to include('Trend comparison')
       expect(result.data['trend_available']).to eq(false)
     end
 

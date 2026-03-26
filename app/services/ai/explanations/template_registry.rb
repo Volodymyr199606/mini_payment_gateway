@@ -7,8 +7,8 @@ module Ai
     class TemplateRegistry
       PAYMENT_INTENT = {
         'created' => 'Payment Intent #{{id}} is in **created** status. Amount: {{amount}} {{currency}}. It has not been authorized yet.',
-        'authorized' => 'Payment Intent #{{id}} is **authorized**. Amount: {{amount}} {{currency}}. It is ready to capture.',
-        'requires_capture' => 'Payment Intent #{{id}} is authorized and **requires capture**. Amount: {{amount}} {{currency}}. Capture it to settle the funds.',
+        'authorized' => 'Payment Intent #{{id}} is **authorized** (funds held). Amount: {{amount}} {{currency}}. **Next:** Capture when you are ready to settle; otherwise the authorization may expire per your processor rules.',
+        'requires_capture' => 'Payment Intent #{{id}} is **authorized** and **requires capture** to collect funds. Amount: {{amount}} {{currency}}. **Next:** Run capture from your dashboard or API; until then, no settlement occurs.',
         'captured' => 'Payment Intent #{{id}} is **captured**. Amount: {{amount}} {{currency}}. The funds have been settled.',
         'canceled' => 'Payment Intent #{{id}} has been **canceled** (voided). No charge was made.',
         'failed' => 'Payment Intent #{{id}} **failed**. It did not reach a successful authorization or capture.',
@@ -34,7 +34,8 @@ module Ai
       }.freeze
 
       LEDGER = {
-        'summary' => '**Ledger summary** ({{from}} to {{to}}): Charges: {{charges}}; Refunds: {{refunds}}; Fees: {{fees}}; **Net: {{net}}** {{currency}}. ({{entries_count}} entries in range.)'
+        # Merchant-facing: lead with period, bold key totals; net = charges − refunds − fees (ledger truth).
+        'summary' => '**Here\'s your ledger** for **{{from}}** to **{{to}}**: **Charges** {{charges}}; **Refunds** {{refunds}}; **Fees** {{fees}}; **Net {{net}}** {{currency}}. Net is charges minus refunds minus fees, from your ledger entries ({{entries_count}} charge/refund movements in this range).'
       }.freeze
 
       MERCHANT_ACCOUNT = {

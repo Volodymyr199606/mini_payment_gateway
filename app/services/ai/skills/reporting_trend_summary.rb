@@ -27,7 +27,7 @@ module Ai
           return SkillResult.success(
             skill_key: :reporting_trend_summary,
             data: { trend_available: false },
-            explanation: 'No comparative period data available for trend summary. Provide a previous period or use a time range that allows comparison.',
+            explanation: '**Trend comparison:** Not enough data to compare two periods yet. Ask for the same length window twice (e.g. last 7 days vs prior 7 days) or a range that includes a clear “previous” interval.',
             metadata: audit_meta(context),
             deterministic: true
           )
@@ -165,9 +165,9 @@ module Ai
         parts << trend_line('Net', net_curr, net_prev, currency) if net_curr != net_prev || parts.size < 2
         parts << trend_line('Fees', fees_curr, fees_prev, currency) if (fees_curr - fees_prev).abs > 1
 
-        return 'No significant change between periods.' if parts.empty?
+        return '**Trend vs previous period:** No meaningful change in charges, refunds, or net between these windows.' if parts.empty?
 
-        "**Trend summary (vs previous period):**\n" + parts.compact.join("\n")
+        "**Trend vs previous period (deterministic):**\n" + parts.compact.join("\n")
       end
 
       def trend_line(label, curr, prev, currency)

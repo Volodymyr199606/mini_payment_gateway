@@ -47,7 +47,8 @@ RSpec.describe Ai::Explanations::Renderer do
       expect(out).to be_a(Ai::Explanations::RenderedExplanation)
       expect(out.explanation_text).to include('Charges')
       expect(out.explanation_text).to include('Net')
-      expect(out.explanation_text).to include('6 entries')
+      expect(out.explanation_text).to include('6')
+      expect(out.explanation_text).to include('charge/refund movements')
     end
 
     it 'returns RenderedExplanation for merchant account' do

@@ -110,6 +110,23 @@ Mirrors `Ai::Skills::PlatformV1::OUT_OF_SCOPE`:
 
 ---
 
+## Merchant-facing value (product intent)
+
+The v1 platform is tuned for **operator and merchant** questions—not internal demos. Typical high-value paths:
+
+| Merchant need | Primary agents / tools | Skills & workflows |
+|---------------|------------------------|---------------------|
+| Why did a payment fail? What’s wrong with this refund/capture? | `operational`, `support_faq` + PI/txn tools | `payment_state_explainer`, `payment_failure_summary` |
+| Why is this still authorized / requires capture? | `support_faq`, `operational` | `payment_state_explainer` (deterministic templates in `TemplateRegistry`) |
+| Webhook stuck, retrying, or failed delivery? | `operational` + `get_webhook_event` | `webhook_trace_explainer`, `webhook_retry_summary`; workflow `webhook_failure_analysis_workflow` when applicable |
+| Net volume, charges, refunds, fees in plain language | `reporting_calculation` + `get_ledger_summary` | `ledger_period_summary`; `reporting_trend_summary` only when a prior period is comparable |
+| “Does this look right?” / reconciliation | `reporting_calculation` / `reconciliation_analyst` + ledger | `discrepancy_detector`, `reconciliation_action_summary`; workflow `reconciliation_analysis_workflow` |
+| Simpler/shorter answers | `support_faq`, `developer_onboarding` | `followup_rewriter` (pre-composition); workflow `rewrite_response_workflow` when applicable |
+
+Copy and behavior live in **deterministic templates** (`app/services/ai/explanations/template_registry.rb`) and **skill classes** under `app/services/ai/skills/`. Changes there are product-visible; keep them bounded and auditable.
+
+---
+
 ## Related docs
 
 - [AI_SKILLS_FRAMEWORK.md](AI_SKILLS_FRAMEWORK.md) — architecture and behavior.

@@ -64,3 +64,15 @@ skill_scenarios:
     expected_skill_affected_response: false
     expected_response_must_include: []
     expected_response_must_not_include: []
+
+  # --- Reconciliation workflow (merchant-facing: mismatch + net / ledger) ---
+  - id: skill-reconciliation-workflow
+    description: "Reconciliation wording + ledger triggers discrepancy + next-steps workflow"
+    user_message: "reconciliation discrepancy mismatch: what is my net volume for the last 7 days?"
+    expected_path: tool_only
+    expected_agent: "tool:get_ledger_summary"
+    expected_tool_names: [get_ledger_summary]
+    expected_skill_keys: [discrepancy_detector, reconciliation_action_summary]
+    expected_skill_affected_response: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []

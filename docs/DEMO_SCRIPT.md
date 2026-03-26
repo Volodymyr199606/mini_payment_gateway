@@ -72,6 +72,8 @@ Use the **AI chat** (dashboard or API) with the demo merchant’s API key. Subst
 
 These should hit the deterministic tools (`get_payment_intent`, `get_transaction`, `get_ledger_summary`, `get_webhook_event`) and return structured data.
 
+**Merchant-value behavior (bounded skills):** With tools enabled, the assistant should add **deterministic explanations** (not generic LLM filler)—e.g. ledger answers lead with period and net math; failed payments and webhook retries include **“what to check next”** style guidance; reconciliation-style questions (e.g. “discrepancy” + net volume) can run the **reconciliation workflow** (`discrepancy_detector` → `reconciliation_action_summary`). See [AI_SKILL_PLATFORM_V1.md](AI_SKILL_PLATFORM_V1.md#merchant-facing-value-product-intent).
+
 ---
 
 ## 5. AI hybrid docs + tool demos

@@ -35,7 +35,7 @@ module Ai
         end
 
         if findings.any?
-          explanation = "Potential discrepancies:\n" + findings.map { |f| "• #{f}" }.join("\n")
+          explanation = "**Reconciliation check:** Here's what stood out in your data:\n" + findings.map { |f| "• #{f}" }.join("\n")
           SkillResult.success(
             skill_key: :discrepancy_detector,
             data: { discrepancies: findings, aligned: false },
@@ -44,7 +44,11 @@ module Ai
             deterministic: true
           )
         else
-          explanation = ledger.present? ? 'Ledger and payment records appear aligned. No rule-based discrepancies detected.' : 'No ledger or payment intent data provided for discrepancy check.'
+          explanation = if ledger.present?
+                        '**No rule-based mismatches:** Ledger totals and payment records look **aligned** for the data we have. If something still feels off, narrow the date range or pick a specific payment intent to inspect.'
+                      else
+                        'No ledger or payment intent data was provided for this check. Ask for a ledger summary or include a payment intent id to dig deeper.'
+                      end
           SkillResult.success(
             skill_key: :discrepancy_detector,
             data: { discrepancies: [], aligned: true },

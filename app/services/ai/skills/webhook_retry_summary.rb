@@ -69,11 +69,13 @@ module Ai
           "**Webhook delivered:** Event ##{id} (#{event_type}) was **delivered successfully** after #{attempts} attempt(s). No further action needed."
         when 'failed'
           "**Webhook delivery exhausted:** Event ##{id} (#{event_type}) **failed** after #{attempts} attempt(s) (max: #{MAX_ATTEMPTS}). " \
-            "Delivery will not be retried. Review your endpoint and consider reprocessing manually if needed."
+            "Automatic delivery will not continue.\n\n" \
+            "**What to verify:** Your endpoint URL returned an error or timed out; fix the handler or URL, then re-send or reconcile affected events from your dashboard."
         when 'pending'
           retry_msg = attempts.positive? ? "Retrying (attempt #{attempts}/#{MAX_ATTEMPTS})." : "Delivery pending (no attempts yet)."
           "**Webhook retrying:** Event ##{id} (#{event_type}) is **pending**. #{retry_msg} " \
-            "Check your endpoint availability; delivery will retry with backoff."
+            "Delivery retries with backoff.\n\n" \
+            "**What to verify:** Endpoint is reachable (HTTPS, 2xx), responds quickly, and accepts the signed payload."
         else
           "Webhook event ##{id} (#{event_type}): delivery status **#{status}**, #{attempts} attempt(s)."
         end

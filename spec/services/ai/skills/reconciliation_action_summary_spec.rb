@@ -18,7 +18,7 @@ RSpec.describe Ai::Skills::ReconciliationActionSummary do
       result = described_class.new.execute(context: context)
 
       expect(result.success).to be true
-      expect(result.explanation).to include('**Suggested next steps:**')
+      expect(result.explanation).to include('**Suggested next steps (bounded):**')
       expect(result.explanation).to include('•')
       expect(result.data['actions']).to be_an(Array)
       expect(result.data['actions']).not_to be_empty

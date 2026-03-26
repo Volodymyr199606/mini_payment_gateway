@@ -23,7 +23,7 @@ module Ai
         findings = ledger.present? ? check_consistency(ledger) : []
 
         actions = build_actions(findings, ledger)
-        explanation = "**Suggested next steps:**\n" + actions.map { |a| "• #{a}" }.join("\n")
+        explanation = "**Suggested next steps (bounded):**\n" + actions.map { |a| "• #{a}" }.join("\n")
 
         SkillResult.success(
           skill_key: :reconciliation_action_summary,
@@ -100,18 +100,18 @@ module Ai
         actions = []
 
         if findings.include?(:refunds_exceed_charges)
-          actions << 'Review related transaction trail for refunds vs charges.'
-          actions << 'Verify refund totals against captured amount per payment intent.'
+          actions << 'Open the Transactions view and filter refunds in this period; confirm each refund ties to a captured charge.'
+          actions << 'Compare refund totals against captured amount per payment intent.'
         end
 
         if findings.include?(:net_mismatch)
-          actions << 'Inspect missing or duplicate ledger effects.'
-          actions << 'Verify webhook delivery state for recent payment events.'
+          actions << 'Re-export or compare ledger line items vs. payment and refund transactions for the same dates.'
+          actions << 'Confirm fees and currency match what you expect in reporting settings.'
         end
 
-        actions << 'Confirm refund totals against captured amount.' if actions.empty?
-        actions << 'Check transaction statuses for any failed or pending operations.'
-        actions << 'Verify webhook delivery for events in the period.' if actions.size < 3
+        actions << 'Spot-check a few payment intents: status (authorized / captured / refunded) should match ledger movements.' if actions.empty?
+        actions << 'Check for failed or pending transactions that may not yet appear on the ledger.' if actions.size < 3
+        actions << 'If webhooks drive your books, confirm recent events for this period were delivered.' if actions.size < 4
 
         actions.uniq.first(5)
       end

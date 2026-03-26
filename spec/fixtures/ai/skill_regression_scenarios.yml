@@ -84,3 +84,20 @@ skill_regression_scenarios:
       - reporting_trend_summary
     max_invoked_skills: 2
     max_heavy_skills: 0
+
+  - id: reg-reconciliation-workflow-merchant
+    description: "Reconciliation + net question stays on ledger path; workflow skills only"
+    user_message: "reconciliation discrepancy mismatch: what is my net volume for the last 7 days?"
+    expected_path: tool_only
+    expected_agent: "tool:get_ledger_summary"
+    expected_tool_names: [get_ledger_summary]
+    expected_skill_keys: [discrepancy_detector, reconciliation_action_summary]
+    expected_skill_affected_response: true
+    expected_response_must_include: []
+    expected_response_must_not_include: []
+    must_not_include_skills:
+      - followup_rewriter
+      - payment_state_explainer
+      - webhook_trace_explainer
+    max_invoked_skills: 2
+    max_heavy_skills: 1

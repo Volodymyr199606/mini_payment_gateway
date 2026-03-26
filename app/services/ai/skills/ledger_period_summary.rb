@@ -108,9 +108,13 @@ module Ai
         c = summary[:counts] || {}
         charges = format_money((t[:charges_cents].to_i) / 100.0)
         refunds = format_money((t[:refunds_cents].to_i) / 100.0)
+        fees = format_money((t[:fees_cents].to_i) / 100.0)
         net = format_money((t[:net_cents].to_i) / 100.0)
         currency = (summary[:currency] || 'USD').to_s
-        "Ledger: Charges #{charges}; Refunds #{refunds}; Net #{net} #{currency}. (#{c[:captures_count].to_i} charges, #{c[:refunds_count].to_i} refunds.)"
+        from_s = summary[:from].to_s[0, 10]
+        to_s = summary[:to].to_s[0, 10]
+        "**Here's your ledger** (#{from_s}–#{to_s}): **Charges** #{charges}; **Refunds** #{refunds}; **Fees** #{fees}; **Net** #{net} #{currency}. " \
+          "(#{c[:captures_count].to_i} captures, #{c[:refunds_count].to_i} refunds in range.)"
       end
 
       def format_money(amount)

@@ -64,11 +64,13 @@ module Ai
 
         explanation = case status
                      when 'failed'
-                       "**Payment failure:** Payment Intent ##{pi[:id] || pi['id']} **failed** during authorization or capture. Amount: #{amount} #{currency}. No funds were charged. Check the payment method and try again."
+                       "**Payment failure:** Payment Intent ##{pi[:id] || pi['id']} **failed** during authorization or capture. Amount: #{amount} #{currency}. No successful charge was created.\n\n" \
+                       "**What to check next:** Confirm the card or payment method is valid; review the decline or error in your dashboard/API response; retry with another method if the customer still needs to pay."
                      when 'canceled'
-                       "**Payment voided:** Payment Intent ##{pi[:id] || pi['id']} was **canceled** before capture. Amount: #{amount} #{currency}. No charge was made."
+                       "**Payment voided:** Payment Intent ##{pi[:id] || pi['id']} was **canceled** before capture. Amount: #{amount} #{currency}. No charge was made.\n\n" \
+                       "**What to check next:** If this cancel was unintended, create a new Payment Intent when the customer is ready to pay."
                      else
-                       "Payment Intent ##{pi[:id] || pi['id']} is in **#{status}** status. This indicates a failure or void in the lifecycle."
+                       "Payment Intent ##{pi[:id] || pi['id']} is in **#{status}** status (failure or void in the lifecycle). Amount: #{amount} #{currency}."
                      end
 
         SkillResult.success(
@@ -93,9 +95,11 @@ module Ai
                 else kind
                 end
 
+        funds_note = kind == 'refund' ? 'No refund was completed for this attempt.' : 'No funds were settled for this failed attempt.'
+
         explanation = "**Transaction failure:** Transaction ##{id} (**#{kind}**) **failed**. Status: #{status}. Amount: #{amount}. " \
-                     "The failure occurred at the **#{stage}** stage. " \
-                     "No funds were transferred for this operation."
+                     "Failure at the **#{stage}** stage. #{funds_note}\n\n" \
+                     "**What to check next:** Review the error on this transaction in your dashboard; confirm processor or risk settings; retry only after the underlying issue is resolved."
 
         SkillResult.success(
           skill_key: :payment_failure_summary,

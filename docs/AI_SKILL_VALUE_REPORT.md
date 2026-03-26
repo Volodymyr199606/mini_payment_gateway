@@ -2,6 +2,10 @@
 
 This document explains **how we measure the bounded skill layer’s impact** without pretending to know user satisfaction or revenue. It is meant for engineering planning, demos, interviews, and portfolio storytelling — with **honest, observable signals** only.
 
+## Product intent (merchant-facing)
+
+Engineering optimizes the skill layer for **real merchant scenarios**: operational troubleshooting (failed payments, webhooks), reporting clarity (ledger net, charges/refunds/fees), reconciliation hints (bounded discrepancies + next steps), and support-style explanations (lifecycle, auth vs capture, refunds). Eval fixtures (`skill_scenarios.yml`, `skill_regression_scenarios.yml`) include paths such as ledger summary and **reconciliation-style** questions so regressions catch drift in those product journeys—not just generic invocation.
+
 ## What “value” means here
 
 | Layer | What we can claim |

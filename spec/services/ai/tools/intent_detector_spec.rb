@@ -42,5 +42,16 @@ RSpec.describe Ai::Tools::IntentDetector do
       expect(described_class.detect('Hello')).to be_nil
       expect(described_class.detect('')).to be_nil
     end
+
+    it 'does not treat bare "how" as a ledger intent (substring bug)' do
+      expect(described_class.detect('how are you')).to be_nil
+      expect(described_class.detect('how many agents?')).to be_nil
+      expect(described_class.detect('tell me about this project')).to be_nil
+    end
+
+    it 'still detects refund/ledger questions without "how much"' do
+      out = described_class.detect('what my refunds?')
+      expect(out[:tool_name]).to eq('get_ledger_summary')
+    end
   end
 end

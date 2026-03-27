@@ -10,7 +10,12 @@ module Ai
       TXN_REF_PATTERN = /\b(txn_[a-zA-Z0-9]+)\b/
       WEBHOOK_PATTERN = /\b(?:webhook[_\s]?event|webhook\s+event)[\s#:]*(?:id)?[\s]*(\d+)/i
       ACCOUNT_PATTERN = /\b(?:my\s+)?(?:account|merchant)\s*(?:info|summary|details)?\b/i
-      LEDGER_PHRASES = %w[last 7 days last week last month today yesterday all time totals total charges total refunds net balance how much].freeze
+
+      # Explicit phrases only — %w splits on spaces, so never use %w for multi-word keys (that reintroduces bare "how").
+      LEDGER_PHRASE_SUBSTRINGS = [
+        'last 7 days', 'last week', 'last month', 'all time',
+        'total charges', 'total refunds', 'net volume', 'net balance', 'how much'
+      ].freeze
 
       def self.detect(message)
         new(message).detect
@@ -26,12 +31,29 @@ module Ai
         return detect_transaction if @msg.match(TXN_ID_PATTERN) || @msg.match(TXN_REF_PATTERN)
         return detect_webhook_event if @msg.match(WEBHOOK_PATTERN)
         return detect_account if @msg.match(ACCOUNT_PATTERN)
-        return detect_ledger_summary if LEDGER_PHRASES.any? { |p| @msg.include?(p) }
+        return detect_ledger_summary if ledger_intent?
 
         nil
       end
 
       private
+
+      def ledger_intent?
+        return true if LEDGER_PHRASE_SUBSTRINGS.any? { |p| @msg.include?(p) }
+
+        return true if @msg.match?(/\b(today|yesterday)\b/)
+        return true if @msg.match?(/\btotals\b/)
+        return true if @msg.match?(/\bhow\s+much\b/)
+
+        # Reporting-ish: money movement keywords + scope words — exclude obvious docs/policy questions
+        if @msg.match?(/\b(refunds?|charges?|ledger|net)\b/) &&
+           @msg.match?(/\b(what|show|give|my|last|this|week|month|days|volume|balance|money|sales|revenue|summary|amount|is)\b/) &&
+           !@msg.match?(/\b(policy|policies|terms|legal|documentation|docs?|compliance|pci)\b/)
+          return true
+        end
+
+        false
+      end
 
       def detect_payment_intent
         m = @msg.match(PI_PATTERN)

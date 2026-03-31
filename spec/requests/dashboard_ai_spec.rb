@@ -333,6 +333,10 @@ RSpec.describe 'Dashboard AI chat', type: :request do
       follow_redirect! if response.redirect?
 
       stub_retrieval_service!
+      # Skip deterministic orchestration so this example exercises LLM persistence (Groq stub).
+      allow(Ai::Orchestration::ConstrainedRunner).to receive(:call).and_return(
+        Ai::Orchestration::RunResult.no_orchestration
+      )
       allow(Ai::GroqClient).to receive(:new).and_return(
         instance_double(Ai::GroqClient, chat: { content: 'Stubbed reply.', model_used: 'test', fallback_used: false })
       )
